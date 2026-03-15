@@ -102,7 +102,7 @@ export default function RecipeImportPage() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://www.instagram.com/p/…"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             required
             autoFocus
           />
@@ -182,7 +182,7 @@ function RecipeReview({
       )}
 
       <div>
-        <h3 className="text-xl font-bold text-gray-900">{recipe.name}</h3>
+        <h3 className="text-xl font-bold text-gray-800">{recipe.name}</h3>
         {recipe.author && <p className="text-sm text-gray-400 mt-0.5">by {recipe.author}</p>}
         {recipe.description && <p className="text-sm text-gray-600 mt-2">{recipe.description}</p>}
       </div>
@@ -234,7 +234,7 @@ function RecipeReview({
           {recipe.keywords.map((kw) => (
             <span
               key={kw}
-              className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full"
+              className="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full"
             >
               {kw}
             </span>

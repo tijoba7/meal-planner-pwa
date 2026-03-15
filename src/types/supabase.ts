@@ -34,6 +34,7 @@ export type Database = {
           dietary_preferences?: string[]
           updated_at?: string
         }
+        Relationships: []
       }
       recipes_cloud: {
         Row: {
@@ -61,6 +62,15 @@ export type Database = {
           published_at?: string | null
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'recipes_cloud_author_id_fkey'
+            columns: ['author_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
       }
       friendships: {
         Row: {
@@ -83,6 +93,22 @@ export type Database = {
           status?: 'pending' | 'accepted' | 'blocked'
           responded_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'friendships_requester_id_fkey'
+            columns: ['requester_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'friendships_addressee_id_fkey'
+            columns: ['addressee_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
       }
       reactions: {
         Row: {
@@ -105,6 +131,22 @@ export type Database = {
           type?: 'like' | 'bookmark' | 'emoji'
           emoji_code?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'reactions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'reactions_recipe_id_fkey'
+            columns: ['recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes_cloud'
+            referencedColumns: ['id']
+          }
+        ]
       }
       comments: {
         Row: {
@@ -132,6 +174,22 @@ export type Database = {
           updated_at?: string
           deleted_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'comments_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'comments_recipe_id_fkey'
+            columns: ['recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes_cloud'
+            referencedColumns: ['id']
+          }
+        ]
       }
       ratings: {
         Row: {
@@ -151,6 +209,22 @@ export type Database = {
         Update: {
           score?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: 'ratings_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'ratings_recipe_id_fkey'
+            columns: ['recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes_cloud'
+            referencedColumns: ['id']
+          }
+        ]
       }
       notifications: {
         Row: {
@@ -172,6 +246,15 @@ export type Database = {
         Update: {
           read_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
       }
     }
     Views: Record<string, never>
@@ -181,6 +264,7 @@ export type Database = {
       friendship_status: 'pending' | 'accepted' | 'blocked'
       reaction_type: 'like' | 'bookmark' | 'emoji'
     }
+    CompositeTypes: Record<string, never>
   }
 }
 

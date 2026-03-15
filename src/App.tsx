@@ -1,5 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { MigrationProvider } from './contexts/MigrationContext'
+import { ProfileProvider } from './contexts/ProfileContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
 import RecipesPage from './pages/RecipesPage'
 import RecipeDetailPage from './pages/RecipeDetailPage'
@@ -11,28 +14,38 @@ import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import ProfilePage from './pages/ProfilePage'
+import PublicProfilePage from './pages/PublicProfilePage'
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
-      <Routes>
-        {/* Auth pages — full-screen, outside the main Layout */}
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/signup" element={<SignUpPage />} />
-        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+      <MigrationProvider>
+      <ProfileProvider>
+        <Routes>
+          {/* Auth pages — full-screen, outside the main Layout */}
+          <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/signup" element={<SignUpPage />} />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Main app */}
-        <Route path="/" element={<Layout />}>
-          <Route index element={<RecipesPage />} />
-          <Route path="recipes/new" element={<RecipeFormPage />} />
-          <Route path="recipes/import" element={<RecipeImportPage />} />
-          <Route path="recipes/:id" element={<RecipeDetailPage />} />
-          <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
-          <Route path="meal-plan" element={<PlannerPage />} />
-          <Route path="shopping" element={<ShoppingListPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
-      </Routes>
+          {/* Main app */}
+          <Route path="/" element={<Layout />}>
+            <Route index element={<RecipesPage />} />
+            <Route path="recipes/new" element={<RecipeFormPage />} />
+            <Route path="recipes/import" element={<RecipeImportPage />} />
+            <Route path="recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
+            <Route path="meal-plan" element={<PlannerPage />} />
+            <Route path="shopping" element={<ShoppingListPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="users/:userId" element={<PublicProfilePage />} />
+          </Route>
+        </Routes>
+      </ProfileProvider>
+      </MigrationProvider>
     </AuthProvider>
+    </ThemeProvider>
   )
 }

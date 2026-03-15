@@ -1,0 +1,306 @@
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Camera, Check, Loader2, Pencil, Sparkles, X } from 'lucide-react'
+import { useProfile } from '../contexts/ProfileContext'
+import { useAuth } from '../contexts/AuthContext'
+import { Avatar } from '../components/ProfileCard'
+
+const DIETARY_OPTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Gluten-free',
+  'Dairy-free',
+  'Nut-free',
+  'Keto',
+  'Paleo',
+  'Kosher',
+  'Halal',
+  'Low-sodium',
+  'Low-carb',
+]
+
+export default function ProfilePage() {
+  const { user } = useAuth()
+  const { profile, loading, updateProfile, uploadAvatar } = useProfile()
+
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  // Form state (mirrors profile fields)
+  const [displayName, setDisplayName] = useState('')
+  const [bio, setBio] = useState('')
+  const [dietary, setDietary] = useState<string[]>([])
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Detect "fresh" profile (trigger created it with just email prefix, no bio/avatar)
+  const isNewProfile =
+    profile &&
+    !profile.bio &&
+    !profile.avatar_url &&
+    profile.dietary_preferences.length === 0
+
+  function startEditing() {
+    if (!profile) return
+    setDisplayName(profile.display_name)
+    setBio(profile.bio ?? '')
+    setDietary([...profile.dietary_preferences])
+    setError(null)
+    setSuccess(false)
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    setEditing(false)
+    setError(null)
+  }
+
+  function toggleDietary(pref: string) {
+    setDietary(prev =>
+      prev.includes(pref) ? prev.filter(p => p !== pref) : [...prev, pref],
+    )
+  }
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault()
+    if (!displayName.trim()) {
+      setError('Display name is required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    const { error } = await updateProfile({
+      display_name: displayName.trim(),
+      bio: bio.trim() || null,
+      dietary_preferences: dietary,
+    })
+    setSaving(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setEditing(false)
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    }
+  }
+
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file.')
+      return
+    }
+    setUploadingAvatar(true)
+    setError(null)
+    const { error } = await uploadAvatar(file)
+    setUploadingAvatar(false)
+    if (error) setError(error.message)
+    // Reset file input so the same file can be re-selected
+    e.target.value = ''
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12 text-center text-gray-500">
+        <p>Sign in to view your profile.</p>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12 text-center text-gray-500">
+        <p>Profile not found.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-8">
+      {/* Onboarding banner */}
+      {isNewProfile && !editing && (
+        <div className="mb-6 rounded-xl bg-green-50 border border-green-200 p-4 flex gap-3">
+          <Sparkles size={20} className="text-green-600 shrink-0 mt-0.5" strokeWidth={1.75} />
+          <div>
+            <p className="text-sm font-medium text-green-800">Welcome to Mise!</p>
+            <p className="text-sm text-green-700 mt-0.5">
+              Add a photo, bio, and dietary preferences so others can find and connect with you.
+            </p>
+            <button
+              onClick={startEditing}
+              className="mt-2 text-sm font-medium text-green-700 underline underline-offset-2 hover:text-green-800"
+            >
+              Complete your profile
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Avatar */}
+      <div className="flex flex-col items-center gap-4 mb-8">
+        <div className="relative">
+          <Avatar profile={profile} size="xl" />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            aria-label="Upload avatar"
+            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border border-gray-300 shadow flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            {uploadingAvatar ? (
+              <Loader2 size={14} className="animate-spin text-gray-500" />
+            ) : (
+              <Camera size={14} strokeWidth={1.75} className="text-gray-600" />
+            )}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={handleAvatarChange}
+          />
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-gray-400">{user.email}</p>
+        </div>
+      </div>
+
+      {/* Profile info / edit form */}
+      {editing ? (
+        <form onSubmit={handleSave} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Display name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              maxLength={60}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Your name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+            <textarea
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              maxLength={200}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              placeholder="Tell others a bit about yourself and your cooking style…"
+            />
+            <p className="text-xs text-gray-400 mt-1 text-right">{bio.length}/200</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dietary preferences
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {DIETARY_OPTIONS.map(pref => {
+                const active = dietary.includes(pref)
+                return (
+                  <button
+                    key={pref}
+                    type="button"
+                    onClick={() => toggleDietary(pref)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      active
+                        ? 'bg-green-600 border-green-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    {pref}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {saving ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Check size={14} strokeWidth={2} />
+              )}
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={cancelEditing}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              <X size={14} strokeWidth={2} />
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{profile.display_name}</h2>
+              {profile.bio && <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>}
+            </div>
+            <button
+              onClick={startEditing}
+              aria-label="Edit profile"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <Pencil size={13} strokeWidth={1.75} />
+              Edit
+            </button>
+          </div>
+
+          {profile.dietary_preferences.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                Dietary preferences
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.dietary_preferences.map(pref => (
+                  <span
+                    key={pref}
+                    className="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium border border-green-200"
+                  >
+                    {pref}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {success && (
+            <p className="text-sm text-green-600 flex items-center gap-1.5">
+              <Check size={14} strokeWidth={2} />
+              Profile saved.
+            </p>
+          )}
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,7 +1,10 @@
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
-import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, User, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
+import { Avatar } from './ProfileCard'
+import MigrationPrompt from './MigrationPrompt'
 
 interface NavItem {
   to: string
@@ -19,19 +22,20 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Layout() {
   const { user, signOut } = useAuth()
+  const { profile } = useProfile()
   const navigate = useNavigate()
   const supIsAvailable = isSupabaseAvailable()
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-colors ${
-      isActive ? 'text-green-600' : 'text-gray-500 hover:text-gray-700'
+      isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
     }`
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
       isActive
-        ? 'bg-green-50 text-green-700'
-        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+        ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100'
     }`
 
   async function handleSignOut() {
@@ -61,10 +65,18 @@ export default function Layout() {
           <div className="p-3 border-t border-gray-100">
             {user ? (
               <div className="space-y-1">
-                <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 truncate">
-                  <User size={14} strokeWidth={1.75} className="shrink-0 text-gray-400" />
-                  <span className="truncate text-xs text-gray-500">{user.email}</span>
-                </div>
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  {profile && <Avatar profile={profile} size="sm" />}
+                  <div className="min-w-0">
+                    {profile && (
+                      <p className="text-xs font-medium text-gray-700 truncate">{profile.display_name}</p>
+                    )}
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                </Link>
                 <button
                   onClick={handleSignOut}
                   className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors"
@@ -91,13 +103,16 @@ export default function Layout() {
         <h1 className="text-lg font-bold text-green-700">Mise</h1>
         {supIsAvailable && (
           user ? (
-            <button
-              onClick={handleSignOut}
-              aria-label="Sign out"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            <Link
+              to="/profile"
+              aria-label="View profile"
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <LogOut size={18} strokeWidth={1.75} />
-            </button>
+              {profile
+                ? <Avatar profile={profile} size="sm" />
+                : <LogOut size={18} strokeWidth={1.75} className="text-gray-400" />
+              }
+            </Link>
           ) : (
             <Link
               to="/auth/login"
@@ -124,6 +139,9 @@ export default function Layout() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Cloud migration prompt — shown once when user has local data after sign-in */}
+      <MigrationPrompt />
     </div>
   )
 }

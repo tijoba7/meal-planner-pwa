@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ShoppingCart, X } from 'lucide-react'
+import { ShoppingCart, X, ClipboardList } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
 import {
   getShoppingLists,
@@ -193,12 +194,11 @@ export default function ShoppingListPage() {
         )}
 
         {total === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <p className="text-sm">No items in this list.</p>
-            <p className="text-xs mt-1">
-              Lists are generated from your meal plan — make sure you have meals planned for the selected dates.
-            </p>
-          </div>
+          <EmptyState
+            icon={ClipboardList}
+            title="No items in this list"
+            description="Lists are generated from your meal plan — make sure you have meals planned for the selected dates."
+          />
         )}
 
         {/* Unchecked items */}
@@ -280,13 +280,12 @@ export default function ShoppingListPage() {
       </div>
 
       {lists.length === 0 && !showCreate && (
-        <div className="text-center py-16 text-gray-400">
-          <ShoppingCart size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
-          <p className="text-sm">No shopping lists yet.</p>
-          <p className="text-xs mt-1">
-            Create one from your meal plan to auto-generate your grocery list.
-          </p>
-        </div>
+        <EmptyState
+          icon={ShoppingCart}
+          title="No shopping lists yet"
+          description="Create one from your meal plan to auto-generate your grocery list."
+          action={{ label: 'Create a list', onClick: () => setShowCreate(true) }}
+        />
       )}
 
       <div className="space-y-3">

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BookOpen, Search } from 'lucide-react'
 import { getRecipes, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
+import EmptyState from '../components/EmptyState'
 
 export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -51,9 +53,21 @@ export default function RecipesPage() {
       />
 
       {filtered.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-8">
-          {query ? 'No recipes match your search.' : 'No recipes yet. Add your first one!'}
-        </p>
+        query ? (
+          <EmptyState
+            icon={Search}
+            title="No recipes found"
+            description={`No recipes match "${query}". Try a different search term.`}
+            action={{ label: 'Clear search', onClick: () => setQuery('') }}
+          />
+        ) : (
+          <EmptyState
+            icon={BookOpen}
+            title="No recipes yet"
+            description="Add your first recipe to get started planning meals."
+            action={{ label: 'Add your first recipe', href: '/recipes/new' }}
+          />
+        )
       ) : (
         <ul className="space-y-3">
           {filtered.map((recipe) => {

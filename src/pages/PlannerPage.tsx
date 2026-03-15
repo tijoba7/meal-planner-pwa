@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { X, BookOpen } from 'lucide-react'
 import type { MealType, Recipe, MealPlan } from '../types'
 import { getRecipes, getMealPlanForWeek, createMealPlan, updateMealPlan } from '../lib/db'
 
@@ -220,7 +221,22 @@ export default function PlannerPage() {
             </div>
             <div className="overflow-y-auto flex-1">
               {filteredRecipes.length === 0 ? (
-                <p className="p-4 text-sm text-gray-500 text-center">No recipes found.</p>
+                <div className="flex flex-col items-center text-center py-10 px-4">
+                  <BookOpen size={32} strokeWidth={1.5} className="text-gray-300 mb-3" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600">
+                    {recipes.length === 0 ? 'No recipes yet' : 'No recipes found'}
+                  </p>
+                  {recipes.length === 0 ? (
+                    <Link
+                      to="/recipes/new"
+                      className="mt-3 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Add your first recipe
+                    </Link>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1">Try a different search term.</p>
+                  )}
+                </div>
               ) : (
                 filteredRecipes.map(recipe => (
                   <button

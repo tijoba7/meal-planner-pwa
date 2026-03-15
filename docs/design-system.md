@@ -384,17 +384,47 @@ Inactive sidebar link: `text-gray-600 hover:bg-gray-100 hover:text-gray-800`
 
 ### Empty States
 
-Use a Lucide icon (not emoji) as the illustration:
+Use the `EmptyState` component (`src/components/EmptyState.tsx`) for all empty states. It accepts a Lucide icon, title, optional description, and optional CTA action.
 
 ```tsx
-import { ShoppingCart } from 'lucide-react'
+import EmptyState from '../components/EmptyState'
+import { BookOpen, Search, ShoppingCart } from 'lucide-react'
 
-<div className="text-center py-16 text-gray-400">
-  <ShoppingCart size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
-  <p className="text-sm">Primary empty message.</p>
-  <p className="text-xs mt-1">Secondary hint.</p>
-</div>
+// With CTA link
+<EmptyState
+  icon={BookOpen}
+  title="No recipes yet"
+  description="Add your first recipe to get started planning meals."
+  action={{ label: 'Add your first recipe', href: '/recipes/new' }}
+/>
+
+// With CTA button (onClick)
+<EmptyState
+  icon={ShoppingCart}
+  title="No shopping lists yet"
+  description="Create one from your meal plan to auto-generate your grocery list."
+  action={{ label: 'Create a list', onClick: () => setShowCreate(true) }}
+/>
+
+// No CTA (informational only)
+<EmptyState
+  icon={Search}
+  title="No results found"
+  description="Try a different search term."
+/>
 ```
+
+**Visual spec:** icon is rendered at `size={36} strokeWidth={1.5}` in `text-green-400` inside a `w-20 h-20 rounded-full bg-green-50` circle. CTA button uses the standard primary button style (`bg-green-600 px-5 py-2.5 rounded-lg`).
+
+**Empty state icons by context:**
+
+| Context | Icon |
+|---|---|
+| No recipes | `BookOpen` |
+| No search results | `Search` |
+| No shopping lists | `ShoppingCart` |
+| Empty shopping list | `ClipboardList` |
+| No meal plan slots | `CalendarDays` |
 
 ### Progress Bar
 

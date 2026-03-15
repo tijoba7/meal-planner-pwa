@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ChefHat } from 'lucide-react'
 import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
+import CookingMode from '../components/CookingMode'
 
 function parseServings(recipeYield: string): number {
   const match = recipeYield.match(/\d+/)
@@ -52,6 +54,7 @@ export default function RecipeDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [scaledServings, setScaledServings] = useState(1)
+  const [cookingMode, setCookingMode] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -99,6 +102,10 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
+      {cookingMode && (
+        <CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />
+      )}
+
       {/* Back link */}
       <Link to="/" className="text-sm text-green-600 hover:text-green-700 inline-block mb-4">
         ← Recipes
@@ -108,6 +115,15 @@ export default function RecipeDetailPage() {
       <div className="flex items-start justify-between gap-3 mb-2">
         <h2 className="text-2xl font-bold text-gray-800">{recipe.name}</h2>
         <div className="flex gap-2 shrink-0">
+          {recipe.recipeInstructions.length > 0 && (
+            <button
+              onClick={() => setCookingMode(true)}
+              className="flex items-center gap-1.5 text-sm font-medium bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ChefHat size={14} strokeWidth={2} aria-hidden="true" />
+              Cook
+            </button>
+          )}
           <Link
             to={`/recipes/${recipe.id}/edit`}
             className="text-sm font-medium text-green-600 border border-green-600 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors"

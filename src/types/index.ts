@@ -28,14 +28,27 @@ export interface MealSlot {
 
 export type DayPlan = Partial<Record<MealType, MealSlot>>
 
-export type WeekPlan = {
+export interface MealPlan {
+  id: string
   weekStartDate: string // ISO date string (Monday)
   days: Record<string, DayPlan> // key: ISO date string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ShoppingItem {
+  id: string
   name: string
   amount: number
   unit: string
   checked: boolean
+}
+
+export interface ShoppingList {
+  id: string
+  name: string
+  mealPlanId?: string
+  items: ShoppingItem[]
+  createdAt: string
+  updatedAt: string
 }

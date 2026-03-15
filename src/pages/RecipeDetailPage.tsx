@@ -3,6 +3,47 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 
+function parseServings(recipeYield: string): number {
+  const match = recipeYield.match(/\d+/)
+  return match ? Math.max(1, parseInt(match[0], 10)) : 1
+}
+
+function formatAmount(amount: number): string {
+  if (amount === 0) return '0'
+  const whole = Math.floor(amount)
+  const decimal = amount - whole
+  if (decimal < 0.01) return String(whole)
+
+  const fractions: [number, string][] = [
+    [1 / 8, '1/8'],
+    [1 / 6, '1/6'],
+    [1 / 4, '1/4'],
+    [1 / 3, '1/3'],
+    [3 / 8, '3/8'],
+    [1 / 2, '1/2'],
+    [5 / 8, '5/8'],
+    [2 / 3, '2/3'],
+    [3 / 4, '3/4'],
+    [7 / 8, '7/8'],
+  ]
+
+  let bestFrac = ''
+  let bestDiff = Infinity
+  for (const [val, label] of fractions) {
+    const diff = Math.abs(decimal - val)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestFrac = label
+    }
+  }
+
+  if (bestDiff < 0.05) {
+    return whole > 0 ? `${whole} ${bestFrac}` : bestFrac
+  }
+
+  return amount.toFixed(1).replace(/\.0$/, '')
+}
+
 export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -10,12 +51,15 @@ export default function RecipeDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [scaledServings, setScaledServings] = useState(1)
 
   useEffect(() => {
     if (!id) return
     getRecipe(id).then((r) => {
-      if (r) setRecipe(r)
-      else setNotFound(true)
+      if (r) {
+        setRecipe(r)
+        setScaledServings(parseServings(r.recipeYield))
+      } else setNotFound(true)
     })
   }, [id])
 
@@ -49,6 +93,10 @@ export default function RecipeDetailPage() {
   const cookMins = durationToMinutes(recipe.cookTime)
   const totalTime = prepMins + cookMins
 
+  const originalServings = parseServings(recipe.recipeYield)
+  const scale = originalServings > 0 ? scaledServings / originalServings : 1
+  const isScaled = scaledServings !== originalServings
+
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
       {/* Back link */}
@@ -76,8 +124,28 @@ export default function RecipeDetailPage() {
       </div>
 
       {/* Meta */}
-      <div className="flex flex-wrap gap-3 text-sm text-gray-500 mb-3">
-        <span>{recipe.recipeYield} servings</span>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setScaledServings((s) => Math.max(1, s - 1))}
+            disabled={scaledServings <= 1}
+            aria-label="Decrease servings"
+            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition-colors leading-none select-none"
+          >
+            −
+          </button>
+          <span className="text-center">
+            <span className="font-medium text-gray-700">{scaledServings}</span>
+            {' servings'}
+          </span>
+          <button
+            onClick={() => setScaledServings((s) => s + 1)}
+            aria-label="Increase servings"
+            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors leading-none select-none"
+          >
+            +
+          </button>
+        </div>
         <span>·</span>
         <span>Prep {prepMins} min</span>
         <span>·</span>
@@ -107,17 +175,36 @@ export default function RecipeDetailPage() {
 
       {/* Ingredients */}
       <section className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Ingredients</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-gray-800">Ingredients</h3>
+          {isScaled && (
+            <button
+              onClick={() => setScaledServings(originalServings)}
+              className="text-xs text-green-600 hover:text-green-700 hover:underline"
+            >
+              Reset to {originalServings}
+            </button>
+          )}
+        </div>
         <ul className="space-y-2">
-          {recipe.recipeIngredient.map((ing, i) => (
-            <li key={i} className="flex items-baseline gap-2 text-sm">
-              <span className="text-gray-400">·</span>
-              <span className="font-medium text-gray-700">
-                {ing.amount} {ing.unit}
-              </span>
-              <span className="text-gray-600">{ing.name}</span>
-            </li>
-          ))}
+          {recipe.recipeIngredient.map((ing, i) => {
+            const scaledAmount = ing.amount * scale
+            const showOriginal = isScaled && ing.amount > 0
+            return (
+              <li key={i} className="flex items-baseline gap-2 text-sm">
+                <span className="text-gray-400">·</span>
+                <span className="font-medium text-gray-700">
+                  {formatAmount(scaledAmount)} {ing.unit}
+                  {showOriginal && (
+                    <span className="font-normal text-gray-400 ml-1">
+                      (was {formatAmount(ing.amount)})
+                    </span>
+                  )}
+                </span>
+                <span className="text-gray-600">{ing.name}</span>
+              </li>
+            )
+          })}
         </ul>
       </section>
 

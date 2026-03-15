@@ -26,12 +26,20 @@ export default function RecipesPage() {
     <div className="p-4 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Recipes</h2>
-        <Link
-          to="/recipes/new"
-          className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          + Add Recipe
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to="/recipes/import"
+            className="border border-green-600 text-green-600 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-50 transition-colors"
+          >
+            Import URL
+          </Link>
+          <Link
+            to="/recipes/new"
+            className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            + Add Recipe
+          </Link>
+        </div>
       </div>
 
       <input

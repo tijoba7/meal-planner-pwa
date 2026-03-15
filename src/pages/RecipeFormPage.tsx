@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { getRecipe, createRecipe, updateRecipe, minutesToDuration, durationToMinutes } from '../lib/db'
 import type { Ingredient } from '../types'
 
@@ -279,10 +280,10 @@ export default function RecipeFormPage() {
                   <button
                     type="button"
                     onClick={() => removeIngredient(i)}
-                    className="text-gray-400 hover:text-red-400 transition-colors px-1"
+                    className="text-gray-400 hover:text-red-400 transition-colors p-1"
                     aria-label="Remove ingredient"
                   >
-                    ✕
+                    <X size={14} strokeWidth={2} aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -322,10 +323,10 @@ export default function RecipeFormPage() {
                   <button
                     type="button"
                     onClick={() => removeInstruction(i)}
-                    className="mt-2 text-gray-400 hover:text-red-400 transition-colors px-1"
+                    className="mt-2 text-gray-400 hover:text-red-400 transition-colors p-1"
                     aria-label="Remove step"
                   >
-                    ✕
+                    <X size={14} strokeWidth={2} aria-hidden="true" />
                   </button>
                 )}
               </div>

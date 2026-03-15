@@ -1,10 +1,18 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { BookOpen, CalendarDays, ShoppingCart, Settings, type LucideIcon } from 'lucide-react'
 
-const NAV_ITEMS = [
-  { to: '/', label: 'Recipes', icon: '📖', end: true },
-  { to: '/meal-plan', label: 'Meal Plan', icon: '📅', end: false },
-  { to: '/shopping', label: 'Shopping', icon: '🛒', end: false },
-  { to: '/settings', label: 'Settings', icon: '⚙️', end: false },
+interface NavItem {
+  to: string
+  label: string
+  icon: LucideIcon
+  end: boolean
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { to: '/', label: 'Recipes', icon: BookOpen, end: true },
+  { to: '/meal-plan', label: 'Meal Plan', icon: CalendarDays, end: false },
+  { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
+  { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
 export default function Layout() {
@@ -31,7 +39,7 @@ export default function Layout() {
         <nav className="flex flex-col gap-1 p-3">
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass}>
-              <span className="text-base">{item.icon}</span>
+              <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
               {item.label}
             </NavLink>
           ))}
@@ -52,7 +60,7 @@ export default function Layout() {
       <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex justify-around z-10">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-            <span className="text-xl">{item.icon}</span>
+            <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />
             {item.label}
           </NavLink>
         ))}

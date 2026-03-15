@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
 import type { MealType, Recipe, MealPlan } from '../types'
 import { getRecipes, getMealPlanForWeek, createMealPlan, updateMealPlan } from '../lib/db'
 
@@ -159,10 +160,10 @@ export default function PlannerPage() {
                           </button>
                           <button
                             onClick={() => removeRecipe(date, meal)}
-                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 text-xl leading-none"
+                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                             aria-label={`Remove ${recipe.name}`}
                           >
-                            ×
+                            <X size={14} strokeWidth={2} aria-hidden="true" />
                           </button>
                         </div>
                       ) : (
@@ -202,10 +203,10 @@ export default function PlannerPage() {
                 </h3>
                 <button
                   onClick={closePicker}
-                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Close"
                 >
-                  ×
+                  <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
               <input

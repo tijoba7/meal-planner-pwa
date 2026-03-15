@@ -139,7 +139,7 @@ export default function RecipeDetailPage() {
       {/* Delete confirm dialog */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-sm w-full shadow-xl">
             <h4 className="text-lg font-semibold text-gray-800 mb-2">Delete recipe?</h4>
             <p className="text-sm text-gray-500 mb-6">
               "{recipe.name}" will be permanently deleted. This cannot be undone.

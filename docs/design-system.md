@@ -2,13 +2,13 @@
 
 > "Everything in its place." — clean, warm, approachable. Not corporate. Not playful.
 
-Tailwind CSS 4 · React · Mobile-first · Local-first PWA
+Tailwind CSS 4 · React · Lucide React icons · Mobile-first · Local-first PWA
 
 ---
 
 ## 1. Color Palette
 
-All colors are Tailwind utility classes. No custom CSS variables.
+All colors are Tailwind utility classes. Design tokens are declared in `src/index.css` via `@theme`.
 
 ### Brand / Primary
 
@@ -18,7 +18,7 @@ All colors are Tailwind utility classes. No custom CSS variables.
 | Primary hover | `green-700` | #15803d | Hover state for green-600 elements |
 | Primary light bg | `green-50` | #f0fdf4 | Tag backgrounds, active sidebar item bg, success banners |
 | Primary light text | `green-700` | #15803d | Tag text, active sidebar item text, brand title |
-| Primary muted | `green-100` | #dcfce7 | Step number badge background in form editing context |
+| Primary muted | `green-100` | #dcfce7 | Step number badge background in form/edit context |
 | Progress fill | `green-500` | #22c55e | Progress bars only (slightly lighter than primary) |
 
 ### Neutral / Surface
@@ -41,7 +41,6 @@ All colors are Tailwind utility classes. No custom CSS variables.
 | Secondary | `gray-500` | #6b7280 | Supporting metadata, subtitles |
 | Muted | `gray-400` | #9ca3af | Placeholders, captions, disabled-state text, nav inactive |
 | Subtle | `gray-300` | #d1d5db | Checked/completed item metadata |
-| Nav active | `gray-800` | #1f2937 | Inactive nav label hover |
 
 ### Semantic
 
@@ -50,7 +49,7 @@ All colors are Tailwind utility classes. No custom CSS variables.
 | Danger fill | `red-500` | Filled delete/destructive buttons |
 | Danger fill hover | `red-600` | Hover on filled danger buttons |
 | Danger border | `red-300` | Outlined danger button border |
-| Danger muted | `red-400` | Ghost danger icon buttons (× remove) |
+| Danger muted | `red-400` | Ghost danger icon buttons (remove) |
 | Danger light | `red-50` | Hover background for danger icon buttons |
 | Warning bg | `amber-50` | Warning/info banners |
 | Warning border | `amber-200` | Warning/info banner border |
@@ -85,16 +84,54 @@ System font stack. No custom fonts.
 | Caption | `text-xs text-gray-400` | Timestamps, hints, nav labels |
 | Section overline | `text-xs font-medium text-gray-400 uppercase tracking-wider` | "Checked off" section headers |
 
-### Navigation
+---
 
-| Context | Classes |
+## 3. Icons
+
+Icon library: **Lucide React** (`lucide-react`). No emojis in UI chrome.
+
+### Usage
+
+```tsx
+import { BookOpen, X, ShoppingCart } from 'lucide-react'
+
+// Navigation icon (sidebar)
+<BookOpen size={16} strokeWidth={1.75} aria-hidden="true" />
+
+// Navigation icon (mobile tab bar)
+<BookOpen size={20} strokeWidth={1.75} aria-hidden="true" />
+
+// Inline / action icon
+<X size={14} strokeWidth={2} aria-hidden="true" />
+
+// Empty state icon
+<ShoppingCart size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
+```
+
+### Sizing conventions
+
+| Context | `size` | `strokeWidth` |
+|---|---|---|
+| Desktop sidebar nav | 16 | 1.75 |
+| Mobile tab bar nav | 20 | 1.75 |
+| Close / remove (small) | 14 | 2 |
+| Modal close | 20 | 2 |
+| Empty state illustration | 36 | 1.5 |
+
+### Navigation icons
+
+| Tab | Icon |
 |---|---|
-| Mobile tab bar label | `text-xs font-medium` |
-| Desktop sidebar label | `text-sm font-medium` |
+| Recipes | `BookOpen` |
+| Meal Plan | `CalendarDays` |
+| Shopping | `ShoppingCart` |
+| Settings | `Settings` |
+
+Always add `aria-hidden="true"` on icons — visible labels provide the accessible name.
 
 ---
 
-## 3. Spacing
+## 4. Spacing
 
 ### Page Container
 
@@ -126,7 +163,7 @@ Add `pb-8` or `pb-10` on detail/form pages to avoid content hiding behind the mo
 
 ---
 
-## 4. Component Patterns
+## 5. Component Patterns
 
 ### Cards
 
@@ -210,15 +247,22 @@ text-sm text-green-600 hover:text-green-700 font-medium
 ```
 Use for "Back" navigation and inline additive actions ("+ Add ingredient").
 
-**Icon close (×):**
-```
-text-gray-400 hover:text-gray-600 text-2xl leading-none
+**Icon close button (modal header):**
+```tsx
+<button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
+  <X size={20} strokeWidth={2} aria-hidden="true" />
+</button>
 ```
 
-**Ghost remove (× on row items):**
-```
-shrink-0 w-6 h-6 flex items-center justify-center rounded-full
-hover:bg-red-50 text-gray-400 hover:text-red-500 text-xl leading-none
+**Ghost remove button (row items):**
+```tsx
+<button
+  onClick={onRemove}
+  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+  aria-label="Remove item"
+>
+  <X size={14} strokeWidth={2} aria-hidden="true" />
+</button>
 ```
 
 **Navigation arrow (prev/next):**
@@ -297,7 +341,7 @@ flex items-center justify-center text-xs font-bold
     <div class="p-4 border-b border-gray-200">
       <div class="flex items-center justify-between">
         <h3 class="font-bold text-gray-800">Title</h3>
-        <button class="text-gray-400 hover:text-gray-600 text-2xl leading-none" aria-label="Close">×</button>
+        <!-- Use Lucide X via React: <X size={20} strokeWidth={2} /> -->
       </div>
     </div>
     <!-- Scrollable body -->
@@ -309,13 +353,11 @@ flex items-center justify-center text-xs font-bold
 **Confirmation dialog (centered, small):**
 ```html
 <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-  <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+  <div class="bg-white rounded-xl border border-gray-200 p-6 max-w-sm w-full shadow-xl">
     <h4 class="text-lg font-semibold text-gray-800 mb-2">Confirm title?</h4>
     <p class="text-sm text-gray-500 mb-6">Destructive action description.</p>
     <div class="flex gap-3">
-      <!-- Secondary (Cancel) -->
       <button class="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-      <!-- Danger (Confirm) -->
       <button class="flex-1 bg-red-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-red-600">Delete</button>
     </div>
   </div>
@@ -342,11 +384,15 @@ Inactive sidebar link: `text-gray-600 hover:bg-gray-100 hover:text-gray-800`
 
 ### Empty States
 
-```html
-<div class="text-center py-16 text-gray-400">
-  <p class="text-4xl mb-3">🛒</p>   <!-- optional emoji -->
-  <p class="text-sm">Primary empty message.</p>
-  <p class="text-xs mt-1">Secondary hint.</p>
+Use a Lucide icon (not emoji) as the illustration:
+
+```tsx
+import { ShoppingCart } from 'lucide-react'
+
+<div className="text-center py-16 text-gray-400">
+  <ShoppingCart size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
+  <p className="text-sm">Primary empty message.</p>
+  <p className="text-xs mt-1">Secondary hint.</p>
 </div>
 ```
 
@@ -388,7 +434,7 @@ text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2
 
 ---
 
-## 5. Responsive Breakpoints
+## 6. Responsive Breakpoints
 
 Mobile-first. Single breakpoint: `md:` (768px).
 
@@ -404,27 +450,27 @@ Mobile-first. Single breakpoint: `md:` (768px).
 
 ---
 
-## 6. Accessibility
+## 7. Accessibility
 
 - **Focus rings:** all interactive elements use `focus:outline-none focus:ring-2 focus:ring-green-500`
-- **Aria labels:** icon-only buttons (×, chevrons) must have `aria-label`
+- **Aria labels:** icon-only buttons must have `aria-label`; decorative icons must have `aria-hidden="true"`
 - **Disabled state:** `disabled:opacity-50 disabled:cursor-not-allowed`
-- **Contrast:** `green-600` on white meets WCAG AA (4.5:1 for normal text). `gray-400` (#9ca3af) on white is 2.85:1 — use only for non-essential decorative text and captions, never for primary readable content.
-- **Loading text:** always provide a text alternative inside or adjacent to spinners (`<p class="text-gray-500 text-sm">Loading…</p>`)
-- **Form errors:** associate error messages with their fields using proximity (render `<p class="text-red-500 text-xs mt-1">` immediately after the input)
+- **Contrast:** `green-600` on white meets WCAG AA (4.5:1 for normal text). `gray-400` (#9ca3af) on white is 2.85:1 — use only for non-essential decorative text and captions.
+- **Loading text:** always provide a text alternative adjacent to spinners
+- **Form errors:** render `<p class="text-red-500 text-xs mt-1">` immediately after the relevant input
 
 ---
 
-## 7. Inconsistencies Found & Fixes Applied
+## 8. Audit Changes (MEA-21)
 
-The following inconsistencies were found during the audit and corrected:
+Changes applied during the initial design system establishment pass:
 
-| # | File | Issue | Fix |
-|---|---|---|---|
-| 1 | `PlannerPage.tsx` line 216 | Modal search input used `border-gray-300` instead of standard `border-gray-200` | Changed to `border-gray-200` |
-| 2 | `RecipeDetailPage.tsx` line 141 | Delete confirm backdrop used `bg-black/40` while all other modals use `bg-black/50` | Changed to `bg-black/50` |
-| 3 | `RecipeImportPage.tsx` line 106 | URL input used `rounded-xl` — inputs should always use `rounded-lg` | Changed to `rounded-lg` |
-| 4 | `RecipeImportPage.tsx` lines 238-242 | Review page keyword tags used `bg-gray-100 text-gray-600` instead of standard `bg-green-50 text-green-700` | Changed to match standard keyword tag style |
-| 5 | `RecipeImportPage.tsx` line 186 | Recipe name heading used `text-gray-900` — all headings should use `text-gray-800` | Changed to `text-gray-800` |
-
-> `HomePage.tsx` exists in `src/pages/` but is not wired into the router — `RecipesPage` serves as the index route. The file can be removed or repurposed for a future dashboard view.
+| # | File | Change |
+|---|---|---|
+| 1 | `src/index.css` | Added `@theme` block with `--color-brand-*` tokens |
+| 2 | `src/components/Layout.tsx` | Replaced emoji nav icons (📖 📅 🛒 ⚙️) with Lucide React (`BookOpen`, `CalendarDays`, `ShoppingCart`, `Settings`) |
+| 3 | `src/pages/ShoppingListPage.tsx` | Replaced 🛒 empty-state emoji with `<ShoppingCart>` Lucide icon |
+| 4 | `src/pages/ShoppingListPage.tsx` | Replaced `&times;` remove/close chars with `<X size={14}>` and `<X size={20}>` Lucide icons |
+| 5 | `src/pages/PlannerPage.tsx` | Replaced `×` remove/close chars with Lucide `<X>` icons |
+| 6 | `src/pages/RecipeFormPage.tsx` | Replaced ✕ remove chars (ingredients, steps) with Lucide `<X size={14}>` |
+| 7 | `src/pages/RecipeDetailPage.tsx` | Fixed delete confirm modal card: `rounded-2xl` → `rounded-xl border border-gray-200` to match card pattern |

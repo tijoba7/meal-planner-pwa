@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { ShoppingCart, X } from 'lucide-react'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
 import {
   getShoppingLists,
@@ -221,10 +222,10 @@ export default function ShoppingListPage() {
                 </span>
                 <button
                   onClick={() => handleRemoveItem(item.id)}
-                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 text-xl leading-none"
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                   aria-label={`Remove ${item.name}`}
                 >
-                  &times;
+                  <X size={14} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -280,7 +281,7 @@ export default function ShoppingListPage() {
 
       {lists.length === 0 && !showCreate && (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">🛒</p>
+          <ShoppingCart size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" aria-hidden="true" />
           <p className="text-sm">No shopping lists yet.</p>
           <p className="text-xs mt-1">
             Create one from your meal plan to auto-generate your grocery list.
@@ -348,10 +349,10 @@ export default function ShoppingListPage() {
                 <h3 className="font-bold text-gray-800">New Shopping List</h3>
                 <button
                   onClick={() => setShowCreate(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Close"
                 >
-                  &times;
+                  <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
             </div>

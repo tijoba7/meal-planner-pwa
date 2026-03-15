@@ -1,0 +1,355 @@
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { getRecipe, createRecipe, updateRecipe } from '../lib/db'
+import type { Ingredient } from '../types'
+
+interface FormState {
+  title: string
+  description: string
+  servings: string
+  prepTimeMinutes: string
+  cookTimeMinutes: string
+  ingredients: Ingredient[]
+  instructions: string[]
+  tags: string
+}
+
+const emptyForm: FormState = {
+  title: '',
+  description: '',
+  servings: '2',
+  prepTimeMinutes: '0',
+  cookTimeMinutes: '0',
+  ingredients: [{ name: '', amount: 1, unit: '' }],
+  instructions: [''],
+  tags: '',
+}
+
+interface FormErrors {
+  title?: string
+  ingredients?: string
+  instructions?: string
+}
+
+export default function RecipeFormPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const isEdit = Boolean(id)
+
+  const [form, setForm] = useState<FormState>(emptyForm)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [saving, setSaving] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    getRecipe(id).then((recipe) => {
+      if (!recipe) {
+        setNotFound(true)
+        return
+      }
+      setForm({
+        title: recipe.title,
+        description: recipe.description,
+        servings: String(recipe.servings),
+        prepTimeMinutes: String(recipe.prepTimeMinutes),
+        cookTimeMinutes: String(recipe.cookTimeMinutes),
+        ingredients: recipe.ingredients.length > 0 ? recipe.ingredients : [{ name: '', amount: 1, unit: '' }],
+        instructions: recipe.instructions.length > 0 ? recipe.instructions : [''],
+        tags: recipe.tags.join(', '),
+      })
+    })
+  }, [id])
+
+  function validate(): FormErrors {
+    const e: FormErrors = {}
+    if (!form.title.trim()) e.title = 'Title is required.'
+    if (!form.ingredients.some((ing) => ing.name.trim())) {
+      e.ingredients = 'Add at least one ingredient.'
+    }
+    if (!form.instructions.some((step) => step.trim())) {
+      e.instructions = 'Add at least one instruction step.'
+    }
+    return e
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const errs = validate()
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      return
+    }
+    setErrors({})
+    setSaving(true)
+
+    const data = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      servings: Math.max(1, parseInt(form.servings) || 1),
+      prepTimeMinutes: Math.max(0, parseInt(form.prepTimeMinutes) || 0),
+      cookTimeMinutes: Math.max(0, parseInt(form.cookTimeMinutes) || 0),
+      ingredients: form.ingredients.filter((ing) => ing.name.trim()),
+      instructions: form.instructions.filter((s) => s.trim()),
+      tags: form.tags
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean),
+    }
+
+    try {
+      if (isEdit && id) {
+        await updateRecipe(id, data)
+        navigate(`/recipes/${id}`)
+      } else {
+        const recipe = await createRecipe(data)
+        navigate(`/recipes/${recipe.id}`)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Ingredient helpers ──────────────────────────────────────────────────────
+
+  function updateIngredient(index: number, field: keyof Ingredient, value: string | number) {
+    setForm((f) => {
+      const ingredients = f.ingredients.map((ing, i) =>
+        i === index ? { ...ing, [field]: field === 'amount' ? Number(value) : value } : ing
+      )
+      return { ...f, ingredients }
+    })
+  }
+
+  function addIngredient() {
+    setForm((f) => ({ ...f, ingredients: [...f.ingredients, { name: '', amount: 1, unit: '' }] }))
+  }
+
+  function removeIngredient(index: number) {
+    setForm((f) => ({ ...f, ingredients: f.ingredients.filter((_, i) => i !== index) }))
+  }
+
+  // ── Instruction helpers ─────────────────────────────────────────────────────
+
+  function updateInstruction(index: number, value: string) {
+    setForm((f) => {
+      const instructions = f.instructions.map((step, i) => (i === index ? value : step))
+      return { ...f, instructions }
+    })
+  }
+
+  function addInstruction() {
+    setForm((f) => ({ ...f, instructions: [...f.instructions, ''] }))
+  }
+
+  function removeInstruction(index: number) {
+    setForm((f) => ({ ...f, instructions: f.instructions.filter((_, i) => i !== index) }))
+  }
+
+  if (notFound) {
+    return (
+      <div className="p-4 max-w-2xl mx-auto text-center py-16">
+        <p className="text-gray-500">Recipe not found.</p>
+        <Link to="/recipes" className="text-green-600 text-sm mt-2 inline-block">
+          ← Back to recipes
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 max-w-2xl mx-auto pb-10">
+      <Link to={isEdit && id ? `/recipes/${id}` : '/recipes'} className="text-sm text-green-600 hover:text-green-700 inline-block mb-4">
+        ← {isEdit ? 'Back to recipe' : 'Recipes'}
+      </Link>
+
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+        {isEdit ? 'Edit Recipe' : 'New Recipe'}
+      </h2>
+
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Title <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            placeholder="e.g. Spaghetti Bolognese"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            placeholder="A short description of the dish…"
+            rows={2}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+          />
+        </div>
+
+        {/* Times + Servings */}
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Prep (min)</label>
+            <input
+              type="number"
+              min="0"
+              value={form.prepTimeMinutes}
+              onChange={(e) => setForm((f) => ({ ...f, prepTimeMinutes: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cook (min)</label>
+            <input
+              type="number"
+              min="0"
+              value={form.cookTimeMinutes}
+              onChange={(e) => setForm((f) => ({ ...f, cookTimeMinutes: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Servings</label>
+            <input
+              type="number"
+              min="1"
+              value={form.servings}
+              onChange={(e) => setForm((f) => ({ ...f, servings: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+          <input
+            type="text"
+            value={form.tags}
+            onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+            placeholder="italian, pasta, dinner"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <p className="text-xs text-gray-400 mt-1">Comma-separated</p>
+        </div>
+
+        {/* Ingredients */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ingredients <span className="text-red-500">*</span>
+          </label>
+          <div className="space-y-2">
+            {form.ingredients.map((ing, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={ing.amount}
+                  onChange={(e) => updateIngredient(i, 'amount', e.target.value)}
+                  placeholder="Amt"
+                  className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <input
+                  type="text"
+                  value={ing.unit}
+                  onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
+                  placeholder="unit"
+                  className="w-20 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <input
+                  type="text"
+                  value={ing.name}
+                  onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                  placeholder="ingredient name"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                {form.ingredients.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeIngredient(i)}
+                    className="text-gray-400 hover:text-red-400 transition-colors px-1"
+                    aria-label="Remove ingredient"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {errors.ingredients && (
+            <p className="text-red-500 text-xs mt-1">{errors.ingredients}</p>
+          )}
+          <button
+            type="button"
+            onClick={addIngredient}
+            className="mt-2 text-sm text-green-600 hover:text-green-700 font-medium"
+          >
+            + Add ingredient
+          </button>
+        </div>
+
+        {/* Instructions */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Instructions <span className="text-red-500">*</span>
+          </label>
+          <div className="space-y-2">
+            {form.instructions.map((step, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <span className="mt-2 shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
+                  {i + 1}
+                </span>
+                <textarea
+                  value={step}
+                  onChange={(e) => updateInstruction(i, e.target.value)}
+                  placeholder={`Step ${i + 1}…`}
+                  rows={2}
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                />
+                {form.instructions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeInstruction(i)}
+                    className="mt-2 text-gray-400 hover:text-red-400 transition-colors px-1"
+                    aria-label="Remove step"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {errors.instructions && (
+            <p className="text-red-500 text-xs mt-1">{errors.instructions}</p>
+          )}
+          <button
+            type="button"
+            onClick={addInstruction}
+            className="mt-2 text-sm text-green-600 hover:text-green-700 font-medium"
+          >
+            + Add step
+          </button>
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Recipe'}
+        </button>
+      </form>
+    </div>
+  )
+}

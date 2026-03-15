@@ -101,8 +101,8 @@ export default function PlannerPage() {
   })
 
   const filteredRecipes = recipes.filter(r =>
-    r.title.toLowerCase().includes(search.toLowerCase()) ||
-    r.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
+    r.name.toLowerCase().includes(search.toLowerCase()) ||
+    r.keywords.some(t => t.toLowerCase().includes(search.toLowerCase()))
   )
 
   const mondayDate = new Date(weekStart + 'T00:00:00')
@@ -155,12 +155,12 @@ export default function PlannerPage() {
                             onClick={() => setPickerTarget({ date, meal })}
                             className="flex-1 text-left text-sm font-medium text-gray-800 truncate hover:text-green-700"
                           >
-                            {recipe.title}
+                            {recipe.name}
                           </button>
                           <button
                             onClick={() => removeRecipe(date, meal)}
                             className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 text-xl leading-none"
-                            aria-label={`Remove ${recipe.title}`}
+                            aria-label={`Remove ${recipe.name}`}
                           >
                             ×
                           </button>
@@ -227,7 +227,7 @@ export default function PlannerPage() {
                     onClick={() => assignRecipe(pickerTarget.date, pickerTarget.meal, recipe.id)}
                     className="w-full text-left px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-green-50 active:bg-green-100"
                   >
-                    <p className="text-sm font-medium text-gray-800">{recipe.title}</p>
+                    <p className="text-sm font-medium text-gray-800">{recipe.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{recipe.description}</p>
                   </button>
                 ))

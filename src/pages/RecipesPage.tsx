@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getRecipes } from '../lib/db'
+import { getRecipes, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 
 export default function RecipesPage() {
@@ -15,9 +15,9 @@ export default function RecipesPage() {
     ? recipes.filter((r) => {
         const q = query.toLowerCase()
         return (
-          r.title.toLowerCase().includes(q) ||
+          r.name.toLowerCase().includes(q) ||
           r.description.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q))
+          r.keywords.some((t) => t.toLowerCase().includes(q))
         )
       })
     : recipes
@@ -48,43 +48,47 @@ export default function RecipesPage() {
         </p>
       ) : (
         <ul className="space-y-3">
-          {filtered.map((recipe) => (
-            <li key={recipe.id}>
-              <Link
-                to={`/recipes/${recipe.id}`}
-                className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-gray-800">{recipe.title}</h3>
-                  <span className="text-xs text-gray-400 shrink-0">
-                    {recipe.prepTimeMinutes + recipe.cookTimeMinutes} min
-                  </span>
-                </div>
-                {recipe.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{recipe.description}</p>
-                )}
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                  <span>{recipe.servings} servings</span>
-                  <span>·</span>
-                  <span>prep {recipe.prepTimeMinutes}m</span>
-                  <span>·</span>
-                  <span>cook {recipe.cookTimeMinutes}m</span>
-                </div>
-                {recipe.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {recipe.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+          {filtered.map((recipe) => {
+            const prepMins = durationToMinutes(recipe.prepTime)
+            const cookMins = durationToMinutes(recipe.cookTime)
+            return (
+              <li key={recipe.id}>
+                <Link
+                  to={`/recipes/${recipe.id}`}
+                  className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-gray-800">{recipe.name}</h3>
+                    <span className="text-xs text-gray-400 shrink-0">
+                      {prepMins + cookMins} min
+                    </span>
                   </div>
-                )}
-              </Link>
-            </li>
-          ))}
+                  {recipe.description && (
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{recipe.description}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                    <span>{recipe.recipeYield} servings</span>
+                    <span>·</span>
+                    <span>prep {prepMins}m</span>
+                    <span>·</span>
+                    <span>cook {cookMins}m</span>
+                  </div>
+                  {recipe.keywords.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {recipe.keywords.map((tag) => (
+                        <span
+                          key={tag}
+                          className="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

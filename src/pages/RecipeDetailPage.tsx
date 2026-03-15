@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getRecipe, deleteRecipe } from '../lib/db'
+import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 
 export default function RecipeDetailPage() {
@@ -45,7 +45,9 @@ export default function RecipeDetailPage() {
     )
   }
 
-  const totalTime = recipe.prepTimeMinutes + recipe.cookTimeMinutes
+  const prepMins = durationToMinutes(recipe.prepTime)
+  const cookMins = durationToMinutes(recipe.cookTime)
+  const totalTime = prepMins + cookMins
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
@@ -56,7 +58,7 @@ export default function RecipeDetailPage() {
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
-        <h2 className="text-2xl font-bold text-gray-800">{recipe.title}</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{recipe.name}</h2>
         <div className="flex gap-2 shrink-0">
           <Link
             to={`/recipes/${recipe.id}/edit`}
@@ -75,19 +77,19 @@ export default function RecipeDetailPage() {
 
       {/* Meta */}
       <div className="flex flex-wrap gap-3 text-sm text-gray-500 mb-3">
-        <span>{recipe.servings} servings</span>
+        <span>{recipe.recipeYield} servings</span>
         <span>·</span>
-        <span>Prep {recipe.prepTimeMinutes} min</span>
+        <span>Prep {prepMins} min</span>
         <span>·</span>
-        <span>Cook {recipe.cookTimeMinutes} min</span>
+        <span>Cook {cookMins} min</span>
         <span>·</span>
         <span>Total {totalTime} min</span>
       </div>
 
-      {/* Tags */}
-      {recipe.tags.length > 0 && (
+      {/* Keywords */}
+      {recipe.keywords.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-4">
-          {recipe.tags.map((tag) => (
+          {recipe.keywords.map((tag) => (
             <span
               key={tag}
               className="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full"
@@ -107,7 +109,7 @@ export default function RecipeDetailPage() {
       <section className="mb-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Ingredients</h3>
         <ul className="space-y-2">
-          {recipe.ingredients.map((ing, i) => (
+          {recipe.recipeIngredient.map((ing, i) => (
             <li key={i} className="flex items-baseline gap-2 text-sm">
               <span className="text-gray-400">·</span>
               <span className="font-medium text-gray-700">
@@ -123,12 +125,12 @@ export default function RecipeDetailPage() {
       <section>
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Instructions</h3>
         <ol className="space-y-3">
-          {recipe.instructions.map((step, i) => (
+          {recipe.recipeInstructions.map((step, i) => (
             <li key={i} className="flex gap-3 text-sm">
               <span className="shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {i + 1}
               </span>
-              <p className="text-gray-700 leading-relaxed pt-0.5">{step}</p>
+              <p className="text-gray-700 leading-relaxed pt-0.5">{step.text}</p>
             </li>
           ))}
         </ol>
@@ -140,7 +142,7 @@ export default function RecipeDetailPage() {
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <h4 className="text-lg font-semibold text-gray-800 mb-2">Delete recipe?</h4>
             <p className="text-sm text-gray-500 mb-6">
-              "{recipe.title}" will be permanently deleted. This cannot be undone.
+              "{recipe.name}" will be permanently deleted. This cannot be undone.
             </p>
             <div className="flex gap-3">
               <button

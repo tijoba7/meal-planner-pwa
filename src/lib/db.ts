@@ -15,10 +15,69 @@ class MealPlannerDB extends Dexie {
       mealPlans: '&id, weekStartDate, createdAt',
       shoppingLists: '&id, name, mealPlanId, createdAt',
     })
+    this.version(2)
+      .stores({
+        recipes: '&id, name, *keywords, dateCreated',
+        mealPlans: '&id, weekStartDate, createdAt',
+        shoppingLists: '&id, name, mealPlanId, createdAt',
+      })
+      .upgrade((tx) => {
+        return tx
+          .table('recipes')
+          .toCollection()
+          .modify((recipe: Record<string, unknown>) => {
+            recipe.name = recipe.title
+            delete recipe.title
+            recipe.recipeYield = String(recipe.servings ?? 1)
+            delete recipe.servings
+            recipe.prepTime = minutesToDuration((recipe.prepTimeMinutes as number) ?? 0)
+            delete recipe.prepTimeMinutes
+            recipe.cookTime = minutesToDuration((recipe.cookTimeMinutes as number) ?? 0)
+            delete recipe.cookTimeMinutes
+            recipe.recipeIngredient = recipe.ingredients ?? []
+            delete recipe.ingredients
+            recipe.recipeInstructions = ((recipe.instructions as string[]) ?? []).map((text) => ({
+              '@type': 'HowToStep',
+              text,
+            }))
+            delete recipe.instructions
+            recipe.keywords = recipe.tags ?? []
+            delete recipe.tags
+            if (recipe.imageUrl !== undefined) {
+              recipe.image = recipe.imageUrl
+              delete recipe.imageUrl
+            }
+            recipe.dateCreated = recipe.createdAt
+            delete recipe.createdAt
+            recipe.dateModified = recipe.updatedAt
+            delete recipe.updatedAt
+          })
+      })
   }
 }
 
 export const db = new MealPlannerDB()
+
+// ─── Duration helpers ─────────────────────────────────────────────────────────
+
+export function minutesToDuration(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes))
+  if (m === 0) return 'PT0M'
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  if (h > 0 && rem > 0) return `PT${h}H${rem}M`
+  if (h > 0) return `PT${h}H`
+  return `PT${rem}M`
+}
+
+export function durationToMinutes(duration: string): number {
+  if (!duration) return 0
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/)
+  if (!match) return 0
+  const hours = parseInt(match[1] ?? '0', 10)
+  const mins = parseInt(match[2] ?? '0', 10)
+  return hours * 60 + mins
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -33,7 +92,7 @@ function now(): string {
 // ─── Recipe CRUD ──────────────────────────────────────────────────────────────
 
 export async function getRecipes(): Promise<Recipe[]> {
-  return db.recipes.orderBy('createdAt').toArray()
+  return db.recipes.orderBy('dateCreated').toArray()
 }
 
 export async function getRecipe(recipeId: string): Promise<Recipe | undefined> {
@@ -41,18 +100,18 @@ export async function getRecipe(recipeId: string): Promise<Recipe | undefined> {
 }
 
 export async function createRecipe(
-  data: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
+  data: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>
 ): Promise<Recipe> {
-  const recipe: Recipe = { ...data, id: id(), createdAt: now(), updatedAt: now() }
+  const recipe: Recipe = { ...data, id: id(), dateCreated: now(), dateModified: now() }
   await db.recipes.add(recipe)
   return recipe
 }
 
 export async function updateRecipe(
   recipeId: string,
-  data: Partial<Omit<Recipe, 'id' | 'createdAt'>>
+  data: Partial<Omit<Recipe, 'id' | 'dateCreated'>>
 ): Promise<Recipe> {
-  const updated = { ...data, updatedAt: now() }
+  const updated = { ...data, dateModified: now() }
   await db.recipes.update(recipeId, updated)
   return (await db.recipes.get(recipeId))!
 }
@@ -136,14 +195,14 @@ export async function toggleShoppingItem(listId: string, itemId: string): Promis
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 
-const SEED_RECIPES: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>[] = [
+const SEED_RECIPES: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>[] = [
   {
-    title: 'Spaghetti Bolognese',
+    name: 'Spaghetti Bolognese',
     description: 'A classic Italian meat sauce served over spaghetti.',
-    servings: 4,
-    prepTimeMinutes: 15,
-    cookTimeMinutes: 45,
-    ingredients: [
+    recipeYield: '4',
+    prepTime: 'PT15M',
+    cookTime: 'PT45M',
+    recipeIngredient: [
       { name: 'spaghetti', amount: 400, unit: 'g' },
       { name: 'ground beef', amount: 500, unit: 'g' },
       { name: 'canned tomatoes', amount: 400, unit: 'g' },
@@ -155,24 +214,24 @@ const SEED_RECIPES: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>[] = [
       { name: 'salt', amount: 1, unit: 'tsp' },
       { name: 'black pepper', amount: 0.5, unit: 'tsp' },
     ],
-    instructions: [
-      'Bring a large pot of salted water to boil.',
-      'Heat olive oil in a large pan over medium heat. Sauté diced onion until soft, about 5 minutes.',
-      'Add minced garlic and cook for 1 minute.',
-      'Add ground beef and cook until browned, breaking it up as it cooks.',
-      'Stir in tomato paste and cook for 2 minutes.',
-      'Add canned tomatoes and oregano. Simmer for 30 minutes, stirring occasionally.',
-      'Cook spaghetti according to package directions. Drain and serve topped with sauce.',
+    recipeInstructions: [
+      { '@type': 'HowToStep', text: 'Bring a large pot of salted water to boil.' },
+      { '@type': 'HowToStep', text: 'Heat olive oil in a large pan over medium heat. Sauté diced onion until soft, about 5 minutes.' },
+      { '@type': 'HowToStep', text: 'Add minced garlic and cook for 1 minute.' },
+      { '@type': 'HowToStep', text: 'Add ground beef and cook until browned, breaking it up as it cooks.' },
+      { '@type': 'HowToStep', text: 'Stir in tomato paste and cook for 2 minutes.' },
+      { '@type': 'HowToStep', text: 'Add canned tomatoes and oregano. Simmer for 30 minutes, stirring occasionally.' },
+      { '@type': 'HowToStep', text: 'Cook spaghetti according to package directions. Drain and serve topped with sauce.' },
     ],
-    tags: ['italian', 'pasta', 'beef', 'dinner'],
+    keywords: ['italian', 'pasta', 'beef', 'dinner'],
   },
   {
-    title: 'Chicken Caesar Salad',
+    name: 'Chicken Caesar Salad',
     description: 'Crisp romaine lettuce with grilled chicken, Parmesan, and Caesar dressing.',
-    servings: 2,
-    prepTimeMinutes: 20,
-    cookTimeMinutes: 15,
-    ingredients: [
+    recipeYield: '2',
+    prepTime: 'PT20M',
+    cookTime: 'PT15M',
+    recipeIngredient: [
       { name: 'chicken breast', amount: 2, unit: 'pieces' },
       { name: 'romaine lettuce', amount: 1, unit: 'head' },
       { name: 'Parmesan cheese', amount: 40, unit: 'g' },
@@ -182,23 +241,23 @@ const SEED_RECIPES: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>[] = [
       { name: 'salt', amount: 0.5, unit: 'tsp' },
       { name: 'black pepper', amount: 0.25, unit: 'tsp' },
     ],
-    instructions: [
-      'Season chicken breasts with salt, pepper, and olive oil.',
-      'Grill or pan-fry over medium-high heat for 6–7 minutes per side until cooked through.',
-      'Let chicken rest for 5 minutes, then slice.',
-      'Chop romaine lettuce and place in a large bowl.',
-      'Add Caesar dressing and toss to coat.',
-      'Top with sliced chicken, croutons, and shaved Parmesan.',
+    recipeInstructions: [
+      { '@type': 'HowToStep', text: 'Season chicken breasts with salt, pepper, and olive oil.' },
+      { '@type': 'HowToStep', text: 'Grill or pan-fry over medium-high heat for 6–7 minutes per side until cooked through.' },
+      { '@type': 'HowToStep', text: 'Let chicken rest for 5 minutes, then slice.' },
+      { '@type': 'HowToStep', text: 'Chop romaine lettuce and place in a large bowl.' },
+      { '@type': 'HowToStep', text: 'Add Caesar dressing and toss to coat.' },
+      { '@type': 'HowToStep', text: 'Top with sliced chicken, croutons, and shaved Parmesan.' },
     ],
-    tags: ['salad', 'chicken', 'lunch', 'healthy'],
+    keywords: ['salad', 'chicken', 'lunch', 'healthy'],
   },
   {
-    title: 'Vegetable Stir-Fry',
+    name: 'Vegetable Stir-Fry',
     description: 'A quick and colourful stir-fry with seasonal vegetables in a savory sauce.',
-    servings: 3,
-    prepTimeMinutes: 15,
-    cookTimeMinutes: 10,
-    ingredients: [
+    recipeYield: '3',
+    prepTime: 'PT15M',
+    cookTime: 'PT10M',
+    recipeIngredient: [
       { name: 'broccoli florets', amount: 200, unit: 'g' },
       { name: 'bell pepper', amount: 1, unit: 'large' },
       { name: 'snap peas', amount: 150, unit: 'g' },
@@ -210,16 +269,16 @@ const SEED_RECIPES: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>[] = [
       { name: 'vegetable oil', amount: 2, unit: 'tbsp' },
       { name: 'cooked rice', amount: 2, unit: 'cups' },
     ],
-    instructions: [
-      'Prepare all vegetables: cut broccoli into florets, slice pepper and carrot, trim snap peas.',
-      'Mix soy sauce and sesame oil in a small bowl.',
-      'Heat vegetable oil in a wok or large frying pan over high heat.',
-      'Add garlic and ginger, stir-fry for 30 seconds.',
-      'Add harder vegetables (carrot, broccoli) first and stir-fry for 3 minutes.',
-      'Add remaining vegetables and stir-fry for 2–3 minutes until tender-crisp.',
-      'Pour sauce over and toss to coat. Serve over rice.',
+    recipeInstructions: [
+      { '@type': 'HowToStep', text: 'Prepare all vegetables: cut broccoli into florets, slice pepper and carrot, trim snap peas.' },
+      { '@type': 'HowToStep', text: 'Mix soy sauce and sesame oil in a small bowl.' },
+      { '@type': 'HowToStep', text: 'Heat vegetable oil in a wok or large frying pan over high heat.' },
+      { '@type': 'HowToStep', text: 'Add garlic and ginger, stir-fry for 30 seconds.' },
+      { '@type': 'HowToStep', text: 'Add harder vegetables (carrot, broccoli) first and stir-fry for 3 minutes.' },
+      { '@type': 'HowToStep', text: 'Add remaining vegetables and stir-fry for 2–3 minutes until tender-crisp.' },
+      { '@type': 'HowToStep', text: 'Pour sauce over and toss to coat. Serve over rice.' },
     ],
-    tags: ['vegetarian', 'asian', 'quick', 'dinner', 'healthy'],
+    keywords: ['vegetarian', 'asian', 'quick', 'dinner', 'healthy'],
   },
 ]
 
@@ -229,13 +288,13 @@ export async function seedIfEmpty(): Promise<void> {
 
   const ts = new Date()
   for (let i = 0; i < SEED_RECIPES.length; i++) {
-    // stagger createdAt so orderBy gives a stable order
-    const createdAt = new Date(ts.getTime() + i * 1000).toISOString()
+    // stagger dateCreated so orderBy gives a stable order
+    const dateCreated = new Date(ts.getTime() + i * 1000).toISOString()
     await db.recipes.add({
       ...SEED_RECIPES[i],
       id: id(),
-      createdAt,
-      updatedAt: createdAt,
+      dateCreated,
+      dateModified: dateCreated,
     })
   }
 }

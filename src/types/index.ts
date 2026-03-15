@@ -4,19 +4,33 @@ export interface Ingredient {
   unit: string
 }
 
+export interface HowToStep {
+  '@type': 'HowToStep'
+  text: string
+}
+
 export interface Recipe {
   id: string
-  title: string
+  name: string
   description: string
-  servings: number
-  prepTimeMinutes: number
-  cookTimeMinutes: number
-  ingredients: Ingredient[]
-  instructions: string[]
-  tags: string[]
-  imageUrl?: string
-  createdAt: string
-  updatedAt: string
+  recipeYield: string
+  prepTime: string // ISO 8601 duration, e.g. "PT15M"
+  cookTime: string // ISO 8601 duration, e.g. "PT45M"
+  recipeIngredient: Ingredient[]
+  recipeInstructions: HowToStep[]
+  keywords: string[]
+  image?: string
+  dateCreated: string
+  dateModified: string
+  // Optional Schema.org fields (no UI yet)
+  author?: string
+  url?: string
+  recipeCategory?: string
+  recipeCuisine?: string
+  cookingMethod?: string
+  totalTime?: string
+  suitableForDiet?: string[]
+  nutrition?: Record<string, string | number>
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'

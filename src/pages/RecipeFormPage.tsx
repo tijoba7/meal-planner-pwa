@@ -1,32 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getRecipe, createRecipe, updateRecipe } from '../lib/db'
+import { getRecipe, createRecipe, updateRecipe, minutesToDuration, durationToMinutes } from '../lib/db'
 import type { Ingredient } from '../types'
 
 interface FormState {
-  title: string
+  name: string
   description: string
-  servings: string
+  recipeYield: string
   prepTimeMinutes: string
   cookTimeMinutes: string
   ingredients: Ingredient[]
   instructions: string[]
-  tags: string
+  keywords: string
 }
 
 const emptyForm: FormState = {
-  title: '',
+  name: '',
   description: '',
-  servings: '2',
+  recipeYield: '2',
   prepTimeMinutes: '0',
   cookTimeMinutes: '0',
   ingredients: [{ name: '', amount: 1, unit: '' }],
   instructions: [''],
-  tags: '',
+  keywords: '',
 }
 
 interface FormErrors {
-  title?: string
+  name?: string
   ingredients?: string
   instructions?: string
 }
@@ -49,21 +49,21 @@ export default function RecipeFormPage() {
         return
       }
       setForm({
-        title: recipe.title,
+        name: recipe.name,
         description: recipe.description,
-        servings: String(recipe.servings),
-        prepTimeMinutes: String(recipe.prepTimeMinutes),
-        cookTimeMinutes: String(recipe.cookTimeMinutes),
-        ingredients: recipe.ingredients.length > 0 ? recipe.ingredients : [{ name: '', amount: 1, unit: '' }],
-        instructions: recipe.instructions.length > 0 ? recipe.instructions : [''],
-        tags: recipe.tags.join(', '),
+        recipeYield: recipe.recipeYield,
+        prepTimeMinutes: String(durationToMinutes(recipe.prepTime)),
+        cookTimeMinutes: String(durationToMinutes(recipe.cookTime)),
+        ingredients: recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [{ name: '', amount: 1, unit: '' }],
+        instructions: recipe.recipeInstructions.length > 0 ? recipe.recipeInstructions.map((s) => s.text) : [''],
+        keywords: recipe.keywords.join(', '),
       })
     })
   }, [id])
 
   function validate(): FormErrors {
     const e: FormErrors = {}
-    if (!form.title.trim()) e.title = 'Title is required.'
+    if (!form.name.trim()) e.name = 'Name is required.'
     if (!form.ingredients.some((ing) => ing.name.trim())) {
       e.ingredients = 'Add at least one ingredient.'
     }
@@ -84,14 +84,16 @@ export default function RecipeFormPage() {
     setSaving(true)
 
     const data = {
-      title: form.title.trim(),
+      name: form.name.trim(),
       description: form.description.trim(),
-      servings: Math.max(1, parseInt(form.servings) || 1),
-      prepTimeMinutes: Math.max(0, parseInt(form.prepTimeMinutes) || 0),
-      cookTimeMinutes: Math.max(0, parseInt(form.cookTimeMinutes) || 0),
-      ingredients: form.ingredients.filter((ing) => ing.name.trim()),
-      instructions: form.instructions.filter((s) => s.trim()),
-      tags: form.tags
+      recipeYield: form.recipeYield.trim() || '1',
+      prepTime: minutesToDuration(Math.max(0, parseInt(form.prepTimeMinutes) || 0)),
+      cookTime: minutesToDuration(Math.max(0, parseInt(form.cookTimeMinutes) || 0)),
+      recipeIngredient: form.ingredients.filter((ing) => ing.name.trim()),
+      recipeInstructions: form.instructions
+        .filter((s) => s.trim())
+        .map((text) => ({ '@type': 'HowToStep' as const, text })),
+      keywords: form.keywords
         .split(',')
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean),
@@ -168,19 +170,19 @@ export default function RecipeFormPage() {
       </h2>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        {/* Title */}
+        {/* Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title <span className="text-red-500">*</span>
+            Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="e.g. Spaghetti Bolognese"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />
-          {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
 
         {/* Description */}
@@ -220,22 +222,22 @@ export default function RecipeFormPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Servings</label>
             <input
-              type="number"
-              min="1"
-              value={form.servings}
-              onChange={(e) => setForm((f) => ({ ...f, servings: e.target.value }))}
+              type="text"
+              value={form.recipeYield}
+              onChange={(e) => setForm((f) => ({ ...f, recipeYield: e.target.value }))}
+              placeholder="e.g. 4"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
         </div>
 
-        {/* Tags */}
+        {/* Keywords */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
           <input
             type="text"
-            value={form.tags}
-            onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+            value={form.keywords}
+            onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
             placeholder="italian, pasta, dinner"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />

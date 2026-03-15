@@ -44,12 +44,12 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-200 min-h-screen">
-        <div className="px-4 py-5 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-green-700">Mise</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Everything in its place.</p>
+      <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
+        <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+          <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Everything in its place.</p>
         </div>
         <nav className="flex flex-col gap-1 p-3 flex-1">
           {NAV_ITEMS.map((item) => (
@@ -62,24 +62,24 @@ export default function Layout() {
 
         {/* Auth section at bottom of sidebar */}
         {supIsAvailable && (
-          <div className="p-3 border-t border-gray-100">
+          <div className="p-3 border-t border-gray-100 dark:border-gray-700">
             {user ? (
               <div className="space-y-1">
                 <Link
                   to="/profile"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   {profile && <Avatar profile={profile} size="sm" />}
                   <div className="min-w-0">
                     {profile && (
-                      <p className="text-xs font-medium text-gray-700 truncate">{profile.display_name}</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{profile.display_name}</p>
                     )}
-                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
                   </div>
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
                 >
                   <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
                   Sign out
@@ -88,7 +88,7 @@ export default function Layout() {
             ) : (
               <Link
                 to="/auth/login"
-                className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
               >
                 <LogIn size={16} strokeWidth={1.75} aria-hidden="true" />
                 Sign in
@@ -99,25 +99,25 @@ export default function Layout() {
       </aside>
 
       {/* Mobile header */}
-      <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-green-700">Mise</h1>
+      <header className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-green-700 dark:text-green-400">Mise</h1>
         {supIsAvailable && (
           user ? (
             <Link
               to="/profile"
               aria-label="View profile"
-              className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               {profile
                 ? <Avatar profile={profile} size="sm" />
-                : <LogOut size={18} strokeWidth={1.75} className="text-gray-400" />
+                : <LogOut size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
               }
             </Link>
           ) : (
             <Link
               to="/auth/login"
               aria-label="Sign in"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <LogIn size={18} strokeWidth={1.75} />
             </Link>
@@ -131,7 +131,7 @@ export default function Layout() {
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex justify-around z-10">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
             <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />

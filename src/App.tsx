@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { MigrationProvider } from './contexts/MigrationContext'
 import { ProfileProvider } from './contexts/ProfileContext'
+import { SyncProvider } from './contexts/SyncContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
 import RecipesPage from './pages/RecipesPage'
@@ -21,6 +22,7 @@ export default function App() {
   return (
     <ThemeProvider>
     <AuthProvider>
+      <SyncProvider>
       <MigrationProvider>
       <ProfileProvider>
         <Routes>
@@ -45,6 +47,7 @@ export default function App() {
         </Routes>
       </ProfileProvider>
       </MigrationProvider>
+      </SyncProvider>
     </AuthProvider>
     </ThemeProvider>
   )

@@ -256,6 +256,64 @@ export type Database = {
           }
         ]
       }
+      meal_plans_cloud: {
+        Row: {
+          id: string
+          owner_id: string
+          data: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          owner_id: string
+          data: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'meal_plans_cloud_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      shopping_lists_cloud: {
+        Row: {
+          id: string
+          owner_id: string
+          data: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          owner_id: string
+          data: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'shopping_lists_cloud_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -281,6 +339,8 @@ export type Updates<T extends keyof Database['public']['Tables']> =
 
 export type Profile = Tables<'profiles'>
 export type CloudRecipe = Tables<'recipes_cloud'>
+export type CloudMealPlan = Tables<'meal_plans_cloud'>
+export type CloudShoppingList = Tables<'shopping_lists_cloud'>
 export type Friendship = Tables<'friendships'>
 export type Reaction = Tables<'reactions'>
 export type Comment = Tables<'comments'>

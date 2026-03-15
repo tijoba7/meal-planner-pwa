@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Meal Planner',
-        short_name: 'MealPlan',
-        description: 'Plan your meals and manage recipes',
+        name: 'Mise',
+        short_name: 'Mise',
+        description: 'Everything in its place. A local-first meal planner and recipe store.',
         theme_color: '#16a34a',
         background_color: '#ffffff',
         display: 'standalone',

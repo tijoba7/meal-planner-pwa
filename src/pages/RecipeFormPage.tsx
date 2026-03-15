@@ -150,7 +150,7 @@ export default function RecipeFormPage() {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
         <p className="text-gray-500">Recipe not found.</p>
-        <Link to="/recipes" className="text-green-600 text-sm mt-2 inline-block">
+        <Link to="/" className="text-green-600 text-sm mt-2 inline-block">
           ← Back to recipes
         </Link>
       </div>
@@ -159,7 +159,7 @@ export default function RecipeFormPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-10">
-      <Link to={isEdit && id ? `/recipes/${id}` : '/recipes'} className="text-sm text-green-600 hover:text-green-700 inline-block mb-4">
+      <Link to={isEdit && id ? `/recipes/${id}` : '/'} className="text-sm text-green-600 hover:text-green-700 inline-block mb-4">
         ← {isEdit ? 'Back to recipe' : 'Recipes'}
       </Link>
 

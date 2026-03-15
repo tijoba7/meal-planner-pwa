@@ -15,6 +15,7 @@
     "format": "prettier --write src",
     "supabase:types": "npx supabase gen types typescript --project-id YOUR_PROJECT_ID --schema public > src/types/supabase.ts"
   },
+  "packageManager": "pnpm@9.15.4",
   "keywords": [],
   "author": "",
   "license": "MIT",

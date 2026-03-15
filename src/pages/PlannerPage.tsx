@@ -115,18 +115,18 @@ export default function PlannerPage() {
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigateWeek(-1)}
-          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xl font-bold leading-none"
+          className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl font-bold leading-none"
           aria-label="Previous week"
         >
           ‹
         </button>
         <div className="text-center">
-          <h2 className="text-lg font-bold text-gray-800">Weekly Planner</h2>
-          <p className="text-sm text-gray-500">{formatWeekRange(mondayDate)}</p>
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Weekly Planner</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{formatWeekRange(mondayDate)}</p>
         </div>
         <button
           onClick={() => navigateWeek(1)}
-          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xl font-bold leading-none"
+          className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xl font-bold leading-none"
           aria-label="Next week"
         >
           ›
@@ -138,30 +138,30 @@ export default function PlannerPage() {
         {weekDays.map(({ date, label }) => {
           const dayPlan = mealPlan?.days[date] ?? {}
           return (
-            <div key={date} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-700 text-sm">{label}</h3>
+            <div key={date} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">{label}</h3>
               </div>
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {MEAL_TYPES.map(meal => {
                   const slot = dayPlan[meal]
                   const recipe = slot ? recipes.find(r => r.id === slot.recipeId) : null
                   return (
                     <div key={meal} className="flex items-center px-4 py-3 gap-3">
-                      <span className="text-xs font-medium text-gray-400 w-16 shrink-0">
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-16 shrink-0">
                         {MEAL_LABELS[meal]}
                       </span>
                       {recipe ? (
                         <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                           <button
                             onClick={() => setPickerTarget({ date, meal })}
-                            className="flex-1 text-left text-sm font-medium text-gray-800 truncate hover:text-green-700"
+                            className="flex-1 text-left text-sm font-medium text-gray-800 dark:text-gray-100 truncate hover:text-green-700 dark:hover:text-green-400"
                           >
                             {recipe.name}
                           </button>
                           <button
                             onClick={() => removeRecipe(date, meal)}
-                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
                             aria-label={`Remove ${recipe.name}`}
                           >
                             <X size={14} strokeWidth={2} aria-hidden="true" />
@@ -170,9 +170,9 @@ export default function PlannerPage() {
                       ) : (
                         <button
                           onClick={() => setPickerTarget({ date, meal })}
-                          className="flex-1 flex items-center gap-2 text-sm text-gray-400 hover:text-green-600 group"
+                          className="flex-1 flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 group"
                         >
-                          <span className="w-5 h-5 flex items-center justify-center rounded-full border border-dashed border-gray-300 group-hover:border-green-400 text-base leading-none">
+                          <span className="w-5 h-5 flex items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-gray-600 group-hover:border-green-400 text-base leading-none">
                             +
                           </span>
                           <span>Add recipe</span>
@@ -194,17 +194,17 @@ export default function PlannerPage() {
           onClick={closePicker}
         >
           <div
-            className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh]"
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh]"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-gray-200">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-800">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">
                   {MEAL_LABELS[pickerTarget.meal]}
                 </h3>
                 <button
                   onClick={closePicker}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   aria-label="Close"
                 >
                   <X size={20} strokeWidth={2} aria-hidden="true" />
@@ -215,15 +215,15 @@ export default function PlannerPage() {
                 placeholder="Search recipes…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 autoFocus
               />
             </div>
             <div className="overflow-y-auto flex-1">
               {filteredRecipes.length === 0 ? (
                 <div className="flex flex-col items-center text-center py-10 px-4">
-                  <BookOpen size={32} strokeWidth={1.5} className="text-gray-300 mb-3" aria-hidden="true" />
-                  <p className="text-sm font-medium text-gray-600">
+                  <BookOpen size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                     {recipes.length === 0 ? 'No recipes yet' : 'No recipes found'}
                   </p>
                   {recipes.length === 0 ? (
@@ -234,7 +234,7 @@ export default function PlannerPage() {
                       Add your first recipe
                     </Link>
                   ) : (
-                    <p className="text-xs text-gray-400 mt-1">Try a different search term.</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try a different search term.</p>
                   )}
                 </div>
               ) : (
@@ -242,10 +242,10 @@ export default function PlannerPage() {
                   <button
                     key={recipe.id}
                     onClick={() => assignRecipe(pickerTarget.date, pickerTarget.meal, recipe.id)}
-                    className="w-full text-left px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-green-50 active:bg-green-100"
+                    className="w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-green-50 dark:hover:bg-green-900/20 active:bg-green-100 dark:active:bg-green-900/30"
                   >
-                    <p className="text-sm font-medium text-gray-800">{recipe.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{recipe.description}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{recipe.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{recipe.description}</p>
                   </button>
                 ))
               )}

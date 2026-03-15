@@ -169,15 +169,15 @@ export default function ShoppingListPage() {
       <div className="p-4 max-w-2xl mx-auto">
         <button
           onClick={() => setActiveListId(null)}
-          className="text-sm text-green-600 font-medium mb-4 flex items-center gap-1 hover:text-green-700"
+          className="text-sm text-green-600 dark:text-green-400 font-medium mb-4 flex items-center gap-1 hover:text-green-700 dark:hover:text-green-300"
         >
           <span className="text-lg leading-none">&lsaquo;</span> All lists
         </button>
 
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">{activeList.name}</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{activeList.name}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {doneCount} of {total} items checked
             </p>
           </div>
@@ -185,7 +185,7 @@ export default function ShoppingListPage() {
 
         {/* Progress bar */}
         {total > 0 && (
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-6">
             <div
               className="bg-green-500 h-2 rounded-full transition-all"
               style={{ width: `${(doneCount / total) * 100}%` }}
@@ -203,26 +203,26 @@ export default function ShoppingListPage() {
 
         {/* Unchecked items */}
         {unchecked.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-4">
             {unchecked.map((item, i) => (
               <div
                 key={item.id}
-                className={`flex items-center px-4 py-3 gap-3 ${i > 0 ? 'border-t border-gray-100' : ''}`}
+                className={`flex items-center px-4 py-3 gap-3 ${i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}`}
               >
                 <button
                   onClick={() => handleToggle(item.id)}
-                  className="w-5 h-5 rounded border-2 border-gray-300 shrink-0 hover:border-green-500 transition-colors"
+                  className="w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-600 shrink-0 hover:border-green-500 transition-colors"
                   aria-label={`Check ${item.name}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm text-gray-800">{item.name}</span>
+                  <span className="text-sm text-gray-800 dark:text-gray-100">{item.name}</span>
                 </div>
-                <span className="text-xs text-gray-400 shrink-0">
+                <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                   {item.amount} {item.unit}
                 </span>
                 <button
                   onClick={() => handleRemoveItem(item.id)}
-                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
                   aria-label={`Remove ${item.name}`}
                 >
                   <X size={14} strokeWidth={2} aria-hidden="true" />
@@ -235,14 +235,14 @@ export default function ShoppingListPage() {
         {/* Checked items */}
         {checked.length > 0 && (
           <>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
               Checked off
             </p>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               {checked.map((item, i) => (
                 <div
                   key={item.id}
-                  className={`flex items-center px-4 py-3 gap-3 ${i > 0 ? 'border-t border-gray-100' : ''}`}
+                  className={`flex items-center px-4 py-3 gap-3 ${i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}`}
                 >
                   <button
                     onClick={() => handleToggle(item.id)}
@@ -252,9 +252,9 @@ export default function ShoppingListPage() {
                     &#10003;
                   </button>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-400 line-through">{item.name}</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-500 line-through">{item.name}</span>
                   </div>
-                  <span className="text-xs text-gray-300 shrink-0">
+                  <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">
                     {item.amount} {item.unit}
                   </span>
                 </div>
@@ -270,7 +270,7 @@ export default function ShoppingListPage() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Shopping Lists</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Shopping Lists</h2>
         <button
           onClick={() => setShowCreate(true)}
           className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -295,24 +295,24 @@ export default function ShoppingListPage() {
           return (
             <div
               key={list.id}
-              className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
             >
               <button
                 onClick={() => setActiveListId(list.id)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{list.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{list.name}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{' '}
                       {formatDate(list.createdAt.slice(0, 10))}
                     </p>
                   </div>
-                  <span className="text-gray-400 text-lg ml-2">&rsaquo;</span>
+                  <span className="text-gray-400 dark:text-gray-500 text-lg ml-2">&rsaquo;</span>
                 </div>
                 {total > 0 && (
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
                     <div
                       className="bg-green-500 h-1.5 rounded-full transition-all"
                       style={{ width: `${(done / total) * 100}%` }}
@@ -340,15 +340,15 @@ export default function ShoppingListPage() {
           onClick={() => setShowCreate(false)}
         >
           <div
-            className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl"
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-gray-200">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-gray-800">New Shopping List</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">New Shopping List</h3>
                 <button
                   onClick={() => setShowCreate(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   aria-label="Close"
                 >
                   <X size={20} strokeWidth={2} aria-hidden="true" />
@@ -357,40 +357,40 @@ export default function ShoppingListPage() {
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">List name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">List name</label>
                 <input
                   type="text"
                   value={listName}
                   onChange={(e) => setListName(e.target.value)}
                   placeholder="e.g. This week's groceries"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Generate from meal plan
                 </label>
-                <p className="text-xs text-gray-400 mb-2">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
                   Select date range to pull ingredients from planned meals.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Start date</label>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">End date</label>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End date</label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
                 </div>

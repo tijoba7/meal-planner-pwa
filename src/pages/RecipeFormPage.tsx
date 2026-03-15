@@ -13,6 +13,11 @@ interface FormState {
   ingredients: Ingredient[]
   instructions: string[]
   keywords: string
+  nutritionCalories: string
+  nutritionProtein: string
+  nutritionFat: string
+  nutritionCarbs: string
+  nutritionFiber: string
 }
 
 const emptyForm: FormState = {
@@ -24,6 +29,18 @@ const emptyForm: FormState = {
   ingredients: [{ name: '', amount: 1, unit: '' }],
   instructions: [''],
   keywords: '',
+  nutritionCalories: '',
+  nutritionProtein: '',
+  nutritionFat: '',
+  nutritionCarbs: '',
+  nutritionFiber: '',
+}
+
+function parseNutritionFormValue(val: string | number | undefined): string {
+  if (val === undefined || val === null || val === '') return ''
+  if (typeof val === 'number') return val > 0 ? String(val) : ''
+  const match = String(val).match(/[\d.]+/)
+  return match && parseFloat(match[0]) > 0 ? match[0] : ''
 }
 
 interface FormErrors {
@@ -58,6 +75,11 @@ export default function RecipeFormPage() {
         ingredients: recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [{ name: '', amount: 1, unit: '' }],
         instructions: recipe.recipeInstructions.length > 0 ? recipe.recipeInstructions.map((s) => s.text) : [''],
         keywords: recipe.keywords.join(', '),
+        nutritionCalories: parseNutritionFormValue(recipe.nutrition?.calories),
+        nutritionProtein: parseNutritionFormValue(recipe.nutrition?.proteinContent),
+        nutritionFat: parseNutritionFormValue(recipe.nutrition?.fatContent),
+        nutritionCarbs: parseNutritionFormValue(recipe.nutrition?.carbohydrateContent),
+        nutritionFiber: parseNutritionFormValue(recipe.nutrition?.fiberContent),
       })
     })
   }, [id])
@@ -84,6 +106,16 @@ export default function RecipeFormPage() {
     setErrors({})
     setSaving(true)
 
+    const nutritionEntries: [string, number][] = [
+      ['calories', parseFloat(form.nutritionCalories)],
+      ['proteinContent', parseFloat(form.nutritionProtein)],
+      ['fatContent', parseFloat(form.nutritionFat)],
+      ['carbohydrateContent', parseFloat(form.nutritionCarbs)],
+      ['fiberContent', parseFloat(form.nutritionFiber)],
+    ].filter(([, v]) => !isNaN(v as number) && (v as number) > 0) as [string, number][]
+    const nutrition: Record<string, number> | undefined =
+      nutritionEntries.length > 0 ? Object.fromEntries(nutritionEntries) : undefined
+
     const data = {
       name: form.name.trim(),
       description: form.description.trim(),
@@ -98,6 +130,7 @@ export default function RecipeFormPage() {
         .split(',')
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean),
+      nutrition,
     }
 
     try {
@@ -162,18 +195,18 @@ export default function RecipeFormPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-10">
-      <Link to={isEdit && id ? `/recipes/${id}` : '/'} className="text-sm text-green-600 hover:text-green-700 inline-block mb-4">
+      <Link to={isEdit && id ? `/recipes/${id}` : '/'} className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
         ← {isEdit ? 'Back to recipe' : 'Recipes'}
       </Link>
 
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
         {isEdit ? 'Edit Recipe' : 'New Recipe'}
       </h2>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -181,73 +214,104 @@ export default function RecipeFormPage() {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="e.g. Spaghetti Bolognese"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
           <textarea
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             placeholder="A short description of the dish…"
             rows={2}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
         </div>
 
         {/* Times + Servings */}
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Prep (min)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Prep (min)</label>
             <input
               type="number"
               min="0"
               value={form.prepTimeMinutes}
               onChange={(e) => setForm((f) => ({ ...f, prepTimeMinutes: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cook (min)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cook (min)</label>
             <input
               type="number"
               min="0"
               value={form.cookTimeMinutes}
               onChange={(e) => setForm((f) => ({ ...f, cookTimeMinutes: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Servings</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Servings</label>
             <input
               type="text"
               value={form.recipeYield}
               onChange={(e) => setForm((f) => ({ ...f, recipeYield: e.target.value }))}
               placeholder="e.g. 4"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
           </div>
         </div>
 
         {/* Keywords */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Keywords</label>
           <input
             type="text"
             value={form.keywords}
             onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
             placeholder="italian, pasta, dinner"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
-          <p className="text-xs text-gray-400 mt-1">Comma-separated</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Comma-separated</p>
+        </div>
+
+        {/* Nutrition */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            Nutrition <span className="text-xs font-normal text-gray-400">(per serving, optional)</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {[
+              { field: 'nutritionCalories' as const, label: 'Calories', unit: 'kcal' },
+              { field: 'nutritionProtein' as const, label: 'Protein', unit: 'g' },
+              { field: 'nutritionFat' as const, label: 'Fat', unit: 'g' },
+              { field: 'nutritionCarbs' as const, label: 'Carbs', unit: 'g' },
+              { field: 'nutritionFiber' as const, label: 'Fiber', unit: 'g' },
+            ].map(({ field, label, unit }) => (
+              <div key={field}>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {label} <span className="text-gray-400">({unit})</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form[field]}
+                  onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                  placeholder="0"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Ingredients */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Ingredients <span className="text-red-500">*</span>
           </label>
           <div className="space-y-2">
@@ -260,21 +324,21 @@ export default function RecipeFormPage() {
                   value={ing.amount}
                   onChange={(e) => updateIngredient(i, 'amount', e.target.value)}
                   placeholder="Amt"
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 <input
                   type="text"
                   value={ing.unit}
                   onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
                   placeholder="unit"
-                  className="w-20 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-20 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 <input
                   type="text"
                   value={ing.name}
                   onChange={(e) => updateIngredient(i, 'name', e.target.value)}
                   placeholder="ingredient name"
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 {form.ingredients.length > 1 && (
                   <button
@@ -303,13 +367,13 @@ export default function RecipeFormPage() {
 
         {/* Instructions */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Instructions <span className="text-red-500">*</span>
           </label>
           <div className="space-y-2">
             {form.instructions.map((step, i) => (
               <div key={i} className="flex gap-2 items-start">
-                <span className="mt-2 shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
+                <span className="mt-2 shrink-0 w-6 h-6 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full flex items-center justify-center text-xs font-bold">
                   {i + 1}
                 </span>
                 <textarea
@@ -317,7 +381,7 @@ export default function RecipeFormPage() {
                   onChange={(e) => updateInstruction(i, e.target.value)}
                   placeholder={`Step ${i + 1}…`}
                   rows={2}
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 {form.instructions.length > 1 && (
                   <button

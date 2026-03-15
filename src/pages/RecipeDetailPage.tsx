@@ -5,6 +5,28 @@ import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
 
+// ─── Nutrition helpers ────────────────────────────────────────────────────────
+
+const NUTRITION_FIELDS: { key: string; label: string; unit: string }[] = [
+  { key: 'calories', label: 'Calories', unit: 'kcal' },
+  { key: 'proteinContent', label: 'Protein', unit: 'g' },
+  { key: 'fatContent', label: 'Fat', unit: 'g' },
+  { key: 'carbohydrateContent', label: 'Carbs', unit: 'g' },
+  { key: 'fiberContent', label: 'Fiber', unit: 'g' },
+]
+
+function parseNutritionValue(val: string | number | undefined): number {
+  if (val === undefined || val === null || val === '') return 0
+  if (typeof val === 'number') return val
+  const match = String(val).match(/[\d.]+/)
+  return match ? parseFloat(match[0]) : 0
+}
+
+function hasNutrition(nutrition: Record<string, string | number> | undefined): boolean {
+  if (!nutrition) return false
+  return NUTRITION_FIELDS.some((f) => parseNutritionValue(nutrition[f.key]) > 0)
+}
+
 function parseServings(recipeYield: string): number {
   const match = recipeYield.match(/\d+/)
   return match ? Math.max(1, parseInt(match[0], 10)) : 1
@@ -76,8 +98,8 @@ export default function RecipeDetailPage() {
   if (notFound) {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
-        <p className="text-gray-500">Recipe not found.</p>
-        <Link to="/" className="text-green-600 text-sm mt-2 inline-block">
+        <p className="text-gray-500 dark:text-gray-400">Recipe not found.</p>
+        <Link to="/" className="text-green-600 dark:text-green-400 text-sm mt-2 inline-block">
           ← Back to recipes
         </Link>
       </div>
@@ -87,7 +109,7 @@ export default function RecipeDetailPage() {
   if (!recipe) {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
-        <p className="text-gray-400 text-sm">Loading...</p>
+        <p className="text-gray-400 dark:text-gray-500 text-sm">Loading...</p>
       </div>
     )
   }
@@ -107,13 +129,13 @@ export default function RecipeDetailPage() {
       )}
 
       {/* Back link */}
-      <Link to="/" className="text-sm text-green-600 hover:text-green-700 inline-block mb-4">
+      <Link to="/" className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
         ← Recipes
       </Link>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
-        <h2 className="text-2xl font-bold text-gray-800">{recipe.name}</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{recipe.name}</h2>
         <div className="flex gap-2 shrink-0">
           {recipe.recipeInstructions.length > 0 && (
             <button
@@ -126,13 +148,13 @@ export default function RecipeDetailPage() {
           )}
           <Link
             to={`/recipes/${recipe.id}/edit`}
-            className="text-sm font-medium text-green-600 border border-green-600 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors"
+            className="text-sm font-medium text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 px-3 py-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
           >
             Edit
           </Link>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="text-sm font-medium text-red-500 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+            className="text-sm font-medium text-red-500 dark:text-red-400 border border-red-300 dark:border-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
             Delete
           </button>
@@ -140,24 +162,24 @@ export default function RecipeDetailPage() {
       </div>
 
       {/* Meta */}
-      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
+      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-3">
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setScaledServings((s) => Math.max(1, s - 1))}
             disabled={scaledServings <= 1}
             aria-label="Decrease servings"
-            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition-colors leading-none select-none"
+            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors leading-none select-none"
           >
             −
           </button>
           <span className="text-center">
-            <span className="font-medium text-gray-700">{scaledServings}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-200">{scaledServings}</span>
             {' servings'}
           </span>
           <button
             onClick={() => setScaledServings((s) => s + 1)}
             aria-label="Increase servings"
-            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors leading-none select-none"
+            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors leading-none select-none"
           >
             +
           </button>
@@ -176,7 +198,7 @@ export default function RecipeDetailPage() {
           {recipe.keywords.map((tag) => (
             <span
               key={tag}
-              className="bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full"
+              className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
             >
               {tag}
             </span>
@@ -186,17 +208,17 @@ export default function RecipeDetailPage() {
 
       {/* Description */}
       {recipe.description && (
-        <p className="text-gray-600 mb-6">{recipe.description}</p>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">{recipe.description}</p>
       )}
 
       {/* Ingredients */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-gray-800">Ingredients</h3>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Ingredients</h3>
           {isScaled && (
             <button
               onClick={() => setScaledServings(originalServings)}
-              className="text-xs text-green-600 hover:text-green-700 hover:underline"
+              className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
             >
               Reset to {originalServings}
             </button>
@@ -208,16 +230,16 @@ export default function RecipeDetailPage() {
             const showOriginal = isScaled && ing.amount > 0
             return (
               <li key={i} className="flex items-baseline gap-2 text-sm">
-                <span className="text-gray-400">·</span>
-                <span className="font-medium text-gray-700">
+                <span className="text-gray-400 dark:text-gray-500">·</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">
                   {formatAmount(scaledAmount)} {ing.unit}
                   {showOriginal && (
-                    <span className="font-normal text-gray-400 ml-1">
+                    <span className="font-normal text-gray-400 dark:text-gray-500 ml-1">
                       (was {formatAmount(ing.amount)})
                     </span>
                   )}
                 </span>
-                <span className="text-gray-600">{ing.name}</span>
+                <span className="text-gray-600 dark:text-gray-300">{ing.name}</span>
               </li>
             )
           })}
@@ -225,32 +247,63 @@ export default function RecipeDetailPage() {
       </section>
 
       {/* Instructions */}
-      <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Instructions</h3>
+      <section className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Instructions</h3>
         <ol className="space-y-3">
           {recipe.recipeInstructions.map((step, i) => (
             <li key={i} className="flex gap-3 text-sm">
               <span className="shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {i + 1}
               </span>
-              <p className="text-gray-700 leading-relaxed pt-0.5">{step.text}</p>
+              <p className="text-gray-700 dark:text-gray-200 leading-relaxed pt-0.5">{step.text}</p>
             </li>
           ))}
         </ol>
       </section>
 
+      {/* Nutrition */}
+      {hasNutrition(recipe.nutrition) && (
+        <section className="mb-6">
+          <div className="flex items-baseline gap-2 mb-3">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Nutrition</h3>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              per {scaledServings} serving{scaledServings !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div className="grid grid-cols-5 gap-2 text-center">
+              {NUTRITION_FIELDS.map(({ key, label, unit }) => {
+                const base = parseNutritionValue(recipe.nutrition?.[key])
+                if (!base) return null
+                const scaled = base * scale
+                const display = scaled % 1 === 0 ? String(Math.round(scaled)) : scaled.toFixed(1)
+                return (
+                  <div key={key}>
+                    <p className="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                      {display}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{unit}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{label}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Delete confirm dialog */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-sm w-full shadow-xl">
-            <h4 className="text-lg font-semibold text-gray-800 mb-2">Delete recipe?</h4>
-            <p className="text-sm text-gray-500 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl">
+            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete recipe?</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               "{recipe.name}" will be permanently deleted. This cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 disabled={deleting}
               >
                 Cancel

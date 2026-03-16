@@ -569,6 +569,44 @@ export type Database = {
           },
         ]
       }
+      reposts: {
+        Row: {
+          id: string
+          user_id: string
+          recipe_id: string
+          caption: string | null
+          image_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          recipe_id: string
+          caption?: string | null
+          image_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          caption?: string | null
+          image_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'reposts_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'reposts_recipe_id_fkey'
+            columns: ['recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes_cloud'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       stories: {
         Row: {
           id: string

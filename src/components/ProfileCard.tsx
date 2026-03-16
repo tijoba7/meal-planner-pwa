@@ -62,13 +62,13 @@ export default function ProfileCard({ profile, linkable = true, size = 'md' }: P
 
 interface AvatarProps {
   profile: Pick<Profile, 'display_name' | 'avatar_url'>
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 
 export function Avatar({ profile, size = 'md', className = '' }: AvatarProps) {
-  const sizes = { sm: 'w-8 h-8', md: 'w-10 h-10', lg: 'w-16 h-16', xl: 'w-24 h-24' }
-  const iconSizes = { sm: 14, md: 16, lg: 24, xl: 36 }
+  const sizes = { xs: 'w-5 h-5', sm: 'w-8 h-8', md: 'w-10 h-10', lg: 'w-16 h-16', xl: 'w-24 h-24' }
+  const iconSizes = { xs: 10, sm: 14, md: 16, lg: 24, xl: 36 }
 
   return (
     <div

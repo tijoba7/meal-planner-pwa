@@ -28,3 +28,6 @@ export type { InstaRecipe } from './InstaRecipeCard'
 
 export { default as StoryViewer } from './StoryViewer'
 export { default as StoryComposer } from './StoryComposer'
+
+export { default as RepostCard } from './RepostCard'
+export { default as RepostComposer } from './RepostComposer'

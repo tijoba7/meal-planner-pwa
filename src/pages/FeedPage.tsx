@@ -3,6 +3,7 @@ import { Rss, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import type { CloudRecipeWithAuthor } from '../lib/recipeShareService'
+import type { RepostWithAuthor } from '../lib/repostService'
 import {
   getComments,
   addComment,
@@ -14,6 +15,7 @@ import {
   useToggleLikeMutation,
   useToggleBookmarkMutation,
 } from '../hooks/useFeed'
+import { useFriendsReposts } from '../hooks/useReposts'
 import {
   useFriendsStories,
   storyGroupsToBarItems,
@@ -23,10 +25,36 @@ import StoriesBar from '../components/social/StoriesBar'
 import StoryViewer from '../components/social/StoryViewer'
 import StoryComposer from '../components/social/StoryComposer'
 import InstaRecipeCard from '../components/social/InstaRecipeCard'
+import RepostCard from '../components/social/RepostCard'
+import RepostComposer from '../components/social/RepostComposer'
 import CommentThread, { type CommentData } from '../components/social/CommentThread'
-import ShareDialog from '../components/social/ShareDialog'
 import Skeleton from '../components/Skeleton'
 import { durationToMinutes } from '../lib/db'
+
+// ─── Feed item union type ────────────────────────────────────────────────────
+
+type FeedItem =
+  | { kind: 'recipe'; data: CloudRecipeWithAuthor; sortDate: string }
+  | { kind: 'repost'; data: RepostWithAuthor; sortDate: string }
+
+function mergeFeedItems(
+  recipes: CloudRecipeWithAuthor[],
+  reposts: RepostWithAuthor[]
+): FeedItem[] {
+  const items: FeedItem[] = [
+    ...recipes.map((r) => ({
+      kind: 'recipe' as const,
+      data: r,
+      sortDate: r.published_at ?? r.created_at,
+    })),
+    ...reposts.map((r) => ({
+      kind: 'repost' as const,
+      data: r,
+      sortDate: r.created_at,
+    })),
+  ]
+  return items.sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -179,6 +207,7 @@ function CommentSheet({ recipeId, onClose }: CommentSheetProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
+  const { user } = useAuth()
   const { profile } = useProfile()
 
   const {
@@ -190,15 +219,27 @@ export default function FeedPage() {
     isFetchingNextPage,
   } = useFriendsFeed()
 
-  const items = data?.pages.flat() ?? []
-  const allIds = items.map((i) => i.id)
+  const { data: reposts = [] } = useFriendsReposts()
 
-  const { data: engagementMap = {} } = useEngagementStats(allIds)
+  const recipeItems = data?.pages.flat() ?? []
+  const feedItems = mergeFeedItems(recipeItems, reposts)
+
+  // Collect all recipe IDs for engagement stats (recipes + reposted recipes)
+  const allRecipeIds = feedItems.map((fi) =>
+    fi.kind === 'recipe' ? fi.data.id : fi.data.recipe_id
+  )
+  const uniqueIds = [...new Set(allRecipeIds)]
+
+  const { data: engagementMap = {} } = useEngagementStats(uniqueIds)
   const likeMutation = useToggleLikeMutation()
   const bookmarkMutation = useToggleBookmarkMutation()
 
   const [commentSheetId, setCommentSheetId] = useState<string | null>(null)
-  const [shareItem, setShareItem] = useState<CloudRecipeWithAuthor | null>(null)
+  const [repostTarget, setRepostTarget] = useState<{
+    id: string
+    name: string
+    image?: string
+  } | null>(null)
   const [viewerGroupIdx, setViewerGroupIdx] = useState<number | null>(null)
   const [showComposer, setShowComposer] = useState(false)
 
@@ -258,7 +299,7 @@ export default function FeedPage() {
             <CardSkeleton key={i} />
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : feedItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <Rss size={40} className="text-gray-300 dark:text-gray-600 mb-3" strokeWidth={1.5} />
           <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -270,7 +311,24 @@ export default function FeedPage() {
         </div>
       ) : (
         <div aria-live="polite">
-          {items.map((item) => {
+          {feedItems.map((fi) => {
+            if (fi.kind === 'repost') {
+              const rp = fi.data
+              const eng = engagementMap[rp.recipe_id]
+              return (
+                <RepostCard
+                  key={`repost-${rp.id}`}
+                  repost={rp}
+                  likeCount={eng?.likeCount ?? 0}
+                  commentCount={eng?.commentCount ?? 0}
+                  isOwn={rp.user_id === user?.id}
+                  onLike={() => likeMutation.mutate(rp.recipe_id)}
+                  onCommentClick={() => setCommentSheetId(rp.recipe_id)}
+                />
+              )
+            }
+
+            const item = fi.data
             const eng = engagementMap[item.id]
             return (
               <InstaRecipeCard
@@ -289,7 +347,13 @@ export default function FeedPage() {
                 onBookmark={() => bookmarkMutation.mutate(item.id)}
                 onUnbookmark={() => bookmarkMutation.mutate(item.id)}
                 onCommentClick={() => setCommentSheetId(item.id)}
-                onShareClick={() => setShareItem(item)}
+                onShareClick={() =>
+                  setRepostTarget({
+                    id: item.id,
+                    name: item.data.name,
+                    image: item.data.image,
+                  })
+                }
               />
             )
           })}
@@ -301,7 +365,7 @@ export default function FeedPage() {
                 <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
               </div>
             )}
-            {!hasNextPage && items.length > 0 && (
+            {!hasNextPage && feedItems.length > 0 && (
               <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-8">
                 You're all caught up
               </p>
@@ -315,13 +379,13 @@ export default function FeedPage() {
         <CommentSheet recipeId={commentSheetId} onClose={() => setCommentSheetId(null)} />
       )}
 
-      {/* Share dialog */}
-      {shareItem && (
-        <ShareDialog
-          recipeName={shareItem.data.name}
-          shareUrl={`${window.location.origin}/shared/${shareItem.id}`}
-          currentVisibility={shareItem.visibility}
-          onClose={() => setShareItem(null)}
+      {/* Repost composer */}
+      {repostTarget && (
+        <RepostComposer
+          recipeId={repostTarget.id}
+          recipeName={repostTarget.name}
+          recipeImage={repostTarget.image}
+          onClose={() => setRepostTarget(null)}
         />
       )}
 

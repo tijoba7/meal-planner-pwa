@@ -749,15 +749,86 @@ INSERT INTO public.group_recipes (group_id, recipe_id, added_by) VALUES
   ('g0000001-0000-0000-0000-000000000001', 'r0000007-0000-0000-0000-000000000007', 'a0000002-0000-0000-0000-000000000002')
 ON CONFLICT ON CONSTRAINT group_recipes_unique DO NOTHING;
 
+-- ─── 10. Reposts ────────────────────────────────────────────────────────────
+-- Users reposting each other's recipes with optional captions and photos.
+
+INSERT INTO public.reposts (id, user_id, recipe_id, caption, created_at) VALUES
+  -- Bob reposts Alice's Mapo Tofu
+  ('rp000001-0000-0000-0000-000000000001',
+   'a0000002-0000-0000-0000-000000000002',
+   'r0000001-0000-0000-0000-000000000001',
+   'Made this last night and it blew my mind. The Sichuan peppercorn numbing is addictive.',
+   now() - interval '4 days'),
+
+  -- Emma reposts Bob's Brisket Tacos
+  ('rp000002-0000-0000-0000-000000000002',
+   'a0000005-0000-0000-0000-000000000005',
+   'r0000002-0000-0000-0000-000000000002',
+   'Weekend project goals. Did it in the oven and it was still amazing.',
+   now() - interval '3 days'),
+
+  -- Diana reposts Carlos's Shakshuka
+  ('rp000003-0000-0000-0000-000000000003',
+   'a0000004-0000-0000-0000-000000000004',
+   'r0000003-0000-0000-0000-000000000003',
+   'My new go-to Sunday brunch. So easy and impressive.',
+   now() - interval '2 days'),
+
+  -- Alice reposts Diana's Bibimbap
+  ('rp000004-0000-0000-0000-000000000004',
+   'a0000001-0000-0000-0000-000000000001',
+   'r0000008-0000-0000-0000-000000000008',
+   NULL,
+   now() - interval '1 day'),
+
+  -- Carlos reposts Emma's Focaccia
+  ('rp000005-0000-0000-0000-000000000005',
+   'a0000003-0000-0000-0000-000000000003',
+   'r0000009-0000-0000-0000-000000000009',
+   'The overnight cold proof trick is game changing. Crispy pillowy perfection.',
+   now() - interval '18 hours')
+ON CONFLICT ON CONSTRAINT reposts_unique_per_user DO NOTHING;
+
+-- ─── 11. Stories ────────────────────────────────────────────────────────────
+-- Ephemeral 24h stories (only recent ones will show as active).
+
+INSERT INTO public.stories (id, user_id, media_url, caption, linked_recipe_id, expires_at) VALUES
+  -- Alice posted a story about her dumplings (still active)
+  ('s0000001-0000-0000-0000-000000000001',
+   'a0000001-0000-0000-0000-000000000001',
+   'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=600',
+   'Dumpling Sunday! 50 dumplings in, 50 more to go.',
+   'r0000006-0000-0000-0000-000000000006',
+   now() + interval '18 hours'),
+
+  -- Bob posted a story of his smoker setup (still active)
+  ('s0000002-0000-0000-0000-000000000002',
+   'a0000002-0000-0000-0000-000000000002',
+   'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600',
+   'Brisket day. 8 hours to go.',
+   NULL,
+   now() + interval '12 hours'),
+
+  -- Diana posted about her kimchi fermentation (still active)
+  ('s0000003-0000-0000-0000-000000000003',
+   'a0000004-0000-0000-0000-000000000004',
+   'https://images.unsplash.com/photo-1583224964978-2257b960c3d3?w=600',
+   'Week 3 fermentation check. This batch is going to be perfect for jjigae.',
+   'r0000004-0000-0000-0000-000000000004',
+   now() + interval '6 hours')
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
 
 -- ─── Summary ────────────────────────────────────────────────────────────────
 -- Created:
 --   5 test users (alice, bob, carlos, diana, emma) — password: TestPass123!
---   10 recipes across 5 cuisines (all public)
+--   10 recipes across 6 cuisines (all public)
 --   8 friendships (everyone connected)
 --   34 reactions (likes + bookmarks)
 --   27 ratings (avg scores 4.0-5.0)
 --   16 comments with threaded replies
 --   1 group ("Weeknight Winners") with 3 members and 3 shared recipes
+--   5 reposts with captions
+--   3 active stories (expire within 6-18 hours)
 --   Board user auto-friended if they exist

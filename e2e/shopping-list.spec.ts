@@ -75,7 +75,8 @@ async function addItemToList(
   const addItemBtn = page.getByRole('button', { name: 'Add item' })
   await expect(addItemBtn).toBeVisible()
   await addItemBtn.click()
-  await page.getByRole('textbox', { name: 'Item name' }).fill(itemName)
+  // ItemNameInput uses role="combobox" (has autocomplete), not the default textbox role
+  await page.getByRole('combobox', { name: 'Item name' }).fill(itemName)
   // exact:true prevents matching "Add item" or any other "Add ..." button
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.getByText(itemName, { exact: true })).toBeVisible()

@@ -105,6 +105,7 @@ describe('Layout', () => {
       { label: 'Collections', href: '/collections' },
       { label: 'Meal Plan', href: '/meal-plan' },
       { label: 'Shopping', href: '/shopping' },
+      { label: 'Pantry', href: '/pantry' },
       { label: 'Discover', href: '/discover' },
       { label: 'Friends', href: '/friends' },
       { label: 'Groups', href: '/groups' },
@@ -138,7 +139,7 @@ describe('Layout', () => {
       const mobileNav = container.querySelector('nav.md\\:hidden.fixed')
       expect(mobileNav).toBeInTheDocument()
       const links = mobileNav!.querySelectorAll('a')
-      expect(links).toHaveLength(9)
+      expect(links).toHaveLength(10)
     })
 
     it('renders exactly 9 navigation items in the desktop sidebar', () => {
@@ -149,7 +150,7 @@ describe('Layout', () => {
       const sidebarNav = sidebar!.querySelector('nav')
       expect(sidebarNav).toBeInTheDocument()
       const navLinks = sidebarNav!.querySelectorAll('a')
-      expect(navLinks).toHaveLength(9)
+      expect(navLinks).toHaveLength(10)
     })
   })
 

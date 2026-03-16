@@ -143,14 +143,20 @@ export default function PlannerPage() {
   }, [])
 
   useEffect(() => {
+    // cancelled flag prevents React StrictMode's double-invocation from creating
+    // two plans for the same week. The first effect's result is discarded on
+    // cleanup; only the second (canonical) run persists state.
+    let cancelled = false
     getMealPlanForWeek(weekStart).then(async (plan) => {
+      if (cancelled) return
       if (plan) {
         setMealPlan(plan)
       } else {
         const newPlan = await createMealPlan({ weekStartDate: weekStart, days: {} })
-        setMealPlan(newPlan)
+        if (!cancelled) setMealPlan(newPlan)
       }
     })
+    return () => { cancelled = true }
   }, [weekStart])
 
   useEffect(() => {

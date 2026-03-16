@@ -154,6 +154,26 @@ export async function getPublicFeed(offset = 0, limit = 20): Promise<CloudRecipe
   return data ?? []
 }
 
+/**
+ * Fetch public/friends recipes for a specific user (for profile recipe grids).
+ * Returns only non-private recipes; RLS further limits friends-only visibility.
+ */
+export async function getRecipesByUser(
+  userId: string,
+  offset = 0,
+  limit = 12
+): Promise<CloudRecipeWithAuthor[]> {
+  const { data } = await supabase
+    .from('recipes_cloud')
+    .select('*, profiles(display_name, avatar_url)')
+    .eq('author_id', userId)
+    .neq('visibility', 'private')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+    .overrideTypes<CloudRecipeWithAuthor[], { merge: false }>()
+  return data ?? []
+}
+
 // ─── Fork ─────────────────────────────────────────────────────────────────────
 
 /**

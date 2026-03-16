@@ -1,37 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Rss } from 'lucide-react'
+import { Rss, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import {
   getFriendsFeed,
   type CloudRecipeWithAuthor,
 } from '../lib/recipeShareService'
+import {
+  getEngagementStats,
+  toggleLike,
+  toggleBookmark,
+  getComments,
+  addComment,
+  type EngagementStats,
+  type CommentWithAuthor,
+} from '../lib/engagementService'
 import StoriesBar, { type StoryItem } from '../components/social/StoriesBar'
 import InstaRecipeCard from '../components/social/InstaRecipeCard'
+import CommentThread, { type CommentData } from '../components/social/CommentThread'
+import ShareDialog from '../components/social/ShareDialog'
 import Skeleton from '../components/Skeleton'
 import { durationToMinutes } from '../lib/db'
 
 const PAGE_SIZE = 10
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function commentWithAuthorToData(c: CommentWithAuthor): CommentData {
+  return {
+    id: c.id,
+    body: c.body ?? '',
+    createdAt: c.created_at,
+    author: {
+      id: c.profiles?.id ?? '',
+      display_name: c.profiles?.display_name ?? 'Unknown',
+      avatar_url: c.profiles?.avatar_url ?? null,
+    },
+    deletedAt: c.deleted_at,
+    replies: (c.replies ?? []).map(commentWithAuthorToData),
+  }
+}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function CardSkeleton() {
   return (
     <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-      {/* Author row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <Skeleton className="w-8 h-8 rounded-full shrink-0" />
         <Skeleton className="h-4 w-32" />
       </div>
-      {/* Image */}
       <Skeleton className="aspect-square w-full rounded-none" />
-      {/* Action row */}
       <div className="flex gap-2 px-4 py-3">
         <Skeleton className="w-6 h-6 rounded-full" />
         <Skeleton className="w-6 h-6 rounded-full" />
         <Skeleton className="w-6 h-6 rounded-full" />
       </div>
-      {/* Like count + caption */}
       <div className="px-4 pb-4 space-y-2">
         <Skeleton className="h-4 w-20" />
         <Skeleton className="h-4 w-3/4" />
@@ -54,8 +78,6 @@ function StoriesBarSkeleton() {
   )
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function itemToInstaRecipe(item: CloudRecipeWithAuthor) {
   const r = item.data
   const prepMins = durationToMinutes(r.prepTime)
@@ -72,11 +94,88 @@ function itemToInstaRecipe(item: CloudRecipeWithAuthor) {
   }
 }
 
+// ─── Comment bottom sheet ─────────────────────────────────────────────────────
+
+interface CommentSheetProps {
+  recipeId: string
+  onClose: () => void
+}
+
+function CommentSheet({ recipeId, onClose }: CommentSheetProps) {
+  const { user } = useAuth()
+  const { profile } = useProfile()
+
+  const [comments, setComments] = useState<CommentData[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    getComments(recipeId)
+      .then((raw) => setComments(raw.map(commentWithAuthorToData)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [recipeId])
+
+  async function handleSubmit(body: string, parentId?: string) {
+    if (!user) return
+    const { data } = await addComment(recipeId, user.id, body, parentId)
+    if (data) {
+      setComments((prev) => {
+        const newComment = commentWithAuthorToData(data)
+        if (parentId) {
+          return prev.map((c) =>
+            c.id === parentId ? { ...c, replies: [...(c.replies ?? []), newComment] } : c
+          )
+        }
+        return [...prev, newComment]
+      })
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-t-2xl shadow-xl flex flex-col"
+        style={{ maxHeight: '70vh' }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Comments"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Comments</h3>
+          <button
+            onClick={onClose}
+            aria-label="Close comments"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <X size={18} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-4">
+          <CommentThread
+            comments={comments}
+            currentUserProfile={
+              profile && user
+                ? { id: user.id, display_name: profile.display_name, avatar_url: profile.avatar_url }
+                : undefined
+            }
+            onSubmit={user ? handleSubmit : undefined}
+            isLoading={loading}
+          />
+        </div>
+        <div className="pb-[env(safe-area-inset-bottom)]" />
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
   const { user } = useAuth()
-  const { profile } = useProfile()
 
   const [items, setItems] = useState<CloudRecipeWithAuthor[]>([])
   const [offset, setOffset] = useState(0)
@@ -85,9 +184,20 @@ export default function FeedPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const sentinelRef = useRef<HTMLDivElement>(null)
+  // Engagement stats per recipe (likeCount, commentCount, etc.)
+  const [stats, setStats] = useState<Record<string, EngagementStats>>({})
 
-  // Stories are derived from feed authors (stub — engineers will wire real stories)
+  // Optimistic like/bookmark state (per recipe id)
+  const [liked, setLiked] = useState<Record<string, boolean>>({})
+  const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({})
+
+  // Comment sheet + share dialog state
+  const [commentSheetId, setCommentSheetId] = useState<string | null>(null)
+  const [shareItem, setShareItem] = useState<CloudRecipeWithAuthor | null>(null)
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const { profile } = useProfile()
+
   const stories: StoryItem[] = items
     .reduce<StoryItem[]>((acc, item) => {
       if (acc.some((s) => s.userId === item.author_id)) return acc
@@ -112,6 +222,11 @@ export default function FeedPage() {
         setItems(data)
         setOffset(data.length)
         setHasMore(data.length === PAGE_SIZE)
+        // Load engagement stats for the first page
+        const ids = data.map((d) => d.id)
+        if (ids.length > 0) {
+          getEngagementStats(ids).then((s) => setStats((prev) => ({ ...prev, ...s })))
+        }
       })
       .catch(() => setError('Failed to load feed.'))
       .finally(() => setLoading(false))
@@ -125,6 +240,10 @@ export default function FeedPage() {
         setItems((prev) => [...prev, ...data])
         setOffset((o) => o + data.length)
         setHasMore(data.length === PAGE_SIZE)
+        const ids = data.map((d) => d.id)
+        if (ids.length > 0) {
+          getEngagementStats(ids).then((s) => setStats((prev) => ({ ...prev, ...s })))
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingMore(false))
@@ -141,6 +260,66 @@ export default function FeedPage() {
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
   }, [loadMore])
+
+  function handleLike(recipeId: string) {
+    if (!user) return
+    // Optimistic update
+    setLiked((prev) => ({ ...prev, [recipeId]: true }))
+    setStats((prev) => {
+      const s = prev[recipeId]
+      if (!s) return prev
+      return { ...prev, [recipeId]: { ...s, likeCount: s.likeCount + 1 } }
+    })
+    toggleLike(recipeId, user.id).then(({ liked: newLiked }) => {
+      // Revert if server disagrees
+      if (!newLiked) {
+        setLiked((prev) => ({ ...prev, [recipeId]: false }))
+        setStats((prev) => {
+          const s = prev[recipeId]
+          if (!s) return prev
+          return { ...prev, [recipeId]: { ...s, likeCount: Math.max(0, s.likeCount - 1) } }
+        })
+      }
+    })
+  }
+
+  function handleUnlike(recipeId: string) {
+    if (!user) return
+    // Optimistic update
+    setLiked((prev) => ({ ...prev, [recipeId]: false }))
+    setStats((prev) => {
+      const s = prev[recipeId]
+      if (!s) return prev
+      return { ...prev, [recipeId]: { ...s, likeCount: Math.max(0, s.likeCount - 1) } }
+    })
+    toggleLike(recipeId, user.id).then(({ liked: newLiked }) => {
+      // Revert if server disagrees (already liked = couldn't unlike)
+      if (newLiked) {
+        setLiked((prev) => ({ ...prev, [recipeId]: true }))
+        setStats((prev) => {
+          const s = prev[recipeId]
+          if (!s) return prev
+          return { ...prev, [recipeId]: { ...s, likeCount: s.likeCount + 1 } }
+        })
+      }
+    })
+  }
+
+  function handleBookmark(recipeId: string) {
+    if (!user) return
+    setBookmarked((prev) => ({ ...prev, [recipeId]: true }))
+    toggleBookmark(recipeId, user.id).then(({ bookmarked: ok }) => {
+      if (!ok) setBookmarked((prev) => ({ ...prev, [recipeId]: false }))
+    })
+  }
+
+  function handleUnbookmark(recipeId: string) {
+    if (!user) return
+    setBookmarked((prev) => ({ ...prev, [recipeId]: false }))
+    toggleBookmark(recipeId, user.id).then(({ bookmarked: ok }) => {
+      if (ok) setBookmarked((prev) => ({ ...prev, [recipeId]: true }))
+    })
+  }
 
   // ── Not signed in ──────────────────────────────────────────────────────────
 
@@ -166,12 +345,8 @@ export default function FeedPage() {
         <StoriesBar
           stories={stories}
           currentUserProfile={profile}
-          onAddStory={() => {
-            /* engineers: open story composer */
-          }}
-          onStoryClick={(_userId) => {
-            /* engineers: open story viewer */
-          }}
+          onAddStory={() => {}}
+          onStoryClick={() => {}}
         />
       )}
 
@@ -196,32 +371,33 @@ export default function FeedPage() {
         </div>
       ) : (
         <div aria-live="polite">
-          {items.map((item) => (
-            <InstaRecipeCard
-              key={item.id}
-              recipe={itemToInstaRecipe(item)}
-              author={{
-                id: item.author_id,
-                display_name: item.profiles?.display_name ?? 'Unknown',
-                avatar_url: item.profiles?.avatar_url ?? null,
-              }}
-              likeCount={0}
-              commentCount={0}
-              isFollowing={true}
-              onLike={() => {
-                /* engineers: wire to engagementService */
-              }}
-              onUnlike={() => {
-                /* engineers: wire to engagementService */
-              }}
-              onCommentClick={() => {
-                /* engineers: open comment sheet */
-              }}
-              onShareClick={() => {
-                /* engineers: open ShareDialog */
-              }}
-            />
-          ))}
+          {items.map((item) => {
+            const s = stats[item.id]
+            const isLiked = liked[item.id] ?? false
+            const isBookmarked = bookmarked[item.id] ?? false
+            return (
+              <InstaRecipeCard
+                key={item.id}
+                recipe={itemToInstaRecipe(item)}
+                author={{
+                  id: item.author_id,
+                  display_name: item.profiles?.display_name ?? 'Unknown',
+                  avatar_url: item.profiles?.avatar_url ?? null,
+                }}
+                likeCount={s?.likeCount ?? 0}
+                commentCount={s?.commentCount ?? 0}
+                hasLiked={isLiked}
+                hasBookmarked={isBookmarked}
+                isFollowing={true}
+                onLike={() => handleLike(item.id)}
+                onUnlike={() => handleUnlike(item.id)}
+                onBookmark={() => handleBookmark(item.id)}
+                onUnbookmark={() => handleUnbookmark(item.id)}
+                onCommentClick={() => setCommentSheetId(item.id)}
+                onShareClick={() => setShareItem(item)}
+              />
+            )
+          })}
 
           {/* Infinite scroll sentinel */}
           <div ref={sentinelRef}>
@@ -237,6 +413,21 @@ export default function FeedPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Comment bottom sheet */}
+      {commentSheetId && (
+        <CommentSheet recipeId={commentSheetId} onClose={() => setCommentSheetId(null)} />
+      )}
+
+      {/* Share dialog */}
+      {shareItem && (
+        <ShareDialog
+          recipeName={shareItem.data.name}
+          shareUrl={`${window.location.origin}/shared/${shareItem.id}`}
+          currentVisibility={shareItem.visibility}
+          onClose={() => setShareItem(null)}
+        />
       )}
     </div>
   )

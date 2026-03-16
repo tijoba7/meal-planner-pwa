@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { Avatar } from '../components/ProfileCard'
 import {
   getFriendRelation,
+  getFriendCount,
   sendFriendRequest,
   cancelFriendRequest,
   acceptFriendRequest,
@@ -13,7 +14,7 @@ import {
   unfriend,
   type FriendRelation,
 } from '../lib/friendshipService'
-import { getPublicFeed, type CloudRecipeWithAuthor } from '../lib/recipeShareService'
+import { getRecipesByUser, type CloudRecipeWithAuthor } from '../lib/recipeShareService'
 import type { Profile } from '../types/supabase'
 
 export default function PublicProfilePage() {
@@ -29,9 +30,9 @@ export default function PublicProfilePage() {
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  // Recipe grid data — engineers: replace stub with real per-user query
   const [recipes, setRecipes] = useState<CloudRecipeWithAuthor[]>([])
   const [recipesLoading, setRecipesLoading] = useState(false)
+  const [friendCount, setFriendCount] = useState(0)
 
   useEffect(() => {
     if (!userId || !supabase) {
@@ -63,15 +64,14 @@ export default function PublicProfilePage() {
     })
   }, [user, userId])
 
-  // Load this user's public recipes for the grid
-  // engineers: replace getPublicFeed with a per-user query once that exists
   useEffect(() => {
     if (!userId) return
     setRecipesLoading(true)
-    getPublicFeed(0, 12)
-      .then((items) => setRecipes(items.filter((i) => i.author_id === userId)))
+    getRecipesByUser(userId, 0, 12)
+      .then(setRecipes)
       .catch(() => {})
       .finally(() => setRecipesLoading(false))
+    getFriendCount(userId).then(setFriendCount)
   }, [userId])
 
   async function handleAdd() {
@@ -180,14 +180,10 @@ export default function PublicProfilePage() {
               <p className="text-xs text-gray-500 dark:text-gray-400">Recipes</p>
             </div>
             <div className="text-center">
-              {/* engineers: wire to followers count */}
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight">0</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Followers</p>
-            </div>
-            <div className="text-center">
-              {/* engineers: wire to following count */}
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight">0</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Following</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight">
+                {friendCount}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Friends</p>
             </div>
           </div>
         </div>

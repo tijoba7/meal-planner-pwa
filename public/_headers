@@ -1,0 +1,19 @@
+# Security headers for Netlify (and CDNs that read _headers files).
+# Vercel reads vercel.json instead — keep both in sync.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  # CSP notes:
+  #   style-src 'unsafe-inline'   — required for React inline styles and Tailwind
+  #   img-src https:              — recipes import images from arbitrary external sites
+  #   connect-src wss://*.supabase.co — Supabase Realtime uses WebSockets
+  #   Google Fonts included because the service worker caches them; add a
+  #   <link rel="preconnect"> / @import in CSS if you ever use them directly.
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=()

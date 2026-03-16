@@ -502,6 +502,54 @@ export default function ShoppingListPage() {
             </div>
           </>
         )}
+
+        {showExport && (
+          <div
+            className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
+            onClick={() => setShowExport(false)}
+          >
+            <div
+              className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">Share or Export</h3>
+                <button
+                  onClick={() => setShowExport(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={20} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </div>
+              <div className="p-4 space-y-2">
+                {typeof navigator.share === 'function' && (
+                  <button
+                    onClick={handleShare}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Share2 size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
+                    Share via…
+                  </button>
+                )}
+                <button
+                  onClick={handleCopyToClipboard}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Copy size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
+                  Copy to clipboard
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Download size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
+                  Download as text file
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

@@ -16,7 +16,7 @@ export default function ProfileCard({ profile, linkable = true, size = 'md' }: P
 
   const avatar = (
     <div
-      className={`${avatarSizes[size]} rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden`}
+      className={`${avatarSizes[size]} rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 overflow-hidden`}
     >
       {profile.avatar_url ? (
         <img
@@ -25,7 +25,7 @@ export default function ProfileCard({ profile, linkable = true, size = 'md' }: P
           className="w-full h-full object-cover"
         />
       ) : (
-        <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400" />
+        <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
       )}
     </div>
   )
@@ -34,11 +34,11 @@ export default function ProfileCard({ profile, linkable = true, size = 'md' }: P
     <div className="flex items-center gap-2.5 min-w-0">
       {avatar}
       <div className="min-w-0">
-        <p className={`${textSizes[size]} font-medium text-gray-800 truncate`}>
+        <p className={`${textSizes[size]} font-medium text-gray-800 dark:text-gray-200 truncate`}>
           {profile.display_name}
         </p>
         {size === 'lg' && profile.bio && (
-          <p className="text-sm text-gray-500 truncate mt-0.5">{profile.bio}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">{profile.bio}</p>
         )}
       </div>
     </div>
@@ -67,7 +67,7 @@ export function Avatar({ profile, size = 'md', className = '' }: AvatarProps) {
 
   return (
     <div
-      className={`${sizes[size]} rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden ${className}`}
+      className={`${sizes[size]} rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 overflow-hidden ${className}`}
     >
       {profile.avatar_url ? (
         <img
@@ -76,7 +76,7 @@ export function Avatar({ profile, size = 'md', className = '' }: AvatarProps) {
           className="w-full h-full object-cover"
         />
       ) : (
-        <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400" />
+        <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
       )}
     </div>
   )

@@ -57,14 +57,14 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="text-5xl">📨</div>
-          <h1 className="text-2xl font-bold text-gray-900">Email sent</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Email sent</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Check <strong>{email}</strong> for a password reset link.
           </p>
-          <Link to="/auth/login" className="block text-sm text-green-600 hover:text-green-700 font-medium">
+          <Link to="/auth/login" className="block text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
             Back to sign in
           </Link>
         </div>
@@ -73,16 +73,16 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Reset your password</h1>
-          <p className="text-gray-500 mt-1 text-sm">Enter your email and we'll send a reset link.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reset your password</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Enter your email and we'll send a reset link.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email
             </label>
             <input
@@ -92,12 +92,12 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="you@example.com"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <button
             type="submit"
@@ -109,7 +109,7 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
         </form>
 
         <p className="text-center text-sm">
-          <Link to="/auth/login" className="text-gray-500 hover:text-gray-700">
+          <Link to="/auth/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
             ← Back to sign in
           </Link>
         </p>
@@ -152,16 +152,16 @@ function UpdatePasswordForm({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Set new password</h1>
-          <p className="text-gray-500 mt-1 text-sm">Choose a strong password for your account.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Set new password</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Choose a strong password for your account.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               New password
             </label>
             <input
@@ -171,13 +171,13 @@ function UpdatePasswordForm({
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="At least 8 characters"
             />
           </div>
 
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirm password
             </label>
             <input
@@ -187,12 +187,12 @@ function UpdatePasswordForm({
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="••••••••"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <button
             type="submit"

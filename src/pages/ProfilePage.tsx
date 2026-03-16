@@ -130,16 +130,16 @@ export default function ProfilePage() {
     <div className="max-w-lg mx-auto px-4 py-8">
       {/* Onboarding banner */}
       {isNewProfile && !editing && (
-        <div className="mb-6 rounded-xl bg-green-50 border border-green-200 p-4 flex gap-3">
-          <Sparkles size={20} className="text-green-600 shrink-0 mt-0.5" strokeWidth={1.75} />
+        <div className="mb-6 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 flex gap-3">
+          <Sparkles size={20} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" strokeWidth={1.75} />
           <div>
-            <p className="text-sm font-medium text-green-800">Welcome to Mise!</p>
-            <p className="text-sm text-green-700 mt-0.5">
+            <p className="text-sm font-medium text-green-800 dark:text-green-300">Welcome to Mise!</p>
+            <p className="text-sm text-green-700 dark:text-green-400 mt-0.5">
               Add a photo, bio, and dietary preferences so others can find and connect with you.
             </p>
             <button
               onClick={startEditing}
-              className="mt-2 text-sm font-medium text-green-700 underline underline-offset-2 hover:text-green-800"
+              className="mt-2 text-sm font-medium text-green-700 dark:text-green-400 underline underline-offset-2 hover:text-green-800 dark:hover:text-green-300"
             >
               Complete your profile
             </button>
@@ -155,12 +155,12 @@ export default function ProfilePage() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingAvatar}
             aria-label="Upload avatar"
-            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white border border-gray-300 shadow flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
           >
             {uploadingAvatar ? (
-              <Loader2 size={14} className="animate-spin text-gray-500" />
+              <Loader2 size={14} className="animate-spin text-gray-500 dark:text-gray-400" />
             ) : (
-              <Camera size={14} strokeWidth={1.75} className="text-gray-600" />
+              <Camera size={14} strokeWidth={1.75} className="text-gray-600 dark:text-gray-300" />
             )}
           </button>
           <input
@@ -172,7 +172,7 @@ export default function ProfilePage() {
           />
         </div>
         <div className="text-center">
-          <p className="text-xs text-gray-400">{user.email}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">{user.email}</p>
         </div>
       </div>
 
@@ -180,7 +180,7 @@ export default function ProfilePage() {
       {editing ? (
         <form onSubmit={handleSave} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Display name <span className="text-red-500">*</span>
             </label>
             <input
@@ -188,26 +188,26 @@ export default function ProfilePage() {
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               maxLength={60}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Your name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Bio</label>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
               maxLength={200}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
               placeholder="Tell others a bit about yourself and your cooking style…"
             />
-            <p className="text-xs text-gray-400 mt-1 text-right">{bio.length}/200</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">{bio.length}/200</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Dietary preferences
             </label>
             <div className="flex flex-wrap gap-2">
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                       active
                         ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+                        : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-400'
                     }`}
                   >
                     {pref}
@@ -231,7 +231,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <div className="flex gap-3 pt-1">
             <button
@@ -249,7 +249,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={cancelEditing}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <X size={14} strokeWidth={2} />
               Cancel
@@ -260,13 +260,13 @@ export default function ProfilePage() {
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{profile.display_name}</h2>
-              {profile.bio && <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>}
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{profile.display_name}</h2>
+              {profile.bio && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{profile.bio}</p>}
             </div>
             <button
               onClick={startEditing}
               aria-label="Edit profile"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <Pencil size={13} strokeWidth={1.75} />
               Edit
@@ -275,14 +275,14 @@ export default function ProfilePage() {
 
           {profile.dietary_preferences.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                 Dietary preferences
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {profile.dietary_preferences.map(pref => (
                   <span
                     key={pref}
-                    className="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium border border-green-200"
+                    className="px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium border border-green-200 dark:border-green-800"
                   >
                     {pref}
                   </span>
@@ -298,7 +298,7 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
       )}
     </div>

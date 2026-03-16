@@ -17,3 +17,10 @@
   --color-primary-hover: var(--color-brand-700);
   --color-primary-light: var(--color-brand-50);
 }
+
+/* Dark mode: shift semantic tokens to lighter/inverted variants */
+.dark {
+  --color-primary: #4ade80;        /* green-400 — legible on dark bg */
+  --color-primary-hover: #22c55e;  /* green-500 */
+  --color-primary-light: #052e16;  /* green-950 equivalent */
+}

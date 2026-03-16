@@ -42,7 +42,7 @@ export default function GroupCard({ data, onJoin, onLeave, onAcceptInvite, disab
       <Link to={`/groups/${group.id}`} aria-label={`Open ${group.name}`} className="shrink-0">
         <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center overflow-hidden">
           {group.avatar_url ? (
-            <img src={group.avatar_url} alt={group.name} className="w-full h-full object-cover" />
+            <img src={group.avatar_url} alt={group.name} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <Users size={22} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
           )}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { getStoredApiKey, setStoredApiKey } from '../lib/scraper'
 import { useTheme } from '../contexts/ThemeContext'
@@ -113,6 +113,85 @@ async function importBatched<T>(
   }
 }
 
+// ─── Notification preferences ─────────────────────────────────────────────────
+
+const NOTIF_PREFS_KEY = 'notificationPrefs'
+const DISPLAY_NAME_KEY = 'displayName'
+
+interface NotificationPrefs {
+  pushEnabled: boolean
+  mealPlanReminders: boolean
+}
+
+function getNotifPrefs(): NotificationPrefs {
+  try {
+    const raw = localStorage.getItem(NOTIF_PREFS_KEY)
+    if (raw) return JSON.parse(raw) as NotificationPrefs
+  } catch {}
+  return { pushEnabled: false, mealPlanReminders: false }
+}
+
+function saveNotifPrefs(prefs: NotificationPrefs): void {
+  localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs))
+}
+
+// ─── Storage estimate ─────────────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function useStorageEstimate() {
+  const [estimate, setEstimate] = useState<{ usage: number; quota: number } | null>(null)
+  useEffect(() => {
+    if (!('storage' in navigator) || typeof navigator.storage.estimate !== 'function') return
+    navigator.storage
+      .estimate()
+      .then((est) => {
+        setEstimate({ usage: est.usage ?? 0, quota: est.quota ?? 0 })
+      })
+      .catch(() => {})
+  }, [])
+  return estimate
+}
+
+// ─── Toggle switch ────────────────────────────────────────────────────────────
+
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+  'aria-label': ariaLabel,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+  'aria-label': string
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+        checked ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
+
+// ─── Theme options ────────────────────────────────────────────────────────────
+
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light' },
   { value: 'system', label: 'System' },
@@ -162,6 +241,24 @@ export default function SettingsPage() {
   const [importStep, setImportStep] = useState<'idle' | 'preview' | 'importing' | 'success' | 'error'>('idle')
   const [importError, setImportError] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
+
+  // Notifications
+  const [notifPrefs, setNotifPrefsState] = useState<NotificationPrefs>(() => getNotifPrefs())
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(() => {
+    if (typeof Notification === 'undefined') return 'unsupported'
+    return Notification.permission
+  })
+
+  // Display name
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem(DISPLAY_NAME_KEY) ?? '')
+  const [displayNameSaved, setDisplayNameSaved] = useState(false)
+
+  // Storage
+  const storageEstimate = useStorageEstimate()
+  const storageUsedPct =
+    storageEstimate && storageEstimate.quota > 0
+      ? Math.min(100, (storageEstimate.usage / storageEstimate.quota) * 100)
+      : null
 
   async function handleExport() {
     setExporting(true)
@@ -294,6 +391,34 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  async function handleTogglePush(enabled: boolean) {
+    if (enabled && notifPermission !== 'granted') {
+      if (notifPermission === 'denied') return
+      const permission = await Notification.requestPermission()
+      setNotifPermission(permission)
+      if (permission !== 'granted') return
+    }
+    const next: NotificationPrefs = {
+      pushEnabled: enabled,
+      mealPlanReminders: enabled ? notifPrefs.mealPlanReminders : false,
+    }
+    setNotifPrefsState(next)
+    saveNotifPrefs(next)
+  }
+
+  function handleToggleMealReminders(enabled: boolean) {
+    const next: NotificationPrefs = { ...notifPrefs, mealPlanReminders: enabled }
+    setNotifPrefsState(next)
+    saveNotifPrefs(next)
+  }
+
+  function handleSaveDisplayName(e: React.FormEvent) {
+    e.preventDefault()
+    localStorage.setItem(DISPLAY_NAME_KEY, displayName)
+    setDisplayNameSaved(true)
+    setTimeout(() => setDisplayNameSaved(false), 2000)
+  }
+
   async function handleClearData() {
     if (clearStep === 0) {
       setClearStep(1)
@@ -369,10 +494,86 @@ export default function SettingsPage() {
         </SettingsCard>
       </section>
 
+      {/* Notifications */}
+      <section>
+        <SectionHeader>Notifications</SectionHeader>
+        <SettingsCard>
+          {notifPermission === 'denied' && (
+            <SettingsRow>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  Notifications are blocked in your browser. Enable them in your browser settings to use this feature.
+                </p>
+              </div>
+            </SettingsRow>
+          )}
+          {notifPermission === 'unsupported' ? (
+            <SettingsRow>
+              <div className="flex items-center justify-between">
+                <div>
+                  <RowLabel>Push notifications</RowLabel>
+                  <RowDescription>Not supported in this browser</RowDescription>
+                </div>
+                <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                  Unavailable
+                </span>
+              </div>
+            </SettingsRow>
+          ) : (
+            <SettingsRow>
+              <div className="flex items-center justify-between">
+                <div>
+                  <RowLabel>Push notifications</RowLabel>
+                  <RowDescription>Allow Mise to send you reminders</RowDescription>
+                </div>
+                <Toggle
+                  checked={notifPrefs.pushEnabled}
+                  onChange={handleTogglePush}
+                  disabled={notifPermission === 'denied'}
+                  aria-label="Toggle push notifications"
+                />
+              </div>
+            </SettingsRow>
+          )}
+          <SettingsRow>
+            <div className="flex items-center justify-between">
+              <div>
+                <RowLabel>Meal plan reminders</RowLabel>
+                <RowDescription>Daily reminder to check your meal plan</RowDescription>
+              </div>
+              <Toggle
+                checked={notifPrefs.mealPlanReminders}
+                onChange={handleToggleMealReminders}
+                disabled={!notifPrefs.pushEnabled}
+                aria-label="Toggle meal plan reminders"
+              />
+            </div>
+          </SettingsRow>
+        </SettingsCard>
+      </section>
+
       {/* Data Management */}
       <section>
-        <SectionHeader>Data Management</SectionHeader>
+        <SectionHeader>Data</SectionHeader>
         <SettingsCard>
+          <SettingsRow>
+            <RowLabel>Storage usage</RowLabel>
+            {storageEstimate ? (
+              <div className="mt-2 space-y-1.5">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${storageUsedPct ?? 0}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  {formatBytes(storageEstimate.usage)} used of {formatBytes(storageEstimate.quota)}
+                </p>
+              </div>
+            ) : (
+              <RowDescription>Calculating…</RowDescription>
+            )}
+          </SettingsRow>
           <SettingsRow>
             <RowLabel>Local storage</RowLabel>
             <RowDescription>All data is stored locally in your browser. No account required.</RowDescription>
@@ -476,10 +677,35 @@ export default function SettingsPage() {
         </SettingsCard>
       </section>
 
-      {/* Account (future) */}
+      {/* Account */}
       <section>
         <SectionHeader>Account</SectionHeader>
         <SettingsCard>
+          <SettingsRow>
+            <RowLabel>Display name</RowLabel>
+            <RowDescription>Shown in exports and shared content</RowDescription>
+            <form onSubmit={handleSaveDisplayName} className="flex gap-2 mt-3">
+              <label htmlFor="display-name-input" className="sr-only">Display name</label>
+              <input
+                id="display-name-input"
+                type="text"
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value)
+                  setDisplayNameSaved(false)
+                }}
+                placeholder="Your name"
+                className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                autoComplete="name"
+              />
+              <button
+                type="submit"
+                className="bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                {displayNameSaved ? 'Saved!' : 'Save'}
+              </button>
+            </form>
+          </SettingsRow>
           <SettingsRow>
             <div className="flex items-center justify-between">
               <div>

@@ -2,18 +2,30 @@ import { createContext, useCallback, useContext, useRef, useState, type ReactNod
 
 export type ToastType = 'success' | 'error' | 'info'
 
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
+export interface ToastOptions {
+  action?: ToastAction
+  duration?: number
+}
+
 interface Toast {
   id: string
   type: ToastType
   message: string
+  action?: ToastAction
+  duration: number
 }
 
 interface ToastContextValue {
   toasts: Toast[]
   toast: {
-    success: (message: string) => void
-    error: (message: string) => void
-    info: (message: string) => void
+    success: (message: string, opts?: ToastOptions) => void
+    error: (message: string, opts?: ToastOptions) => void
+    info: (message: string, opts?: ToastOptions) => void
   }
   dismiss: (id: string) => void
 }
@@ -31,19 +43,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const add = useCallback(
-    (type: ToastType, message: string) => {
+    (type: ToastType, message: string, opts?: ToastOptions) => {
       const id = crypto.randomUUID()
-      setToasts((prev) => [...prev, { id, type, message }])
-      const timer = setTimeout(() => dismiss(id), 3000)
+      const duration = opts?.duration ?? 3000
+      setToasts((prev) => [...prev, { id, type, message, action: opts?.action, duration }])
+      const timer = setTimeout(() => dismiss(id), duration)
       timers.current.set(id, timer)
     },
     [dismiss]
   )
 
   const toast = {
-    success: (message: string) => add('success', message),
-    error: (message: string) => add('error', message),
-    info: (message: string) => add('info', message),
+    success: (message: string, opts?: ToastOptions) => add('success', message, opts),
+    error: (message: string, opts?: ToastOptions) => add('error', message, opts),
+    info: (message: string, opts?: ToastOptions) => add('info', message, opts),
   }
 
   return (

@@ -222,7 +222,7 @@ export default function RecipeDetailPage() {
         <Skeleton className="h-4 w-20 mb-4" />
         <div className="flex items-start justify-between gap-3 mb-4">
           <Skeleton className="h-8 w-2/3" />
-          <div className="print:hidden flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0">
             <Skeleton className="h-8 w-16" />
             <Skeleton className="h-8 w-12" />
           </div>
@@ -593,8 +593,13 @@ export default function RecipeDetailPage() {
       {/* Delete confirm dialog */}
       {showDeleteConfirm && (
         <div className="print:hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl">
-            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete recipe?</h4>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-recipe-dialog-title"
+          >
+            <h4 id="delete-recipe-dialog-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete recipe?</h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               "{recipe.name}" will be permanently deleted. This cannot be undone.
             </p>

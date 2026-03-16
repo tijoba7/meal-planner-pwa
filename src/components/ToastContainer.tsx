@@ -22,9 +22,17 @@ export default function ToastContainer() {
         <div
           key={t.id}
           role="alert"
-          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto ${STYLES[t.type]}`}
+          className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto animate-fade-in-up ${STYLES[t.type]}`}
         >
-          <span>{t.message}</span>
+          <span className="flex-1">{t.message}</span>
+          {t.action && (
+            <button
+              onClick={() => { t.action!.onClick(); dismiss(t.id) }}
+              className="shrink-0 text-sm font-bold underline hover:no-underline opacity-90 hover:opacity-100 transition-opacity"
+            >
+              {t.action.label}
+            </button>
+          )}
           <button
             onClick={() => dismiss(t.id)}
             aria-label="Dismiss notification"

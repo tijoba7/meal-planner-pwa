@@ -455,6 +455,114 @@ export type Database = {
           }
         ]
       }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          avatar_url: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          avatar_url?: string | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          avatar_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'groups_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          user_id: string
+          role: 'admin' | 'member'
+          joined_at: string
+        }
+        Insert: {
+          group_id: string
+          user_id: string
+          role?: 'admin' | 'member'
+          joined_at?: string
+        }
+        Update: {
+          role?: 'admin' | 'member'
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'group_members_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_members_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      group_recipes: {
+        Row: {
+          id: string
+          group_id: string
+          recipe_id: string
+          added_by: string
+          added_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          recipe_id: string
+          added_by: string
+          added_at?: string
+        }
+        Update: Record<string, never>
+        Relationships: [
+          {
+            foreignKeyName: 'group_recipes_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_recipes_recipe_id_fkey'
+            columns: ['recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes_cloud'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_recipes_added_by_fkey'
+            columns: ['added_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -500,6 +608,9 @@ export type Household = Tables<'households'>
 export type HouseholdMember = Tables<'household_members'>
 export type HouseholdInvitation = Tables<'household_invitations'>
 export type FriendInvite = Tables<'friend_invites'>
+export type Group = Tables<'groups'>
+export type GroupMember = Tables<'group_members'>
+export type GroupRecipe = Tables<'group_recipes'>
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 

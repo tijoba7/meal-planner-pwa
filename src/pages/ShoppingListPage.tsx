@@ -153,6 +153,19 @@ export default function ShoppingListPage() {
 
   const handleToggle = async (itemId: string) => {
     if (!activeListId) return
+    const isChecking = activeList?.items.find((i) => i.id === itemId)?.checked === false
+    if (isChecking) {
+      setJustChecked((prev) => new Set([...prev, itemId]))
+      setTimeout(
+        () =>
+          setJustChecked((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          }),
+        300
+      )
+    }
     await toggleShoppingItem(activeListId, itemId)
     const updated = await getShoppingList(activeListId)
     setActiveList(updated ?? null)
@@ -161,11 +174,31 @@ export default function ShoppingListPage() {
 
   const handleRemoveItem = async (itemId: string) => {
     if (!activeList) return
+    const listId = activeList.id
+    const removedItem = activeList.items.find((i) => i.id === itemId)
+    if (!removedItem) return
+
     const items = activeList.items.filter((i) => i.id !== itemId)
-    await updateShoppingList(activeList.id, { items })
-    const updated = await getShoppingList(activeList.id)
+    await updateShoppingList(listId, { items })
+    const updated = await getShoppingList(listId)
     setActiveList(updated ?? null)
     await reload()
+
+    toast.success(`"${removedItem.name}" removed.`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          const currentList = await getShoppingList(listId)
+          if (!currentList) return
+          const restoredItems = [...currentList.items, removedItem]
+          await updateShoppingList(listId, { items: restoredItems })
+          const restored = await getShoppingList(listId)
+          setActiveList(restored ?? null)
+          await reload()
+        },
+      },
+    })
   }
 
   // ─── Detail view ───────────────────────────────────────────────────────────

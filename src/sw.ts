@@ -122,12 +122,10 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
   const url: string = (event.notification.data as { url?: string })?.url ?? '/'
   event.waitUntil(
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clients) => {
-        const existing = clients.find((c) => c.url === url && 'focus' in c)
-        if (existing) return (existing as WindowClient).focus()
-        return self.clients.openWindow(url)
-      })
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((c) => c.url === url && 'focus' in c)
+      if (existing) return (existing as WindowClient).focus()
+      return self.clients.openWindow(url)
+    })
   )
 })

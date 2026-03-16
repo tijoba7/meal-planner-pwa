@@ -72,7 +72,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       friendships: {
@@ -110,7 +110,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       reactions: {
@@ -148,7 +148,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'recipes_cloud'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       comments: {
@@ -191,7 +191,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'recipes_cloud'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       ratings: {
@@ -226,7 +226,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'recipes_cloud'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       notifications: {
@@ -256,7 +256,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       households: {
@@ -285,7 +285,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       household_members: {
@@ -318,7 +318,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       household_invitations: {
@@ -359,7 +359,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       meal_plans_cloud: {
@@ -398,7 +398,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'households'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       shopping_lists_cloud: {
@@ -427,7 +427,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       friend_invites: {
@@ -455,7 +455,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       groups: {
@@ -490,7 +490,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       group_members: {
@@ -523,7 +523,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
       group_recipes: {
@@ -563,7 +563,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'profiles'
             referencedColumns: ['id']
-          }
+          },
         ]
       }
     }

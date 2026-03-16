@@ -23,7 +23,9 @@ export function Card({ className = '', onClick, children }: CardProps) {
       tabIndex={interactive ? 0 : undefined}
       onKeyDown={
         interactive
-          ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.() }
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') onClick?.()
+            }
           : undefined
       }
     >
@@ -40,7 +42,9 @@ interface CardHeaderProps {
 /** Pinned card header — gray-50 bg with bottom border, typical for section headers. */
 export function CardHeader({ className = '', children }: CardHeaderProps) {
   return (
-    <div className={`px-4 py-2 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700 rounded-t-xl ${className}`}>
+    <div
+      className={`px-4 py-2 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700 rounded-t-xl ${className}`}
+    >
       {children}
     </div>
   )
@@ -53,9 +57,5 @@ interface CardBodyProps {
 
 /** Standard p-4 card content area. */
 export function CardBody({ className = '', children }: CardBodyProps) {
-  return (
-    <div className={`p-4 ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`p-4 ${className}`}>{children}</div>
 }

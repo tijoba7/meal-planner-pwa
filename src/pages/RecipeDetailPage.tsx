@@ -1,10 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { AlertTriangle, Check, ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  ChefHat,
+  Copy,
+  Heart,
+  Library,
+  MoreHorizontal,
+  Pencil,
+  Printer,
+  Share2,
+  Trash2,
+  Globe,
+  Users,
+  Lock,
+  X,
+} from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { getDietaryPrefs, detectAllergenIngredients, DIETARY_PREFERENCES } from '../lib/dietary'
-import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes, getCollections, addRecipeToCollection, removeRecipeFromCollection } from '../lib/db'
+import {
+  getRecipe,
+  deleteRecipe,
+  duplicateRecipe,
+  toggleFavorite,
+  durationToMinutes,
+  getCollections,
+  addRecipeToCollection,
+  removeRecipeFromCollection,
+} from '../lib/db'
 import { convertUnit } from '../lib/units'
 import type { Recipe, Collection } from '../types'
 import CookingMode from '../components/CookingMode'
@@ -130,11 +155,13 @@ export default function RecipeDetailPage() {
   const allergenIngredientIndices = recipe
     ? detectAllergenIngredients(
         recipe.recipeIngredient.map((i) => i.name),
-        userDietaryPrefs,
+        userDietaryPrefs
       )
     : new Set<number>()
   const flaggedDietLabels = userDietaryPrefs
-    .filter((id) => allergenIngredientIndices.size > 0 && DIETARY_PREFERENCES.find((p) => p.id === id))
+    .filter(
+      (id) => allergenIngredientIndices.size > 0 && DIETARY_PREFERENCES.find((p) => p.id === id)
+    )
     .map((id) => DIETARY_PREFERENCES.find((p) => p.id === id)!.label)
 
   useKeyboardShortcuts({
@@ -189,12 +216,14 @@ export default function RecipeDetailPage() {
     if (col.recipeIds.includes(id)) {
       await removeRecipeFromCollection(collectionId, id)
       setCollections((prev) =>
-        prev.map((c) => c.id === collectionId ? { ...c, recipeIds: c.recipeIds.filter((rid) => rid !== id) } : c)
+        prev.map((c) =>
+          c.id === collectionId ? { ...c, recipeIds: c.recipeIds.filter((rid) => rid !== id) } : c
+        )
       )
     } else {
       await addRecipeToCollection(collectionId, id)
       setCollections((prev) =>
-        prev.map((c) => c.id === collectionId ? { ...c, recipeIds: [...c.recipeIds, id] } : c)
+        prev.map((c) => (c.id === collectionId ? { ...c, recipeIds: [...c.recipeIds, id] } : c))
       )
     }
     setCollectionTogglingId(null)
@@ -216,7 +245,11 @@ export default function RecipeDetailPage() {
     setGroupTogglingId(groupId)
     if (currentlyShared) {
       await removeRecipeFromGroup(groupId, id)
-      setSharedGroupIds((prev) => { const next = new Set(prev); next.delete(groupId); return next })
+      setSharedGroupIds((prev) => {
+        const next = new Set(prev)
+        next.delete(groupId)
+        return next
+      })
     } else {
       await shareRecipeToGroup(groupId, id, user.id)
       setSharedGroupIds((prev) => new Set([...prev, groupId]))
@@ -256,9 +289,13 @@ export default function RecipeDetailPage() {
     if (error) {
       toast.error('Failed to update sharing settings.')
     } else {
-      const newMeta: RecipeCloudMeta = { visibility: selectedVisibility, published: selectedVisibility !== 'private' }
+      const newMeta: RecipeCloudMeta = {
+        visibility: selectedVisibility,
+        published: selectedVisibility !== 'private',
+      }
       setCloudMeta(newMeta)
-      const msg = selectedVisibility === 'private' ? 'Recipe set to private.' : 'Recipe sharing updated!'
+      const msg =
+        selectedVisibility === 'private' ? 'Recipe set to private.' : 'Recipe sharing updated!'
       toast.success(msg)
       setShowSharePanel(false)
     }
@@ -316,12 +353,13 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
-      {cookingMode && (
-        <CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />
-      )}
+      {cookingMode && <CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />}
 
       {/* Back link */}
-      <Link to="/" className="print:hidden text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
+      <Link
+        to="/"
+        className="print:hidden text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4"
+      >
         ← Recipes
       </Link>
 
@@ -336,7 +374,13 @@ export default function RecipeDetailPage() {
             aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Heart size={16} aria-hidden="true" className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'} />
+            <Heart
+              size={16}
+              aria-hidden="true"
+              className={
+                recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'
+              }
+            />
           </button>
           {recipe.recipeInstructions.length > 0 && (
             <button
@@ -352,7 +396,11 @@ export default function RecipeDetailPage() {
             aria-label="More options"
             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <MoreHorizontal size={16} aria-hidden="true" className="text-gray-500 dark:text-gray-400" />
+            <MoreHorizontal
+              size={16}
+              aria-hidden="true"
+              className="text-gray-500 dark:text-gray-400"
+            />
           </button>
         </div>
 
@@ -363,7 +411,13 @@ export default function RecipeDetailPage() {
             aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Heart size={16} aria-hidden="true" className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'} />
+            <Heart
+              size={16}
+              aria-hidden="true"
+              className={
+                recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'
+              }
+            />
           </button>
           {recipe.recipeInstructions.length > 0 && (
             <button
@@ -516,20 +570,32 @@ export default function RecipeDetailPage() {
               Contains ingredients that may not suit your dietary preferences
               {flaggedDietLabels.length > 0 && (
                 <span className="font-medium"> ({flaggedDietLabels.join(', ')})</span>
-              )}.
-              {' '}Flagged ingredients are highlighted below.
+              )}
+              . Flagged ingredients are highlighted below.
             </p>
           </div>
         )}
         <ul className="space-y-2 print:columns-2 print:[column-gap:1.5rem]">
           {recipe.recipeIngredient.map((ing, i) => {
             const scaledAmount = ing.amount * scale
-            const { amount: displayAmount, unit: displayUnit } = convertUnit(scaledAmount, ing.unit, unitSystem)
+            const { amount: displayAmount, unit: displayUnit } = convertUnit(
+              scaledAmount,
+              ing.unit,
+              unitSystem
+            )
             const showOriginal = isScaled && ing.amount > 0
             const isFlagged = allergenIngredientIndices.has(i)
             return (
               <li key={i} className="flex items-baseline gap-2 text-sm">
-                <span className={isFlagged ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'}>·</span>
+                <span
+                  className={
+                    isFlagged
+                      ? 'text-amber-500 dark:text-amber-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                  }
+                >
+                  ·
+                </span>
                 <span className="font-medium text-gray-700 dark:text-gray-200">
                   {formatAmount(displayAmount)} {displayUnit}
                   {showOriginal && (
@@ -538,10 +604,20 @@ export default function RecipeDetailPage() {
                     </span>
                   )}
                 </span>
-                <span className={isFlagged ? 'text-amber-700 dark:text-amber-300 font-medium' : 'text-gray-600 dark:text-gray-300'}>
+                <span
+                  className={
+                    isFlagged
+                      ? 'text-amber-700 dark:text-amber-300 font-medium'
+                      : 'text-gray-600 dark:text-gray-300'
+                  }
+                >
                   {ing.name}
                   {isFlagged && (
-                    <AlertTriangle size={12} className="inline ml-1 mb-0.5 text-amber-500" aria-label="allergen warning" />
+                    <AlertTriangle
+                      size={12}
+                      className="inline ml-1 mb-0.5 text-amber-500"
+                      aria-label="allergen warning"
+                    />
                   )}
                 </span>
               </li>
@@ -552,7 +628,9 @@ export default function RecipeDetailPage() {
 
       {/* Instructions */}
       <section className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Instructions</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">
+          Instructions
+        </h3>
         <ol className="space-y-3">
           {recipe.recipeInstructions.map((step, i) => (
             <li key={i} className="flex gap-3 text-sm print:[break-inside:avoid]">
@@ -616,7 +694,12 @@ export default function RecipeDetailPage() {
             aria-labelledby="share-panel-title"
           >
             <div className="flex items-center justify-between mb-4">
-              <h4 id="share-panel-title" className="text-base font-semibold text-gray-800 dark:text-gray-100">Share recipe</h4>
+              <h4
+                id="share-panel-title"
+                className="text-base font-semibold text-gray-800 dark:text-gray-100"
+              >
+                Share recipe
+              </h4>
               <button
                 onClick={() => setShowSharePanel(false)}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -625,12 +708,19 @@ export default function RecipeDetailPage() {
                 <X size={16} />
               </button>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose who can see this recipe.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Choose who can see this recipe.
+            </p>
             <div className="space-y-2 mb-5">
               {(
                 [
                   { value: 'public', label: 'Public', desc: 'Anyone can discover it', Icon: Globe },
-                  { value: 'friends', label: 'Friends only', desc: 'Only your accepted friends', Icon: Users },
+                  {
+                    value: 'friends',
+                    label: 'Friends only',
+                    desc: 'Only your accepted friends',
+                    Icon: Users,
+                  },
                   { value: 'private', label: 'Private', desc: 'Only you', Icon: Lock },
                 ] as { value: RecipeVisibility; label: string; desc: string; Icon: typeof Globe }[]
               ).map(({ value, label, desc, Icon }) => (
@@ -646,11 +736,17 @@ export default function RecipeDetailPage() {
                 >
                   <Icon
                     size={18}
-                    className={selectedVisibility === value ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}
+                    className={
+                      selectedVisibility === value
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }
                     aria-hidden="true"
                   />
                   <div>
-                    <p className={`text-sm font-medium ${selectedVisibility === value ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                    <p
+                      className={`text-sm font-medium ${selectedVisibility === value ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}
+                    >
                       {label}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">{desc}</p>
@@ -681,12 +777,18 @@ export default function RecipeDetailPage() {
                             : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                         }`}
                       >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                          shared ? 'bg-green-600 border-green-600' : 'border-gray-300 dark:border-gray-500'
-                        }`}>
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                            shared
+                              ? 'bg-green-600 border-green-600'
+                              : 'border-gray-300 dark:border-gray-500'
+                          }`}
+                        >
                           {shared && <Check size={10} strokeWidth={3} aria-hidden="true" />}
                         </div>
-                        <span className={`text-sm truncate ${shared ? 'text-green-700 dark:text-green-300 font-medium' : 'text-gray-700 dark:text-gray-200'}`}>
+                        <span
+                          className={`text-sm truncate ${shared ? 'text-green-700 dark:text-green-300 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
+                        >
                           {group.name}
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">
@@ -728,7 +830,12 @@ export default function RecipeDetailPage() {
             aria-labelledby="collections-panel-title"
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h4 id="collections-panel-title" className="font-bold text-gray-800 dark:text-gray-100">Add to Collection</h4>
+              <h4
+                id="collections-panel-title"
+                className="font-bold text-gray-800 dark:text-gray-100"
+              >
+                Add to Collection
+              </h4>
               <button
                 onClick={() => setShowCollectionPanel(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
@@ -740,9 +847,18 @@ export default function RecipeDetailPage() {
             <div className="overflow-y-auto flex-1 p-4">
               {collections.length === 0 ? (
                 <div className="text-center py-6">
-                  <Library size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" aria-hidden="true" />
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">No collections yet</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Create a collection to organize your recipes.</p>
+                  <Library
+                    size={36}
+                    strokeWidth={1.5}
+                    className="mx-auto mb-3 text-gray-300 dark:text-gray-600"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                    No collections yet
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                    Create a collection to organize your recipes.
+                  </p>
                   <Link
                     to="/collections"
                     onClick={() => setShowCollectionPanel(false)}
@@ -768,17 +884,25 @@ export default function RecipeDetailPage() {
                               : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}
                         >
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                            inCollection ? 'bg-green-600 border-green-600' : 'border-gray-300 dark:border-gray-500'
-                          }`}>
+                          <div
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              inCollection
+                                ? 'bg-green-600 border-green-600'
+                                : 'border-gray-300 dark:border-gray-500'
+                            }`}
+                          >
                             {inCollection && <Check size={12} strokeWidth={3} aria-hidden="true" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium truncate ${inCollection ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                            <p
+                              className={`text-sm font-medium truncate ${inCollection ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}
+                            >
                               {col.name}
                             </p>
                             {col.description && (
-                              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{col.description}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                                {col.description}
+                              </p>
                             )}
                           </div>
                           <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
@@ -822,43 +946,85 @@ export default function RecipeDetailPage() {
                 onClick={() => setShowMoreSheet(false)}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <Pencil size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                <Pencil
+                  size={18}
+                  strokeWidth={2}
+                  className="text-gray-500 dark:text-gray-400 shrink-0"
+                  aria-hidden="true"
+                />
                 Edit recipe
               </Link>
               {user && isSupabaseAvailable() && (
                 <button
-                  onClick={() => { setShowMoreSheet(false); setShowSharePanel(true) }}
+                  onClick={() => {
+                    setShowMoreSheet(false)
+                    setShowSharePanel(true)
+                  }}
                   className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <Share2 size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
-                  {cloudMeta && cloudMeta.visibility !== 'private' ? 'Sharing settings' : 'Share recipe'}
+                  <Share2
+                    size={18}
+                    strokeWidth={2}
+                    className="text-gray-500 dark:text-gray-400 shrink-0"
+                    aria-hidden="true"
+                  />
+                  {cloudMeta && cloudMeta.visibility !== 'private'
+                    ? 'Sharing settings'
+                    : 'Share recipe'}
                 </button>
               )}
               <button
-                onClick={() => { setShowMoreSheet(false); setShowCollectionPanel(true) }}
+                onClick={() => {
+                  setShowMoreSheet(false)
+                  setShowCollectionPanel(true)
+                }}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <Library size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                <Library
+                  size={18}
+                  strokeWidth={2}
+                  className="text-gray-500 dark:text-gray-400 shrink-0"
+                  aria-hidden="true"
+                />
                 Add to collection
               </button>
               <button
-                onClick={() => { setShowMoreSheet(false); window.print() }}
+                onClick={() => {
+                  setShowMoreSheet(false)
+                  window.print()
+                }}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <Printer size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                <Printer
+                  size={18}
+                  strokeWidth={2}
+                  className="text-gray-500 dark:text-gray-400 shrink-0"
+                  aria-hidden="true"
+                />
                 Print recipe
               </button>
               <button
-                onClick={() => { setShowMoreSheet(false); handleDuplicate() }}
+                onClick={() => {
+                  setShowMoreSheet(false)
+                  handleDuplicate()
+                }}
                 disabled={duplicating}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
-                <Copy size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                <Copy
+                  size={18}
+                  strokeWidth={2}
+                  className="text-gray-500 dark:text-gray-400 shrink-0"
+                  aria-hidden="true"
+                />
                 {duplicating ? 'Duplicating…' : 'Duplicate recipe'}
               </button>
               <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
               <button
-                onClick={() => { setShowMoreSheet(false); setShowDeleteConfirm(true) }}
+                onClick={() => {
+                  setShowMoreSheet(false)
+                  setShowDeleteConfirm(true)
+                }}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
                 <Trash2 size={18} strokeWidth={2} className="shrink-0" aria-hidden="true" />
@@ -879,7 +1045,12 @@ export default function RecipeDetailPage() {
             aria-modal="true"
             aria-labelledby="delete-recipe-dialog-title"
           >
-            <h4 id="delete-recipe-dialog-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete recipe?</h4>
+            <h4
+              id="delete-recipe-dialog-title"
+              className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2"
+            >
+              Delete recipe?
+            </h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               "{recipe.name}" will be permanently deleted. This cannot be undone.
             </p>

@@ -24,10 +24,10 @@ export interface FriendshipWithProfile extends Friendship {
 export type FriendRelation =
   | 'none'
   | 'friends'
-  | 'pending_sent'      // current user sent a request, awaiting response
-  | 'pending_received'  // current user received a request, can accept/reject
-  | 'blocked'           // current user blocked the other
-  | 'blocked_by'        // other user blocked the current user
+  | 'pending_sent' // current user sent a request, awaiting response
+  | 'pending_received' // current user received a request, can accept/reject
+  | 'blocked' // current user blocked the other
+  | 'blocked_by' // other user blocked the current user
 
 export interface FriendRelationResult {
   relation: FriendRelation
@@ -79,7 +79,7 @@ interface SentRequestRow {
  * Rate-limited: max 20 pending outgoing requests at a time.
  */
 export async function sendFriendRequest(
-  addresseeId: string,
+  addresseeId: string
 ): Promise<{ data: Friendship | null; error: Error | null }> {
   if (!supabase) return { data: null, error: new Error('Supabase not configured') }
 
@@ -99,19 +99,24 @@ export async function sendFriendRequest(
   const { data, error } = await supabase
     .from('friendships')
     // requester_id is set to auth.uid() by the Supabase RLS default/trigger
-    .insert({ addressee_id: addresseeId, status: 'pending' } as { requester_id: string; addressee_id: string; status: 'pending' })
+    .insert({ addressee_id: addresseeId, status: 'pending' } as {
+      requester_id: string
+      addressee_id: string
+      status: 'pending'
+    })
     .select()
     .single()
 
-  return { data: (data as Friendship | null) ?? null, error: error ? new Error(error.message) : null }
+  return {
+    data: (data as Friendship | null) ?? null,
+    error: error ? new Error(error.message) : null,
+  }
 }
 
 /**
  * Cancel a friend request that the current user sent (requester action).
  */
-export async function cancelFriendRequest(
-  friendshipId: string,
-): Promise<{ error: Error | null }> {
+export async function cancelFriendRequest(friendshipId: string): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
   return { error: error ? new Error(error.message) : null }
@@ -120,9 +125,7 @@ export async function cancelFriendRequest(
 /**
  * Accept an incoming friend request (addressee action).
  */
-export async function acceptFriendRequest(
-  friendshipId: string,
-): Promise<{ error: Error | null }> {
+export async function acceptFriendRequest(friendshipId: string): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('friendships')
@@ -134,9 +137,7 @@ export async function acceptFriendRequest(
 /**
  * Reject / decline an incoming friend request (addressee action — deletes the row).
  */
-export async function rejectFriendRequest(
-  friendshipId: string,
-): Promise<{ error: Error | null }> {
+export async function rejectFriendRequest(friendshipId: string): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
   return { error: error ? new Error(error.message) : null }
@@ -160,7 +161,7 @@ export async function unfriend(friendshipId: string): Promise<{ error: Error | n
  */
 export async function blockUser(
   targetUserId: string,
-  currentUserId: string,
+  currentUserId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
 
@@ -170,7 +171,7 @@ export async function blockUser(
     .select('id, requester_id, addressee_id')
     .or(
       `and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),` +
-      `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
+        `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
     )
     .maybeSingle()
 
@@ -220,8 +221,8 @@ export async function getFriends(currentUserId: string): Promise<FriendshipWithP
     .from('friendships')
     .select(
       'id, requester_id, addressee_id, status, created_at, responded_at, ' +
-      'requester:profiles!friendships_requester_id_fkey(id, display_name, avatar_url, bio), ' +
-      'addressee:profiles!friendships_addressee_id_fkey(id, display_name, avatar_url, bio)'
+        'requester:profiles!friendships_requester_id_fkey(id, display_name, avatar_url, bio), ' +
+        'addressee:profiles!friendships_addressee_id_fkey(id, display_name, avatar_url, bio)'
     )
     .eq('status', 'accepted')
     .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
@@ -232,9 +233,7 @@ export async function getFriends(currentUserId: string): Promise<FriendshipWithP
 
   return data.map((row) => {
     const isRequester = row.requester_id === currentUserId
-    const profile = isRequester
-      ? row.addressee as ProfilePick
-      : row.requester as ProfilePick
+    const profile = isRequester ? (row.addressee as ProfilePick) : (row.requester as ProfilePick)
     return {
       id: row.id,
       requester_id: row.requester_id,
@@ -256,7 +255,7 @@ export async function getPendingRequests(currentUserId: string): Promise<Friends
     .from('friendships')
     .select(
       'id, requester_id, addressee_id, status, created_at, responded_at, ' +
-      'requester:profiles!friendships_requester_id_fkey(id, display_name, avatar_url, bio)'
+        'requester:profiles!friendships_requester_id_fkey(id, display_name, avatar_url, bio)'
     )
     .eq('status', 'pending')
     .eq('addressee_id', currentUserId)
@@ -286,7 +285,7 @@ export async function getSentRequests(currentUserId: string): Promise<Friendship
     .from('friendships')
     .select(
       'id, requester_id, addressee_id, status, created_at, responded_at, ' +
-      'addressee:profiles!friendships_addressee_id_fkey(id, display_name, avatar_url, bio)'
+        'addressee:profiles!friendships_addressee_id_fkey(id, display_name, avatar_url, bio)'
     )
     .eq('status', 'pending')
     .eq('requester_id', currentUserId)
@@ -312,7 +311,7 @@ export async function getSentRequests(currentUserId: string): Promise<Friendship
  */
 export async function getFriendRelation(
   currentUserId: string,
-  targetUserId: string,
+  targetUserId: string
 ): Promise<FriendRelationResult> {
   if (!supabase) return { relation: 'none', friendshipId: null }
 
@@ -321,7 +320,7 @@ export async function getFriendRelation(
     .select('id, requester_id, addressee_id, status')
     .or(
       `and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),` +
-      `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
+        `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
     )
     .maybeSingle()
 
@@ -367,7 +366,7 @@ export async function getFriendCount(userId: string): Promise<number> {
 export async function searchUsers(
   query: string,
   currentUserId: string,
-  limit = 20,
+  limit = 20
 ): Promise<Pick<Profile, 'id' | 'display_name' | 'avatar_url' | 'bio'>[]> {
   if (!supabase || query.trim().length < 2) return []
   const { data } = await supabase
@@ -386,7 +385,7 @@ export async function searchUsers(
  * Each user has at most one active invite link; calling this again revokes the old one.
  */
 export async function getOrCreateInviteLink(
-  userId: string,
+  userId: string
 ): Promise<{ token: string | null; error: Error | null }> {
   if (!supabase) return { token: null, error: new Error('Supabase not configured') }
 
@@ -419,7 +418,7 @@ export async function getOrCreateInviteLink(
  * Returns null if the token is not found or has expired.
  */
 export async function resolveInviteToken(
-  token: string,
+  token: string
 ): Promise<Pick<Profile, 'id' | 'display_name' | 'avatar_url' | 'bio'> | null> {
   if (!supabase) return null
 
@@ -428,7 +427,7 @@ export async function resolveInviteToken(
     .from('friend_invites')
     .select(
       'user_id, expires_at, ' +
-      'profiles!friend_invites_user_id_fkey(id, display_name, avatar_url, bio)'
+        'profiles!friend_invites_user_id_fkey(id, display_name, avatar_url, bio)'
     )
     .eq('token', token)
     .gt('expires_at', new Date().toISOString())

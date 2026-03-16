@@ -7,7 +7,7 @@ import { UNIT_SYSTEM_KEY, type UnitSystem } from '../lib/units'
  */
 export function useUnitPreference(): [UnitSystem, (system: UnitSystem) => void] {
   const [system, setSystemState] = useState<UnitSystem>(
-    () => (localStorage.getItem(UNIT_SYSTEM_KEY) as UnitSystem) ?? 'imperial',
+    () => (localStorage.getItem(UNIT_SYSTEM_KEY) as UnitSystem) ?? 'imperial'
   )
 
   function setSystem(s: UnitSystem) {

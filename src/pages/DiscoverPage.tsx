@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom'
 import { Compass, Rss, Search, Globe, Heart, Star } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseAvailable } from '../lib/supabase'
-import { getPublicFeed, getFriendsFeed, type CloudRecipeWithAuthor } from '../lib/recipeShareService'
+import {
+  getPublicFeed,
+  getFriendsFeed,
+  type CloudRecipeWithAuthor,
+} from '../lib/recipeShareService'
 import { getEngagementStats, type EngagementStats } from '../lib/engagementService'
 import { durationToMinutes } from '../lib/db'
 import Skeleton from '../components/Skeleton'
@@ -12,7 +16,13 @@ const PAGE_SIZE = 20
 
 // ─── Recipe card ──────────────────────────────────────────────────────────────
 
-function RecipeCard({ item, engagement }: { item: CloudRecipeWithAuthor; engagement?: EngagementStats }) {
+function RecipeCard({
+  item,
+  engagement,
+}: {
+  item: CloudRecipeWithAuthor
+  engagement?: EngagementStats
+}) {
   const recipe = item.data
   const prepMins = durationToMinutes(recipe.prepTime)
   const cookMins = durationToMinutes(recipe.cookTime)
@@ -35,12 +45,18 @@ function RecipeCard({ item, engagement }: { item: CloudRecipeWithAuthor; engagem
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-100 leading-tight">{recipe.name}</h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{prepMins + cookMins} min</span>
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 leading-tight">
+              {recipe.name}
+            </h3>
+            <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+              {prepMins + cookMins} min
+            </span>
           </div>
           <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">by {authorName}</p>
           {recipe.description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{recipe.description}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+              {recipe.description}
+            </p>
           )}
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
             <span>{recipe.recipeYield} servings</span>
@@ -52,7 +68,12 @@ function RecipeCard({ item, engagement }: { item: CloudRecipeWithAuthor; engagem
               <>
                 <span>·</span>
                 <span className="flex items-center gap-0.5">
-                  <Heart size={10} className="text-red-400" fill="currentColor" aria-hidden="true" />
+                  <Heart
+                    size={10}
+                    className="text-red-400"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  />
                   {engagement.likeCount}
                 </span>
               </>
@@ -61,7 +82,12 @@ function RecipeCard({ item, engagement }: { item: CloudRecipeWithAuthor; engagem
               <>
                 <span>·</span>
                 <span className="flex items-center gap-0.5">
-                  <Star size={10} className="text-yellow-400" fill="currentColor" aria-hidden="true" />
+                  <Star
+                    size={10}
+                    className="text-yellow-400"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  />
                   {engagement.avgRating}
                 </span>
               </>
@@ -226,7 +252,9 @@ export default function DiscoverPage() {
   useEffect(() => {
     if (activeTab !== 'explore' || !exploreSentinelRef.current) return
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMoreExplore() },
+      (entries) => {
+        if (entries[0].isIntersecting) loadMoreExplore()
+      },
       { rootMargin: '200px' }
     )
     observer.observe(exploreSentinelRef.current)
@@ -236,7 +264,9 @@ export default function DiscoverPage() {
   useEffect(() => {
     if (activeTab !== 'feed' || !feedSentinelRef.current) return
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMoreFeed() },
+      (entries) => {
+        if (entries[0].isIntersecting) loadMoreFeed()
+      },
       { rootMargin: '200px' }
     )
     observer.observe(feedSentinelRef.current)
@@ -280,7 +310,11 @@ export default function DiscoverPage() {
       <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Discover</h2>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Discover sections" className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+      <div
+        role="tablist"
+        aria-label="Discover sections"
+        className="flex border-b border-gray-200 dark:border-gray-700 mb-4"
+      >
         <button
           role="tab"
           aria-selected={activeTab === 'explore'}
@@ -311,7 +345,11 @@ export default function DiscoverPage() {
       {activeTab === 'explore' && (
         <div id="discover-tab-explore" role="tabpanel" aria-labelledby="discover-tab-btn-explore">
           <div className="relative mb-4">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+              aria-hidden="true"
+            />
             <input
               type="search"
               placeholder="Search public recipes..."
@@ -326,7 +364,9 @@ export default function DiscoverPage() {
             <p className="text-sm text-red-500 text-center py-8">{exploreError}</p>
           ) : exploreLoading ? (
             <ul className="space-y-3" aria-busy="true" aria-label="Loading public recipes">
-              {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
             </ul>
           ) : filteredExplore.length === 0 ? (
             <div className="text-center py-16">
@@ -365,7 +405,9 @@ export default function DiscoverPage() {
             <p className="text-sm text-red-500 text-center py-8">{feedError}</p>
           ) : feedLoading ? (
             <ul className="space-y-3" aria-busy="true" aria-label="Loading friends feed">
-              {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
             </ul>
           ) : feedItems.length === 0 ? (
             <div className="text-center py-16">

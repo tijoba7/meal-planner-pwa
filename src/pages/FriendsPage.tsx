@@ -59,7 +59,11 @@ function FriendCard({
         title="Unfriend"
         className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500 transition-colors disabled:opacity-50"
       >
-        {busy ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={12} strokeWidth={1.75} />}
+        {busy ? (
+          <Loader2 size={12} className="animate-spin" />
+        ) : (
+          <UserMinus size={12} strokeWidth={1.75} />
+        )}
         Unfriend
       </button>
     </div>
@@ -127,7 +131,11 @@ function RequestCard({
           title="Decline"
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 hover:border-red-300 hover:text-red-500 transition-colors disabled:opacity-50"
         >
-          {busy === 'reject' ? <Loader2 size={12} className="animate-spin" /> : <X size={12} strokeWidth={2} />}
+          {busy === 'reject' ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : (
+            <X size={12} strokeWidth={2} />
+          )}
           Decline
         </button>
       </div>
@@ -214,9 +222,7 @@ function SearchResultCard({
         {user.bio && (
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.bio}</p>
         )}
-        {status === 'error' && (
-          <p className="text-xs text-red-500">{errorMsg}</p>
-        )}
+        {status === 'error' && <p className="text-xs text-red-500">{errorMsg}</p>}
       </div>
       <button
         onClick={handleSend}
@@ -310,8 +316,17 @@ export default function FriendsPage() {
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Friends</h1>
 
       {/* Tabs */}
-      <div role="tablist" className="flex border-b border-gray-200 dark:border-gray-700 mb-5 -mx-4 px-4">
-        <button role="tab" aria-selected={tab === 'friends'} aria-controls="tab-panel-friends" onClick={() => setTab('friends')} className={tabClass('friends')}>
+      <div
+        role="tablist"
+        className="flex border-b border-gray-200 dark:border-gray-700 mb-5 -mx-4 px-4"
+      >
+        <button
+          role="tab"
+          aria-selected={tab === 'friends'}
+          aria-controls="tab-panel-friends"
+          onClick={() => setTab('friends')}
+          className={tabClass('friends')}
+        >
           <Users size={14} strokeWidth={1.75} aria-hidden="true" />
           Friends
           {friends.length > 0 && (
@@ -320,7 +335,13 @@ export default function FriendsPage() {
             </span>
           )}
         </button>
-        <button role="tab" aria-selected={tab === 'requests'} aria-controls="tab-panel-requests" onClick={() => setTab('requests')} className={tabClass('requests')}>
+        <button
+          role="tab"
+          aria-selected={tab === 'requests'}
+          aria-controls="tab-panel-requests"
+          onClick={() => setTab('requests')}
+          className={tabClass('requests')}
+        >
           <Clock size={14} strokeWidth={1.75} aria-hidden="true" />
           Requests
           {pending.length > 0 && (
@@ -329,7 +350,13 @@ export default function FriendsPage() {
             </span>
           )}
         </button>
-        <button role="tab" aria-selected={tab === 'find'} aria-controls="tab-panel-find" onClick={() => setTab('find')} className={tabClass('find')}>
+        <button
+          role="tab"
+          aria-selected={tab === 'find'}
+          aria-controls="tab-panel-find"
+          onClick={() => setTab('find')}
+          className={tabClass('find')}
+        >
           <Search size={14} strokeWidth={1.75} aria-hidden="true" />
           Find
         </button>
@@ -355,11 +382,11 @@ export default function FriendsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {friends.map(f => (
+              {friends.map((f) => (
                 <FriendCard
                   key={f.id}
                   item={f}
-                  onUnfriend={id => setFriends(prev => prev.filter(x => x.id !== id))}
+                  onUnfriend={(id) => setFriends((prev) => prev.filter((x) => x.id !== id))}
                 />
               ))}
             </div>
@@ -383,15 +410,15 @@ export default function FriendsPage() {
               <p className="text-sm text-gray-400 dark:text-gray-500 py-4">No incoming requests.</p>
             ) : (
               <div className="space-y-2">
-                {pending.map(p => (
+                {pending.map((p) => (
                   <RequestCard
                     key={p.id}
                     item={p}
-                    onAccept={id => {
-                      setPending(prev => prev.filter(x => x.id !== id))
+                    onAccept={(id) => {
+                      setPending((prev) => prev.filter((x) => x.id !== id))
                       reload()
                     }}
-                    onReject={id => setPending(prev => prev.filter(x => x.id !== id))}
+                    onReject={(id) => setPending((prev) => prev.filter((x) => x.id !== id))}
                   />
                 ))}
               </div>
@@ -411,11 +438,11 @@ export default function FriendsPage() {
               <p className="text-sm text-gray-400 dark:text-gray-500 py-4">No outgoing requests.</p>
             ) : (
               <div className="space-y-2">
-                {sent.map(s => (
+                {sent.map((s) => (
                   <SentCard
                     key={s.id}
                     item={s}
-                    onCancel={id => setSent(prev => prev.filter(x => x.id !== id))}
+                    onCancel={(id) => setSent((prev) => prev.filter((x) => x.id !== id))}
                   />
                 ))}
               </div>
@@ -436,7 +463,7 @@ export default function FriendsPage() {
             <input
               type="search"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name…"
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
@@ -456,12 +483,8 @@ export default function FriendsPage() {
 
           {searchResults.length > 0 && (
             <div className="space-y-2">
-              {searchResults.map(u => (
-                <SearchResultCard
-                  key={u.id}
-                  user={u}
-                  onSent={() => {}}
-                />
+              {searchResults.map((u) => (
+                <SearchResultCard key={u.id} user={u} onSent={() => {}} />
               ))}
             </div>
           )}

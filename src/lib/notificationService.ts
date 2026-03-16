@@ -103,7 +103,8 @@ export async function getMutedTypes(userId: string): Promise<NotificationType[]>
     .select('notification_muted_types')
     .eq('id', userId)
     .single()
-  return ((data as { notification_muted_types?: string[] } | null)?.notification_muted_types ?? []) as NotificationType[]
+  return ((data as { notification_muted_types?: string[] } | null)?.notification_muted_types ??
+    []) as NotificationType[]
 }
 
 /**
@@ -111,7 +112,7 @@ export async function getMutedTypes(userId: string): Promise<NotificationType[]>
  */
 export async function setMutedTypes(
   userId: string,
-  mutedTypes: NotificationType[],
+  mutedTypes: NotificationType[]
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -133,7 +134,7 @@ export async function setMutedTypes(
  */
 export function subscribeToNotifications(
   userId: string,
-  onNew: (notification: AppNotification) => void,
+  onNew: (notification: AppNotification) => void
 ): () => void {
   if (!supabase) return () => {}
 
@@ -151,7 +152,7 @@ export function subscribeToNotifications(
         // Realtime payload.new is typed as Record<string, unknown>; shape is guaranteed
         // by the DB trigger that creates notifications with our NotificationType values.
         onNew(payload.new as unknown as AppNotification)
-      },
+      }
     )
     .subscribe()
 

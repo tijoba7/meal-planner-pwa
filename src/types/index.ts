@@ -49,7 +49,11 @@ export interface MealSlot {
 /** Normalize a slot that may have been written in the old single-recipe format. */
 export function normalizeMealSlot(slot: MealSlot | Record<string, unknown>): MealSlot {
   if ('recipeId' in slot && !Array.isArray((slot as unknown as MealSlot).recipes)) {
-    return { recipes: [{ recipeId: slot['recipeId'] as string, servings: (slot['servings'] as number) ?? 2 }] }
+    return {
+      recipes: [
+        { recipeId: slot['recipeId'] as string, servings: (slot['servings'] as number) ?? 2 },
+      ],
+    }
   }
   return slot as unknown as MealSlot
 }

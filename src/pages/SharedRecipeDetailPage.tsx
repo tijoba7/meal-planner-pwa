@@ -1,12 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChefHat, GitFork, User, Heart, Bookmark, MessageCircle, Star, Send, Trash2, Flag } from 'lucide-react'
+import {
+  ChefHat,
+  GitFork,
+  User,
+  Heart,
+  Bookmark,
+  MessageCircle,
+  Star,
+  Send,
+  Trash2,
+  Flag,
+} from 'lucide-react'
 import { getSharedRecipe, forkRecipe, type CloudRecipeWithAuthor } from '../lib/recipeShareService'
 import {
-  getReactions, toggleLike, toggleBookmark, setEmojiReaction,
-  getComments, addComment, deleteComment,
-  getRating, upsertRating, deleteRating,
-  type RecipeReactions, type RecipeRating, type CommentWithAuthor,
+  getReactions,
+  toggleLike,
+  toggleBookmark,
+  setEmojiReaction,
+  getComments,
+  addComment,
+  deleteComment,
+  getRating,
+  upsertRating,
+  deleteRating,
+  type RecipeReactions,
+  type RecipeRating,
+  type CommentWithAuthor,
 } from '../lib/engagementService'
 import { durationToMinutes } from '../lib/db'
 import { useAuth } from '../contexts/AuthContext'
@@ -48,15 +68,25 @@ function formatAmount(amount: number): string {
   const decimal = amount - whole
   if (decimal < 0.01) return String(whole)
   const fractions: [number, string][] = [
-    [1 / 8, '1/8'], [1 / 6, '1/6'], [1 / 4, '1/4'], [1 / 3, '1/3'],
-    [3 / 8, '3/8'], [1 / 2, '1/2'], [5 / 8, '5/8'], [2 / 3, '2/3'],
-    [3 / 4, '3/4'], [7 / 8, '7/8'],
+    [1 / 8, '1/8'],
+    [1 / 6, '1/6'],
+    [1 / 4, '1/4'],
+    [1 / 3, '1/3'],
+    [3 / 8, '3/8'],
+    [1 / 2, '1/2'],
+    [5 / 8, '5/8'],
+    [2 / 3, '2/3'],
+    [3 / 4, '3/4'],
+    [7 / 8, '7/8'],
   ]
   let bestFrac = ''
   let bestDiff = Infinity
   for (const [val, label] of fractions) {
     const diff = Math.abs(decimal - val)
-    if (diff < bestDiff) { bestDiff = diff; bestFrac = label }
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestFrac = label
+    }
   }
   if (bestDiff < 0.05) return whole > 0 ? `${whole} ${bestFrac}` : bestFrac
   return amount.toFixed(1).replace(/\.0$/, '')
@@ -87,18 +117,25 @@ function CommentItem({
   const isDeleted = comment.deleted_at !== null
 
   return (
-    <div className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-100 dark:border-gray-700 pl-3' : ''} mb-3`}>
+    <div
+      className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-100 dark:border-gray-700 pl-3' : ''} mb-3`}
+    >
       <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-3">
         <div className="flex items-center justify-between gap-2 mb-1">
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{authorName}</span>
           <span className="text-xs text-gray-400 dark:text-gray-500">
-            {new Date(comment.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            {new Date(comment.created_at).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+            })}
           </span>
         </div>
         {isDeleted ? (
           <p className="text-sm text-gray-400 dark:text-gray-500 italic">[comment deleted]</p>
         ) : (
-          <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words">{comment.body}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words">
+            {comment.body}
+          </p>
         )}
         {!isDeleted && currentUserId && (
           <div className="flex items-center gap-3 mt-2">
@@ -121,7 +158,9 @@ function CommentItem({
             )}
             {!isOwn && (
               <button
-                onClick={() => toast.success('Report submitted. Thank you for helping keep Mise safe.')}
+                onClick={() =>
+                  toast.success('Report submitted. Thank you for helping keep Mise safe.')
+                }
                 aria-label="Report comment"
                 className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-0.5"
               >
@@ -174,7 +213,10 @@ export default function SharedRecipeDetailPage() {
   const EMOJI_OPTIONS = ['😍', '🤤', '👌', '🔥', '💯', '🥗', '🍕', '🌮', '🍜', '🎉']
 
   useEffect(() => {
-    if (!id || !isSupabaseAvailable()) { setNotFound(true); return }
+    if (!id || !isSupabaseAvailable()) {
+      setNotFound(true)
+      return
+    }
     getSharedRecipe(id).then((result) => {
       if (result) {
         setItem(result)
@@ -189,15 +231,13 @@ export default function SharedRecipeDetailPage() {
   useEffect(() => {
     if (!id || !isSupabaseAvailable()) return
     const uid = user?.id
-    Promise.all([
-      getReactions(id, uid),
-      getRating(id, uid),
-      getComments(id),
-    ]).then(([r, rat, c]) => {
-      setReactions(r)
-      setRating(rat)
-      setComments(c)
-    })
+    Promise.all([getReactions(id, uid), getRating(id, uid), getComments(id)]).then(
+      ([r, rat, c]) => {
+        setReactions(r)
+        setRating(rat)
+        setComments(c)
+      }
+    )
   }, [id, user?.id])
 
   async function handleFork() {
@@ -218,19 +258,29 @@ export default function SharedRecipeDetailPage() {
     setReactionPending(true)
     const optimisticLiked = !reactions?.userLiked
     setReactions((r) =>
-      r ? {
-        ...r,
-        userLiked: optimisticLiked,
-        likeCount: r.likeCount + (optimisticLiked ? 1 : -1),
-      } : r
+      r
+        ? {
+            ...r,
+            userLiked: optimisticLiked,
+            likeCount: r.likeCount + (optimisticLiked ? 1 : -1),
+          }
+        : r
     )
     const { liked, error } = await toggleLike(id, user.id)
     if (error) {
       // revert
-      setReactions((r) => r ? { ...r, userLiked: !optimisticLiked, likeCount: r.likeCount + (optimisticLiked ? -1 : 1) } : r)
+      setReactions((r) =>
+        r
+          ? {
+              ...r,
+              userLiked: !optimisticLiked,
+              likeCount: r.likeCount + (optimisticLiked ? -1 : 1),
+            }
+          : r
+      )
       toast.error('Failed to update reaction.')
     } else {
-      setReactions((r) => r ? { ...r, userLiked: liked } : r)
+      setReactions((r) => (r ? { ...r, userLiked: liked } : r))
     }
     setReactionPending(false)
   }
@@ -240,18 +290,28 @@ export default function SharedRecipeDetailPage() {
     setReactionPending(true)
     const optimisticBookmarked = !reactions?.userBookmarked
     setReactions((r) =>
-      r ? {
-        ...r,
-        userBookmarked: optimisticBookmarked,
-        bookmarkCount: r.bookmarkCount + (optimisticBookmarked ? 1 : -1),
-      } : r
+      r
+        ? {
+            ...r,
+            userBookmarked: optimisticBookmarked,
+            bookmarkCount: r.bookmarkCount + (optimisticBookmarked ? 1 : -1),
+          }
+        : r
     )
     const { bookmarked, error } = await toggleBookmark(id, user.id)
     if (error) {
-      setReactions((r) => r ? { ...r, userBookmarked: !optimisticBookmarked, bookmarkCount: r.bookmarkCount + (optimisticBookmarked ? -1 : 1) } : r)
+      setReactions((r) =>
+        r
+          ? {
+              ...r,
+              userBookmarked: !optimisticBookmarked,
+              bookmarkCount: r.bookmarkCount + (optimisticBookmarked ? -1 : 1),
+            }
+          : r
+      )
       toast.error('Failed to update reaction.')
     } else {
-      setReactions((r) => r ? { ...r, userBookmarked: bookmarked } : r)
+      setReactions((r) => (r ? { ...r, userBookmarked: bookmarked } : r))
     }
     setReactionPending(false)
   }
@@ -262,11 +322,13 @@ export default function SharedRecipeDetailPage() {
     const newCode = isSame ? null : emoji
     setEmojiPickerOpen(false)
     setReactions((r) =>
-      r ? {
-        ...r,
-        userEmojiCode: newCode,
-        emojiCount: r.emojiCount + (newCode ? (r.userEmojiCode ? 0 : 1) : -1),
-      } : r
+      r
+        ? {
+            ...r,
+            userEmojiCode: newCode,
+            emojiCount: r.emojiCount + (newCode ? (r.userEmojiCode ? 0 : 1) : -1),
+          }
+        : r
     )
     const { error } = await setEmojiReaction(id, user.id, newCode)
     if (error) {
@@ -280,10 +342,10 @@ export default function SharedRecipeDetailPage() {
     if (!id || !user) return
     if (rating?.userScore === score) {
       // Remove rating
-      setRating((r) => r ? { ...r, userScore: null } : r)
+      setRating((r) => (r ? { ...r, userScore: null } : r))
       await deleteRating(id, user.id)
     } else {
-      setRating((r) => r ? { ...r, userScore: score } : r)
+      setRating((r) => (r ? { ...r, userScore: score } : r))
       const { error } = await upsertRating(id, user.id, score)
       if (error) {
         toast.error('Failed to save rating.')
@@ -328,8 +390,13 @@ export default function SharedRecipeDetailPage() {
   if (notFound) {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
-        <p className="text-gray-500 dark:text-gray-400">Recipe not found or you don't have access.</p>
-        <Link to="/discover" className="text-green-600 dark:text-green-400 text-sm mt-2 inline-block">
+        <p className="text-gray-500 dark:text-gray-400">
+          Recipe not found or you don't have access.
+        </p>
+        <Link
+          to="/discover"
+          className="text-green-600 dark:text-green-400 text-sm mt-2 inline-block"
+        >
           ← Back to Discover
         </Link>
       </div>
@@ -369,12 +436,13 @@ export default function SharedRecipeDetailPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
-      {cookingMode && (
-        <CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />
-      )}
+      {cookingMode && <CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />}
 
       {/* Back link */}
-      <Link to="/discover" className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
+      <Link
+        to="/discover"
+        className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4"
+      >
         ← Discover
       </Link>
 
@@ -528,7 +596,9 @@ export default function SharedRecipeDetailPage() {
 
       {/* Instructions */}
       <section className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Instructions</h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">
+          Instructions
+        </h3>
         <ol className="space-y-3">
           {recipe.recipeInstructions.map((step, i) => (
             <li key={i} className="flex gap-3 text-sm">
@@ -559,7 +629,9 @@ export default function SharedRecipeDetailPage() {
                 const display = scaled % 1 === 0 ? String(Math.round(scaled)) : scaled.toFixed(1)
                 return (
                   <div key={key}>
-                    <p className="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">{display}</p>
+                    <p className="text-base font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                      {display}
+                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{unit}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{label}</p>
                   </div>
@@ -585,7 +657,11 @@ export default function SharedRecipeDetailPage() {
                   : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500 dark:hover:text-red-400'
               }`}
             >
-              <Heart size={14} fill={reactions.userLiked ? 'currentColor' : 'none'} aria-hidden="true" />
+              <Heart
+                size={14}
+                fill={reactions.userLiked ? 'currentColor' : 'none'}
+                aria-hidden="true"
+              />
               <span>{reactions.likeCount}</span>
             </button>
 
@@ -600,7 +676,11 @@ export default function SharedRecipeDetailPage() {
                   : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-yellow-300 hover:text-yellow-600 dark:hover:text-yellow-400'
               }`}
             >
-              <Bookmark size={14} fill={reactions.userBookmarked ? 'currentColor' : 'none'} aria-hidden="true" />
+              <Bookmark
+                size={14}
+                fill={reactions.userBookmarked ? 'currentColor' : 'none'}
+                aria-hidden="true"
+              />
               <span>{reactions.bookmarkCount}</span>
             </button>
 
@@ -686,11 +766,16 @@ export default function SharedRecipeDetailPage() {
       {/* ── Comments ─────────────────────────────────────────────────────── */}
       <section className="mb-6">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
-          Comments {comments.length > 0 && <span className="text-sm font-normal text-gray-400">({comments.length})</span>}
+          Comments{' '}
+          {comments.length > 0 && (
+            <span className="text-sm font-normal text-gray-400">({comments.length})</span>
+          )}
         </h3>
 
         {comments.length === 0 && (
-          <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">No comments yet. Be the first!</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
+            No comments yet. Be the first!
+          </p>
         )}
 
         {comments.map((c) => (
@@ -710,7 +795,9 @@ export default function SharedRecipeDetailPage() {
             {replyTo && (
               <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 mb-1">
                 <span>Replying to {replyTo.authorName}</span>
-                <button type="button" onClick={() => setReplyTo(null)} className="underline">cancel</button>
+                <button type="button" onClick={() => setReplyTo(null)} className="underline">
+                  cancel
+                </button>
               </div>
             )}
             <div className="flex gap-2">
@@ -735,7 +822,10 @@ export default function SharedRecipeDetailPage() {
           </form>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            <Link to="/auth/login" className="text-green-600 dark:text-green-400 hover:underline">Sign in</Link> to leave a comment.
+            <Link to="/auth/login" className="text-green-600 dark:text-green-400 hover:underline">
+              Sign in
+            </Link>{' '}
+            to leave a comment.
           </p>
         )}
       </section>

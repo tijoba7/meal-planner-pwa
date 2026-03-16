@@ -11,8 +11,18 @@ interface VisibilityOption {
 
 const VISIBILITY_OPTIONS: VisibilityOption[] = [
   { value: 'private', icon: Lock, label: 'Only me', description: 'Only you can see this recipe' },
-  { value: 'friends', icon: Users, label: 'Friends', description: 'Your friends can see and save it' },
-  { value: 'public', icon: Globe, label: 'Everyone', description: 'Anyone using Mise can discover it' },
+  {
+    value: 'friends',
+    icon: Users,
+    label: 'Friends',
+    description: 'Your friends can see and save it',
+  },
+  {
+    value: 'public',
+    icon: Globe,
+    label: 'Everyone',
+    description: 'Anyone using Mise can discover it',
+  },
 ]
 
 interface ShareDialogProps {
@@ -89,9 +99,16 @@ export default function ShareDialog({
         <div className="overflow-y-auto flex-1 p-4 space-y-5">
           {/* Copy link */}
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Share link</p>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+              Share link
+            </p>
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
-              <Link2 size={14} strokeWidth={2} className="text-gray-400 shrink-0" aria-hidden="true" />
+              <Link2
+                size={14}
+                strokeWidth={2}
+                className="text-gray-400 shrink-0"
+                aria-hidden="true"
+              />
               <span className="flex-1 text-sm text-gray-600 truncate">{shareUrl}</span>
               <button
                 onClick={handleCopy}
@@ -117,7 +134,9 @@ export default function ShareDialog({
           {/* Visibility selector */}
           {onVisibilityChange && (
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Who can see this</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                Who can see this
+              </p>
               <div className="space-y-1.5">
                 {VISIBILITY_OPTIONS.map(({ value, icon: Icon, label, description }) => (
                   <button
@@ -148,7 +167,12 @@ export default function ShareDialog({
                       <p className="text-xs text-gray-400">{description}</p>
                     </div>
                     {visibility === value && (
-                      <Check size={16} strokeWidth={2.5} className="text-green-600 shrink-0" aria-hidden="true" />
+                      <Check
+                        size={16}
+                        strokeWidth={2.5}
+                        className="text-green-600 shrink-0"
+                        aria-hidden="true"
+                      />
                     )}
                   </button>
                 ))}

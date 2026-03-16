@@ -17,11 +17,7 @@ export default function PWAInstallBanner() {
   return (
     <div className="fixed bottom-20 md:bottom-4 inset-x-0 flex justify-center z-30 px-4 pointer-events-none">
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 max-w-sm w-full pointer-events-auto">
-        <img
-          src="/pwa-192x192.png"
-          alt="Mise icon"
-          className="w-10 h-10 rounded-xl shrink-0"
-        />
+        <img src="/pwa-192x192.png" alt="Mise icon" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-800 dark:text-gray-100 leading-tight">
             Add Mise to your home screen

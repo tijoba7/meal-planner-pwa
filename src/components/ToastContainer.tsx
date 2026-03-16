@@ -27,7 +27,10 @@ export default function ToastContainer() {
           <span className="flex-1">{t.message}</span>
           {t.action && (
             <button
-              onClick={() => { t.action!.onClick(); dismiss(t.id) }}
+              onClick={() => {
+                t.action!.onClick()
+                dismiss(t.id)
+              }}
               className="shrink-0 text-sm font-bold underline hover:no-underline opacity-90 hover:opacity-100 transition-opacity"
             >
               {t.action.label}

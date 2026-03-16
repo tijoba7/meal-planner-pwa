@@ -26,7 +26,7 @@ function handleMetric(metric: Metric) {
     Sentry.setMeasurement(
       `web_vitals.${metric.name.toLowerCase()}`,
       metric.value,
-      metric.name === 'CLS' ? '' : 'millisecond',
+      metric.name === 'CLS' ? '' : 'millisecond'
     )
   })
 }

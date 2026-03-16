@@ -54,7 +54,7 @@ function renderPage() {
       <MemoryRouter>
         <ShoppingListPage />
       </MemoryRouter>
-    </ToastProvider>,
+    </ToastProvider>
   )
 }
 
@@ -101,9 +101,7 @@ describe('ShoppingListPage', () => {
 
     it('shows a helpful description', async () => {
       renderPage()
-      await screen.findByText(
-        'Create one from your meal plan to auto-generate your grocery list.',
-      )
+      await screen.findByText('Create one from your meal plan to auto-generate your grocery list.')
     })
 
     it('clicking "Create a list" opens the create form', async () => {
@@ -199,14 +197,11 @@ describe('ShoppingListPage', () => {
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
       await user.click(screen.getByRole('button', { name: /new shopping list/i }))
-      await user.type(
-        screen.getByPlaceholderText("e.g. This week's groceries"),
-        'Week 1 Groceries',
-      )
+      await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'Week 1 Groceries')
       await user.click(screen.getByRole('button', { name: 'Create List' }))
       await waitFor(() => {
         expect(mockCreateShoppingList).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'Week 1 Groceries' }),
+          expect.objectContaining({ name: 'Week 1 Groceries' })
         )
       })
     })
@@ -272,7 +267,7 @@ describe('ShoppingListPage', () => {
             items: expect.arrayContaining([
               expect.objectContaining({ name: 'pasta', amount: 400, unit: 'g' }),
             ]),
-          }),
+          })
         )
       })
     })
@@ -320,10 +315,8 @@ describe('ShoppingListPage', () => {
       await waitFor(() => {
         expect(mockCreateShoppingList).toHaveBeenCalledWith(
           expect.objectContaining({
-            items: expect.arrayContaining([
-              expect.objectContaining({ name: 'pasta', unit: 'g' }),
-            ]),
-          }),
+            items: expect.arrayContaining([expect.objectContaining({ name: 'pasta', unit: 'g' })]),
+          })
         )
       })
     })

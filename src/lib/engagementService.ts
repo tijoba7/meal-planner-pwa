@@ -49,10 +49,7 @@ export interface EngagementStats {
  * Get all reactions for a recipe, optionally scoped to a specific user.
  * Returns counts and the current user's reaction state.
  */
-export async function getReactions(
-  recipeId: string,
-  userId?: string,
-): Promise<RecipeReactions> {
+export async function getReactions(recipeId: string, userId?: string): Promise<RecipeReactions> {
   const empty: RecipeReactions = {
     userLiked: false,
     userBookmarked: false,
@@ -99,7 +96,7 @@ export async function getReactions(
  */
 export async function toggleLike(
   recipeId: string,
-  userId: string,
+  userId: string
 ): Promise<{ liked: boolean; error: Error | null }> {
   if (!supabase) return { liked: false, error: new Error('Supabase not configured') }
 
@@ -127,7 +124,7 @@ export async function toggleLike(
  */
 export async function toggleBookmark(
   recipeId: string,
-  userId: string,
+  userId: string
 ): Promise<{ bookmarked: boolean; error: Error | null }> {
   if (!supabase) return { bookmarked: false, error: new Error('Supabase not configured') }
 
@@ -156,7 +153,7 @@ export async function toggleBookmark(
 export async function setEmojiReaction(
   recipeId: string,
   userId: string,
-  emojiCode: string | null,
+  emojiCode: string | null
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
 
@@ -230,7 +227,7 @@ export async function addComment(
   recipeId: string,
   userId: string,
   body: string,
-  parentCommentId?: string,
+  parentCommentId?: string
 ): Promise<{ data: CommentWithAuthor | null; error: Error | null }> {
   if (!supabase) return { data: null, error: new Error('Supabase not configured') }
 
@@ -274,16 +271,10 @@ export async function deleteComment(commentId: string): Promise<{ error: Error |
 /**
  * Get aggregate rating and the current user's score for a recipe.
  */
-export async function getRating(
-  recipeId: string,
-  userId?: string,
-): Promise<RecipeRating> {
+export async function getRating(recipeId: string, userId?: string): Promise<RecipeRating> {
   if (!supabase) return { userScore: null, avgScore: null, ratingCount: 0 }
 
-  const { data } = await supabase
-    .from('ratings')
-    .select('user_id, score')
-    .eq('recipe_id', recipeId)
+  const { data } = await supabase.from('ratings').select('user_id, score').eq('recipe_id', recipeId)
 
   if (!data || data.length === 0) return { userScore: null, avgScore: null, ratingCount: 0 }
 
@@ -305,14 +296,13 @@ export async function getRating(
 export async function upsertRating(
   recipeId: string,
   userId: string,
-  score: number,
+  score: number
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
 
-  const { error } = await supabase.from('ratings').upsert(
-    { recipe_id: recipeId, user_id: userId, score },
-    { onConflict: 'user_id,recipe_id' },
-  )
+  const { error } = await supabase
+    .from('ratings')
+    .upsert({ recipe_id: recipeId, user_id: userId, score }, { onConflict: 'user_id,recipe_id' })
   return { error: error ? new Error(error.message) : null }
 }
 
@@ -321,7 +311,7 @@ export async function upsertRating(
  */
 export async function deleteRating(
   recipeId: string,
-  userId: string,
+  userId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
 
@@ -340,30 +330,26 @@ export async function deleteRating(
  * Returns a map of recipeId → stats, suitable for annotating feed cards.
  */
 export async function getEngagementStats(
-  recipeIds: string[],
+  recipeIds: string[]
 ): Promise<Record<string, EngagementStats>> {
   if (!supabase || recipeIds.length === 0) return {}
 
   const [reactionsRes, commentsRes, ratingsRes] = await Promise.all([
-    supabase
-      .from('reactions')
-      .select('recipe_id, type')
-      .in('recipe_id', recipeIds),
-    supabase
-      .from('comments')
-      .select('recipe_id')
-      .in('recipe_id', recipeIds)
-      .is('deleted_at', null),
-    supabase
-      .from('ratings')
-      .select('recipe_id, score')
-      .in('recipe_id', recipeIds),
+    supabase.from('reactions').select('recipe_id, type').in('recipe_id', recipeIds),
+    supabase.from('comments').select('recipe_id').in('recipe_id', recipeIds).is('deleted_at', null),
+    supabase.from('ratings').select('recipe_id, score').in('recipe_id', recipeIds),
   ])
 
   const stats: Record<string, EngagementStats> = {}
   const ensureEntry = (id: string): EngagementStats => {
     if (!stats[id]) {
-      stats[id] = { likeCount: 0, bookmarkCount: 0, commentCount: 0, avgRating: null, ratingCount: 0 }
+      stats[id] = {
+        likeCount: 0,
+        bookmarkCount: 0,
+        commentCount: 0,
+        avgRating: null,
+        ratingCount: 0,
+      }
     }
     return stats[id]
   }

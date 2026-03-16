@@ -11,9 +11,7 @@ export function initSentry() {
     release: import.meta.env.VITE_APP_VERSION as string | undefined,
 
     // Capture unhandled promise rejections automatically
-    integrations: [
-      Sentry.browserTracingIntegration(),
-    ],
+    integrations: [Sentry.browserTracingIntegration()],
 
     // Performance: sample 10% of transactions in production, 100% in dev
     tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,

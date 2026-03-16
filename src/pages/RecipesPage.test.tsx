@@ -45,7 +45,7 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <RecipesPage />
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 
@@ -67,12 +67,18 @@ describe('RecipesPage', () => {
 
     it('renders Add Recipe navigation link', () => {
       renderPage()
-      expect(screen.getByRole('link', { name: '+ Add Recipe' })).toHaveAttribute('href', '/recipes/new')
+      expect(screen.getByRole('link', { name: '+ Add Recipe' })).toHaveAttribute(
+        'href',
+        '/recipes/new'
+      )
     })
 
     it('renders Import URL navigation link', () => {
       renderPage()
-      expect(screen.getByRole('link', { name: 'Import URL' })).toHaveAttribute('href', '/recipes/import')
+      expect(screen.getByRole('link', { name: 'Import URL' })).toHaveAttribute(
+        'href',
+        '/recipes/import'
+      )
     })
   })
 

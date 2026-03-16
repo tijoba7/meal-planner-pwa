@@ -33,7 +33,9 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   private handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     console.error('[ErrorBoundary] Unhandled async error:', event.reason)
-    Sentry.captureException(event.reason instanceof Error ? event.reason : new Error(String(event.reason)))
+    Sentry.captureException(
+      event.reason instanceof Error ? event.reason : new Error(String(event.reason))
+    )
   }
 
   private reset = () => {
@@ -48,9 +50,16 @@ export default class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
           <div className="flex flex-col items-center text-center max-w-sm">
             <div className="w-20 h-20 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
-              <AlertTriangle size={36} strokeWidth={1.5} className="text-red-400 dark:text-red-500" aria-hidden="true" />
+              <AlertTriangle
+                size={36}
+                strokeWidth={1.5}
+                className="text-red-400 dark:text-red-500"
+                aria-hidden="true"
+              />
             </div>
-            <p className="text-base font-semibold text-gray-700 dark:text-gray-200">Something went wrong</p>
+            <p className="text-base font-semibold text-gray-700 dark:text-gray-200">
+              Something went wrong
+            </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
               An unexpected error occurred. Your data is safe.
             </p>

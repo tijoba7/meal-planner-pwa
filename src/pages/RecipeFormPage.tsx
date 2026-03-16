@@ -1,7 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Camera, X } from 'lucide-react'
-import { getRecipe, createRecipe, updateRecipe, minutesToDuration, durationToMinutes, getRecipes } from '../lib/db'
+import {
+  getRecipe,
+  createRecipe,
+  updateRecipe,
+  minutesToDuration,
+  durationToMinutes,
+  getRecipes,
+} from '../lib/db'
 import {
   uploadRecipeImage,
   resizeToDataUrl,
@@ -143,7 +150,10 @@ function IngredientNameInput({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (!showDropdown) { setOpen(true); return }
+      if (!showDropdown) {
+        setOpen(true)
+        return
+      }
       setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
@@ -165,9 +175,16 @@ function IngredientNameInput({
       <input
         type="text"
         value={value}
-        onChange={(e) => { onChange(e.target.value); setOpen(true); setActiveIdx(-1) }}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+          setActiveIdx(-1)
+        }}
         onFocus={() => setOpen(true)}
-        onBlur={() => { setOpen(false); setActiveIdx(-1) }}
+        onBlur={() => {
+          setOpen(false)
+          setActiveIdx(-1)
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={className}
@@ -190,7 +207,11 @@ function IngredientNameInput({
               key={s.name}
               role="option"
               aria-selected={idx === activeIdx}
-              onClick={() => { onSelectSuggestion(s.name, s.unit); setOpen(false); setActiveIdx(-1) }}
+              onClick={() => {
+                onSelectSuggestion(s.name, s.unit)
+                setOpen(false)
+                setActiveIdx(-1)
+              }}
               onMouseEnter={() => setActiveIdx(idx)}
               className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
                 idx === activeIdx
@@ -199,7 +220,11 @@ function IngredientNameInput({
               }`}
             >
               <span>{s.name}</span>
-              {s.unit && <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">{s.unit}</span>}
+              {s.unit && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">
+                  {s.unit}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -281,7 +306,10 @@ function TagPicker({ tags, onChange, suggestions, placeholder = 'Add a tag…' }
           {tag}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); removeTag(tag) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              removeTag(tag)
+            }}
             aria-label={`Remove tag ${tag}`}
             className="hover:text-green-900 dark:hover:text-green-200"
           >
@@ -294,9 +322,16 @@ function TagPicker({ tags, onChange, suggestions, placeholder = 'Add a tag…' }
           ref={inputRef}
           type="text"
           value={inputVal}
-          onChange={(e) => { setInputVal(e.target.value); setOpen(true); setActiveIdx(-1) }}
+          onChange={(e) => {
+            setInputVal(e.target.value)
+            setOpen(true)
+            setActiveIdx(-1)
+          }}
           onFocus={() => setOpen(true)}
-          onBlur={() => { setOpen(false); setActiveIdx(-1) }}
+          onBlur={() => {
+            setOpen(false)
+            setActiveIdx(-1)
+          }}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? placeholder : ''}
           className="w-full text-sm bg-transparent outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 py-1"
@@ -397,8 +432,14 @@ export default function RecipeFormPage() {
         recipeYield: recipe.recipeYield,
         prepTimeMinutes: String(durationToMinutes(recipe.prepTime)),
         cookTimeMinutes: String(durationToMinutes(recipe.cookTime)),
-        ingredients: recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [{ name: '', amount: 1, unit: '' }],
-        instructions: recipe.recipeInstructions.length > 0 ? recipe.recipeInstructions.map((s) => s.text) : [''],
+        ingredients:
+          recipe.recipeIngredient.length > 0
+            ? recipe.recipeIngredient
+            : [{ name: '', amount: 1, unit: '' }],
+        instructions:
+          recipe.recipeInstructions.length > 0
+            ? recipe.recipeInstructions.map((s) => s.text)
+            : [''],
         keywords: recipe.keywords,
         suitableForDiet: recipe.suitableForDiet ?? [],
         recipeCategory: recipe.recipeCategory ?? '',
@@ -644,7 +685,10 @@ export default function RecipeFormPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-10">
-      <Link to={isEdit && id ? `/recipes/${id}` : '/'} className="text-sm text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 inline-block mb-4">
+      <Link
+        to={isEdit && id ? `/recipes/${id}` : '/'}
+        className="text-sm text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 inline-block mb-4"
+      >
         ← {isEdit ? 'Back to recipe' : 'Recipes'}
       </Link>
 
@@ -661,33 +705,51 @@ export default function RecipeFormPage() {
           <input
             type="text"
             value={form.name}
-            onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); clearFieldError('name') }}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, name: e.target.value }))
+              clearFieldError('name')
+            }}
             onBlur={() => handleBlur('name')}
             placeholder="e.g. Spaghetti Bolognese"
             aria-invalid={Boolean(errors.name)}
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.name ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
           />
-          {errors.name && <p className="text-red-500 text-xs mt-1" role="alert">{errors.name}</p>}
+          {errors.name && (
+            <p className="text-red-500 text-xs mt-1" role="alert">
+              {errors.name}
+            </p>
+          )}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            Description
+          </label>
           <textarea
             value={form.description}
-            onChange={(e) => { setForm((f) => ({ ...f, description: e.target.value })); clearFieldError('description') }}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, description: e.target.value }))
+              clearFieldError('description')
+            }}
             onBlur={() => handleBlur('description')}
             placeholder="A short description of the dish…"
             rows={2}
             aria-invalid={Boolean(errors.description)}
             className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.description ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
           />
-          {errors.description && <p className="text-red-500 text-xs mt-1" role="alert">{errors.description}</p>}
+          {errors.description && (
+            <p className="text-red-500 text-xs mt-1" role="alert">
+              {errors.description}
+            </p>
+          )}
         </div>
 
         {/* Photo */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Photo</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+            Photo
+          </label>
           <input
             ref={fileInputRef}
             type="file"
@@ -738,35 +800,61 @@ export default function RecipeFormPage() {
         {/* Times + Servings */}
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label htmlFor="prep-time-minutes" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Prep (min)</label>
+            <label
+              htmlFor="prep-time-minutes"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+            >
+              Prep (min)
+            </label>
             <input
               id="prep-time-minutes"
               type="number"
               min="0"
               value={form.prepTimeMinutes}
-              onChange={(e) => { setForm((f) => ({ ...f, prepTimeMinutes: e.target.value })); clearFieldError('prepTimeMinutes') }}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, prepTimeMinutes: e.target.value }))
+                clearFieldError('prepTimeMinutes')
+              }}
               onBlur={() => handleBlur('prepTimeMinutes')}
               aria-invalid={Boolean(errors.prepTimeMinutes)}
               className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.prepTimeMinutes ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
             />
-            {errors.prepTimeMinutes && <p className="text-red-500 text-xs mt-1" role="alert">{errors.prepTimeMinutes}</p>}
+            {errors.prepTimeMinutes && (
+              <p className="text-red-500 text-xs mt-1" role="alert">
+                {errors.prepTimeMinutes}
+              </p>
+            )}
           </div>
           <div>
-            <label htmlFor="cook-time-minutes" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cook (min)</label>
+            <label
+              htmlFor="cook-time-minutes"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+            >
+              Cook (min)
+            </label>
             <input
               id="cook-time-minutes"
               type="number"
               min="0"
               value={form.cookTimeMinutes}
-              onChange={(e) => { setForm((f) => ({ ...f, cookTimeMinutes: e.target.value })); clearFieldError('cookTimeMinutes') }}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, cookTimeMinutes: e.target.value }))
+                clearFieldError('cookTimeMinutes')
+              }}
               onBlur={() => handleBlur('cookTimeMinutes')}
               aria-invalid={Boolean(errors.cookTimeMinutes)}
               className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.cookTimeMinutes ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
             />
-            {errors.cookTimeMinutes && <p className="text-red-500 text-xs mt-1" role="alert">{errors.cookTimeMinutes}</p>}
+            {errors.cookTimeMinutes && (
+              <p className="text-red-500 text-xs mt-1" role="alert">
+                {errors.cookTimeMinutes}
+              </p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Servings</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Servings
+            </label>
             <input
               type="text"
               value={form.recipeYield}
@@ -779,20 +867,25 @@ export default function RecipeFormPage() {
 
         {/* Tags */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tags</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            Tags
+          </label>
           <TagPicker
             tags={form.keywords}
             onChange={(kws) => setForm((f) => ({ ...f, keywords: kws }))}
             suggestions={keywordSuggestions}
             placeholder="Add tags… (e.g. italian, pasta)"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Press Enter or comma to add · Backspace to remove last</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Press Enter or comma to add · Backspace to remove last
+          </p>
         </div>
 
         {/* Dietary */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
-            Dietary <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(optional)</span>
+            Dietary{' '}
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(optional)</span>
           </label>
           <div className="flex flex-wrap gap-1.5">
             {DIETARY_PREFERENCES.map((pref) => {
@@ -827,7 +920,9 @@ export default function RecipeFormPage() {
         {/* Category & Cuisine */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Category</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Category
+            </label>
             <input
               type="text"
               list={categoryListId}
@@ -837,11 +932,15 @@ export default function RecipeFormPage() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
             <datalist id={categoryListId}>
-              {categorySuggestions.map((c) => <option key={c} value={c} />)}
+              {categorySuggestions.map((c) => (
+                <option key={c} value={c} />
+              ))}
             </datalist>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cuisine</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Cuisine
+            </label>
             <input
               type="text"
               list={cuisineListId}
@@ -851,7 +950,9 @@ export default function RecipeFormPage() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
             <datalist id={cuisineListId}>
-              {cuisineSuggestions.map((c) => <option key={c} value={c} />)}
+              {cuisineSuggestions.map((c) => (
+                <option key={c} value={c} />
+              ))}
             </datalist>
           </div>
         </div>
@@ -859,7 +960,8 @@ export default function RecipeFormPage() {
         {/* Nutrition */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-            Nutrition <span className="text-xs font-normal text-gray-500">(per serving, optional)</span>
+            Nutrition{' '}
+            <span className="text-xs font-normal text-gray-500">(per serving, optional)</span>
           </label>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
@@ -870,7 +972,10 @@ export default function RecipeFormPage() {
               { field: 'nutritionFiber' as const, label: 'Fiber', unit: 'g' },
             ].map(({ field, label, unit }) => (
               <div key={field}>
-                <label htmlFor={`nutrition-${field}`} className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <label
+                  htmlFor={`nutrition-${field}`}
+                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                >
                   {label} <span className="text-gray-500">({unit})</span>
                 </label>
                 <input
@@ -916,8 +1021,13 @@ export default function RecipeFormPage() {
                 />
                 <IngredientNameInput
                   value={ing.name}
-                  onChange={(name) => { updateIngredient(i, 'name', name); clearFieldError('ingredients') }}
-                  onSelectSuggestion={(name, unit) => handleSelectIngredientSuggestion(i, name, unit)}
+                  onChange={(name) => {
+                    updateIngredient(i, 'name', name)
+                    clearFieldError('ingredients')
+                  }}
+                  onSelectSuggestion={(name, unit) =>
+                    handleSelectIngredientSuggestion(i, name, unit)
+                  }
                   allSuggestions={ingredientSuggestions}
                   placeholder="ingredient name"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
@@ -936,7 +1046,9 @@ export default function RecipeFormPage() {
             ))}
           </div>
           {errors.ingredients && (
-            <p className="text-red-500 text-xs mt-1" role="alert">{errors.ingredients}</p>
+            <p className="text-red-500 text-xs mt-1" role="alert">
+              {errors.ingredients}
+            </p>
           )}
           <button
             type="button"
@@ -960,7 +1072,10 @@ export default function RecipeFormPage() {
                 </span>
                 <textarea
                   value={step}
-                  onChange={(e) => { updateInstruction(i, e.target.value); clearFieldError('instructions') }}
+                  onChange={(e) => {
+                    updateInstruction(i, e.target.value)
+                    clearFieldError('instructions')
+                  }}
                   onBlur={() => handleBlur('instructions')}
                   placeholder={`Step ${i + 1}…`}
                   rows={2}
@@ -980,7 +1095,9 @@ export default function RecipeFormPage() {
             ))}
           </div>
           {errors.instructions && (
-            <p className="text-red-500 text-xs mt-1" role="alert">{errors.instructions}</p>
+            <p className="text-red-500 text-xs mt-1" role="alert">
+              {errors.instructions}
+            </p>
           )}
           <button
             type="button"

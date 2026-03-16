@@ -118,7 +118,9 @@ export default function PublicProfilePage() {
   if (notFound || !profile) {
     return (
       <div className="max-w-lg mx-auto px-4 py-12 text-center text-gray-500 dark:text-gray-400">
-        <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">Profile not found</p>
+        <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Profile not found
+        </p>
         <p className="text-sm mb-6">This user may not exist or their profile is private.</p>
         <Link
           to="/"
@@ -146,7 +148,9 @@ export default function PublicProfilePage() {
       <div className="flex flex-col items-center gap-4 mb-8">
         <Avatar profile={profile} size="xl" />
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{profile.display_name}</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            {profile.display_name}
+          </h1>
           {profile.bio && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 max-w-sm">{profile.bio}</p>
           )}
@@ -192,7 +196,11 @@ export default function PublicProfilePage() {
                   disabled={actionBusy}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
-                  {actionBusy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} strokeWidth={2} />}
+                  {actionBusy ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Check size={13} strokeWidth={2} />
+                  )}
                   Accept
                 </button>
                 <button
@@ -227,9 +235,7 @@ export default function PublicProfilePage() {
               </span>
             )}
 
-            {actionError && (
-              <p className="text-xs text-red-500 mt-1">{actionError}</p>
-            )}
+            {actionError && <p className="text-xs text-red-500 mt-1">{actionError}</p>}
           </div>
         )}
       </div>
@@ -240,7 +246,7 @@ export default function PublicProfilePage() {
             Dietary preferences
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {profile.dietary_preferences.map(pref => (
+            {profile.dietary_preferences.map((pref) => (
               <span
                 key={pref}
                 className="px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium border border-green-200 dark:border-green-800"

@@ -123,9 +123,7 @@ function StepTimers({ text }: StepTimersProps) {
   }
 
   function toggleTimer(id: string) {
-    setTimers((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, running: !t.running } : t))
-    )
+    setTimers((prev) => prev.map((t) => (t.id === id ? { ...t, running: !t.running } : t)))
   }
 
   function resetTimer(id: string) {
@@ -204,11 +202,14 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   // Wake Lock
   useEffect(() => {
     if ('wakeLock' in navigator) {
-      navigator.wakeLock.request('screen').then((lock) => {
-        wakeLockRef.current = lock
-      }).catch(() => {
-        // Wake Lock unavailable — ignore silently
-      })
+      navigator.wakeLock
+        .request('screen')
+        .then((lock) => {
+          wakeLockRef.current = lock
+        })
+        .catch(() => {
+          // Wake Lock unavailable — ignore silently
+        })
     }
     return () => {
       wakeLockRef.current?.release().catch(() => {})
@@ -233,7 +234,13 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   if (!step) return null
 
   return (
-    <div ref={dialogRef} className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col animate-fade-in" role="dialog" aria-modal="true" aria-label="Cooking mode">
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cooking mode"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">

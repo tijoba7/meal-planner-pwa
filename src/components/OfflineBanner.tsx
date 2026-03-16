@@ -38,9 +38,7 @@ export default function OfflineBanner() {
     >
       <div
         className={`rounded-full px-4 py-2 flex items-center gap-2 text-sm font-medium shadow-lg pointer-events-auto transition-colors ${
-          isOnline
-            ? 'bg-green-600 text-white'
-            : 'bg-gray-900 dark:bg-gray-700 text-white'
+          isOnline ? 'bg-green-600 text-white' : 'bg-gray-900 dark:bg-gray-700 text-white'
         }`}
       >
         {isOnline ? (

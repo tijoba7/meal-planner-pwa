@@ -26,7 +26,9 @@ export default function ResetPasswordPage() {
     }
 
     // Also listen — Supabase fires PASSWORD_RECOVERY event when the link is used
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
     })
     return () => subscription.unsubscribe()
@@ -37,10 +39,18 @@ export default function ResetPasswordPage() {
     if (user && !isRecovery) navigate('/', { replace: true })
   }, [user, isRecovery, navigate])
 
-  return isRecovery ? <UpdatePasswordForm updatePassword={updatePassword} navigate={navigate} /> : <RequestResetForm resetPassword={resetPassword} />
+  return isRecovery ? (
+    <UpdatePasswordForm updatePassword={updatePassword} navigate={navigate} />
+  ) : (
+    <RequestResetForm resetPassword={resetPassword} />
+  )
 }
 
-function RequestResetForm({ resetPassword }: { resetPassword: (email: string) => Promise<{ error: Error | null }> }) {
+function RequestResetForm({
+  resetPassword,
+}: {
+  resetPassword: (email: string) => Promise<{ error: Error | null }>
+}) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,13 +71,16 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
       <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="mx-auto w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-              <Mail size={28} className="text-green-600 dark:text-green-400" strokeWidth={1.5} />
-            </div>
+            <Mail size={28} className="text-green-600 dark:text-green-400" strokeWidth={1.5} />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Email sent</h1>
           <p className="text-gray-600 dark:text-gray-400">
             Check <strong>{email}</strong> for a password reset link.
           </p>
-          <Link to="/auth/login" className="block text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
+          <Link
+            to="/auth/login"
+            className="block text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+          >
             Back to sign in
           </Link>
         </div>
@@ -79,13 +92,20 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reset your password</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Enter your email and we'll send a reset link.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Reset your password
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+            Enter your email and we'll send a reset link.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Email
             </label>
             <input
@@ -112,7 +132,10 @@ function RequestResetForm({ resetPassword }: { resetPassword: (email: string) =>
         </form>
 
         <p className="text-center text-sm">
-          <Link to="/auth/login" className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+          <Link
+            to="/auth/login"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
             ← Back to sign in
           </Link>
         </p>
@@ -159,12 +182,17 @@ function UpdatePasswordForm({
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Set new password</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Choose a strong password for your account.</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+            Choose a strong password for your account.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="new-password"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               New password
             </label>
             <input
@@ -180,7 +208,10 @@ function UpdatePasswordForm({
           </div>
 
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="confirm-password"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Confirm password
             </label>
             <input

@@ -44,7 +44,7 @@ export interface GroupRecipeWithAuthor {
 export async function createGroup(
   name: string,
   description: string | null,
-  userId: string,
+  userId: string
 ): Promise<{ data: Group | null; error: Error | null }> {
   if (!supabase) return { data: null, error: new Error('Supabase not configured') }
 
@@ -70,7 +70,9 @@ export async function getMyGroups(userId: string): Promise<GroupWithMeta[]> {
   type MembershipRow = { role: 'admin' | 'member'; group_id: string; groups: Group | null }
   const { data: memberships } = await supabase
     .from('group_members')
-    .select('role, group_id, groups(id, name, description, avatar_url, created_by, created_at, updated_at)')
+    .select(
+      'role, group_id, groups(id, name, description, avatar_url, created_by, created_at, updated_at)'
+    )
     .eq('user_id', userId)
     .order('joined_at', { ascending: true })
     // Supabase SDK cannot infer the renamed join shape — override required
@@ -105,11 +107,7 @@ export async function getMyGroups(userId: string): Promise<GroupWithMeta[]> {
  */
 export async function getGroup(groupId: string): Promise<Group | null> {
   if (!supabase) return null
-  const { data } = await supabase
-    .from('groups')
-    .select('*')
-    .eq('id', groupId)
-    .maybeSingle()
+  const { data } = await supabase.from('groups').select('*').eq('id', groupId).maybeSingle()
   return (data as Group | null) ?? null
 }
 
@@ -118,7 +116,7 @@ export async function getGroup(groupId: string): Promise<Group | null> {
  */
 export async function updateGroup(
   groupId: string,
-  updates: { name?: string; description?: string | null },
+  updates: { name?: string; description?: string | null }
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const patch: Record<string, unknown> = {}
@@ -169,7 +167,7 @@ export async function getGroupMembers(groupId: string): Promise<GroupMemberWithP
  */
 export async function getMyGroupRole(
   groupId: string,
-  userId: string,
+  userId: string
 ): Promise<'admin' | 'member' | null> {
   if (!supabase) return null
   const { data } = await supabase
@@ -187,7 +185,7 @@ export async function getMyGroupRole(
  */
 export async function inviteMember(
   groupId: string,
-  userId: string,
+  userId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -201,7 +199,7 @@ export async function inviteMember(
  */
 export async function leaveGroup(
   groupId: string,
-  userId: string,
+  userId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -217,7 +215,7 @@ export async function leaveGroup(
  */
 export async function removeMember(
   groupId: string,
-  userId: string,
+  userId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -234,7 +232,7 @@ export async function removeMember(
 export async function updateMemberRole(
   groupId: string,
   userId: string,
-  role: 'admin' | 'member',
+  role: 'admin' | 'member'
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -254,7 +252,7 @@ export async function updateMemberRole(
 export async function shareRecipeToGroup(
   groupId: string,
   recipeId: string,
-  userId: string,
+  userId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -269,7 +267,11 @@ export async function shareRecipeToGroup(
  */
 export async function getGroupFeed(groupId: string): Promise<CloudRecipeWithAuthor[]> {
   if (!supabase) return []
-  type GroupRecipeRow = { recipe_id: string; added_at: string; recipes_cloud: CloudRecipeWithAuthor }
+  type GroupRecipeRow = {
+    recipe_id: string
+    added_at: string
+    recipes_cloud: CloudRecipeWithAuthor
+  }
   const { data } = await supabase
     .from('group_recipes')
     .select('recipe_id, added_at, recipes_cloud(*, profiles(display_name, avatar_url))')
@@ -289,7 +291,7 @@ export async function getGroupFeed(groupId: string): Promise<CloudRecipeWithAuth
  */
 export async function removeRecipeFromGroup(
   groupId: string,
-  recipeId: string,
+  recipeId: string
 ): Promise<{ error: Error | null }> {
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
@@ -306,10 +308,7 @@ export async function removeRecipeFromGroup(
  */
 export async function getGroupRecipeIds(groupId: string): Promise<Set<string>> {
   if (!supabase) return new Set()
-  const { data } = await supabase
-    .from('group_recipes')
-    .select('recipe_id')
-    .eq('group_id', groupId)
+  const { data } = await supabase.from('group_recipes').select('recipe_id').eq('group_id', groupId)
   // data is typed as Pick<GroupRecipe, 'recipe_id'>[] | null by the SDK
   return new Set(data?.map((r) => r.recipe_id) ?? [])
 }

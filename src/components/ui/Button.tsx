@@ -11,12 +11,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary:
-    'bg-green-600 text-white hover:bg-green-700 disabled:bg-green-600/50',
+  primary: 'bg-green-600 text-white hover:bg-green-700 disabled:bg-green-600/50',
   secondary:
     'border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
-  danger:
-    'bg-red-500 text-white hover:bg-red-600 disabled:bg-red-500/50',
+  danger: 'bg-red-500 text-white hover:bg-red-600 disabled:bg-red-500/50',
   ghost:
     'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200',
 }
@@ -51,7 +49,16 @@ export function Button({
           fill="none"
           aria-hidden="true"
         >
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="10" strokeLinecap="round" />
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeDasharray="32"
+            strokeDashoffset="10"
+            strokeLinecap="round"
+          />
         </svg>
       )}
       {children}

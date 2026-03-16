@@ -1,6 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, X, BookOpen, Plus, Copy, LayoutTemplate, Trash2, GripVertical, History } from 'lucide-react'
+import {
+  AlertTriangle,
+  X,
+  BookOpen,
+  Plus,
+  Copy,
+  LayoutTemplate,
+  Trash2,
+  GripVertical,
+  History,
+} from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -53,7 +63,11 @@ function formatDayHeader(date: Date): string {
 function formatWeekRange(monday: Date): string {
   const sunday = addDays(monday, 6)
   const start = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const end = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const end = sunday.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
   return `${start} – ${end}`
 }
 
@@ -80,7 +94,7 @@ function QuickPickCard({ recipe, onClick }: { recipe: Recipe; onClick: () => voi
   const initials = recipe.name
     .split(' ')
     .slice(0, 2)
-    .map(w => w[0])
+    .map((w) => w[0])
     .join('')
     .toUpperCase()
   return (
@@ -158,13 +172,15 @@ export default function PlannerPage() {
         if (!cancelled) setMealPlan(newPlan)
       }
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [weekStart])
 
   useEffect(() => {
     if (!copyTarget) return
     setCopyTargetPlan(undefined)
-    getMealPlanForWeek(copyTarget).then(plan => setCopyTargetPlan(plan ?? null))
+    getMealPlanForWeek(copyTarget).then((plan) => setCopyTargetPlan(plan ?? null))
   }, [copyTarget])
 
   useEffect(() => {
@@ -173,11 +189,12 @@ export default function PlannerPage() {
 
   useEffect(() => {
     if (!historyOpen) return
-    getMealPlans().then(plans => {
+    getMealPlans().then((plans) => {
       const filtered = plans
-        .filter(p =>
-          p.weekStartDate !== weekStart &&
-          Object.values(p.days).some(d => Object.keys(d).length > 0)
+        .filter(
+          (p) =>
+            p.weekStartDate !== weekStart &&
+            Object.values(p.days).some((d) => Object.keys(d).length > 0)
         )
         .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
       setHistMealPlans(filtered)
@@ -196,7 +213,9 @@ export default function PlannerPage() {
         if (zone) {
           const date = zone.dataset.dropDate!
           const meal = zone.dataset.dropMeal as MealType
-          setDragOver(prev => (prev?.date === date && prev?.meal === meal ? prev : { date, meal }))
+          setDragOver((prev) =>
+            prev?.date === date && prev?.meal === meal ? prev : { date, meal }
+          )
         } else {
           setDragOver(null)
         }
@@ -211,21 +230,33 @@ export default function PlannerPage() {
   }, [])
 
   const navigateWeek = (delta: number) => {
-    setWeekStart(prev => {
+    setWeekStart((prev) => {
       const d = new Date(prev + 'T00:00:00')
       d.setDate(d.getDate() + delta * 7)
       return toISODate(d)
     })
   }
 
-  const anyModalOpen = pickerTarget !== null || copyModalOpen || templateGalleryOpen || saveTemplateOpen || applyTemplateConfirm !== null || historyOpen
+  const anyModalOpen =
+    pickerTarget !== null ||
+    copyModalOpen ||
+    templateGalleryOpen ||
+    saveTemplateOpen ||
+    applyTemplateConfirm !== null ||
+    historyOpen
 
   useKeyboardShortcuts({
-    ArrowLeft: () => { if (!anyModalOpen) navigateWeek(-1) },
-    ArrowRight: () => { if (!anyModalOpen) navigateWeek(1) },
+    ArrowLeft: () => {
+      if (!anyModalOpen) navigateWeek(-1)
+    },
+    ArrowRight: () => {
+      if (!anyModalOpen) navigateWeek(1)
+    },
     Escape: () => {
-      if (pickerTarget) { setPickerTarget(null); setSearch('') }
-      else if (copyModalOpen) setCopyModalOpen(false)
+      if (pickerTarget) {
+        setPickerTarget(null)
+        setSearch('')
+      } else if (copyModalOpen) setCopyModalOpen(false)
       else if (applyTemplateConfirm) setApplyTemplateConfirm(null)
       else if (saveTemplateOpen) setSaveTemplateOpen(false)
       else if (templateGalleryOpen) setTemplateGalleryOpen(false)
@@ -241,7 +272,7 @@ export default function PlannerPage() {
   }
 
   const navigateCopyTarget = (delta: number) => {
-    setCopyTarget(prev => {
+    setCopyTarget((prev) => {
       const d = new Date(prev + 'T00:00:00')
       d.setDate(d.getDate() + delta * 7)
       return toISODate(d)
@@ -306,7 +337,7 @@ export default function PlannerPage() {
     srcMeal: MealType,
     srcIndex: number,
     tgtDate: string,
-    tgtMeal: MealType,
+    tgtMeal: MealType
   ) => {
     if (!mealPlan) return
     if (srcDate === tgtDate && srcMeal === tgtMeal) return
@@ -381,7 +412,7 @@ export default function PlannerPage() {
 
   const deleteTemplate = async (templateId: string) => {
     await deleteMealPlanTemplate(templateId)
-    setTemplates(prev => prev.filter(t => t.id !== templateId))
+    setTemplates((prev) => prev.filter((t) => t.id !== templateId))
   }
 
   const copyFromHistory = async (sourcePlan: MealPlan) => {
@@ -419,7 +450,7 @@ export default function PlannerPage() {
     if (!isDraggingRef.current) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    setDragOver(prev => (prev?.date === date && prev?.meal === meal ? prev : { date, meal }))
+    setDragOver((prev) => (prev?.date === date && prev?.meal === meal ? prev : { date, meal }))
   }
 
   const handleSlotDragLeave = (e: React.DragEvent) => {
@@ -443,7 +474,7 @@ export default function PlannerPage() {
     _e: React.TouchEvent,
     date: string,
     meal: MealType,
-    index: number,
+    index: number
   ) => {
     touchSourceRef.current = { date, meal, index }
     touchTimerRef.current = setTimeout(() => {
@@ -470,7 +501,7 @@ export default function PlannerPage() {
           touchSourceRef.current.meal,
           touchSourceRef.current.index,
           tgtDate,
-          tgtMeal,
+          tgtMeal
         )
       }
     }
@@ -484,18 +515,27 @@ export default function PlannerPage() {
 
   const weeklyNutrition = useMemo(() => {
     if (!mealPlan) return null
-    const recipeMap = new Map(recipes.map(r => [r.id, r]))
+    const recipeMap = new Map(recipes.map((r) => [r.id, r]))
     const startDate = new Date(weekStart + 'T00:00:00')
     const weekDates = Array.from({ length: 7 }, (_, i) => toISODate(addDays(startDate, i)))
 
     let hasData = false
-    let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0
+    let totalCal = 0,
+      totalProtein = 0,
+      totalCarbs = 0,
+      totalFat = 0
     let daysWithData = 0
-    const byDay: Record<string, { cal: number; protein: number; carbs: number; fat: number } | null> = {}
+    const byDay: Record<
+      string,
+      { cal: number; protein: number; carbs: number; fat: number } | null
+    > = {}
 
     for (const date of weekDates) {
       const dayPlan = mealPlan.days[date] ?? {}
-      let dayCal = 0, dayProtein = 0, dayCarbs = 0, dayFat = 0
+      let dayCal = 0,
+        dayProtein = 0,
+        dayCarbs = 0,
+        dayFat = 0
       let dayHasData = false
 
       for (const slot of Object.values(dayPlan)) {
@@ -538,12 +578,15 @@ export default function PlannerPage() {
         carbs: Math.round(totalCarbs),
         fat: Math.round(totalFat),
       },
-      dailyAvg: daysWithData > 0 ? {
-        cal: Math.round(totalCal / daysWithData),
-        protein: Math.round(totalProtein / daysWithData),
-        carbs: Math.round(totalCarbs / daysWithData),
-        fat: Math.round(totalFat / daysWithData),
-      } : null,
+      dailyAvg:
+        daysWithData > 0
+          ? {
+              cal: Math.round(totalCal / daysWithData),
+              protein: Math.round(totalProtein / daysWithData),
+              carbs: Math.round(totalCarbs / daysWithData),
+              fat: Math.round(totalFat / daysWithData),
+            }
+          : null,
       daysWithData,
       byDay,
     }
@@ -557,7 +600,7 @@ export default function PlannerPage() {
   // Load recent recipe IDs from past meal plans whenever the picker opens
   useEffect(() => {
     if (!pickerTarget) return
-    getMealPlans().then(plans => {
+    getMealPlans().then((plans) => {
       const sorted = [...plans].sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
       const seen = new Set<string>()
       const ids: string[] = []
@@ -583,32 +626,42 @@ export default function PlannerPage() {
   // favoriteRecipes and recentRecipes are computed for a planned "smart picker"
   // UI that surfaces favorites + recents ahead of the full list. Inline the deps
   // here so they're ready when that section is wired up.
-  const favoriteRecipes = useMemo(() => recipes.filter(r => r.isFavorite), [recipes])
+  const favoriteRecipes = useMemo(() => recipes.filter((r) => r.isFavorite), [recipes])
   const recentRecipes = useMemo(() => {
-    const favoriteIds = new Set(favoriteRecipes.map(r => r.id))
+    const favoriteIds = new Set(favoriteRecipes.map((r) => r.id))
     return recentRecipeIds
-      .map(id => recipes.find(r => r.id === id))
+      .map((id) => recipes.find((r) => r.id === id))
       .filter((r): r is Recipe => r != null && !favoriteIds.has(r.id))
       .slice(0, 12)
   }, [recentRecipeIds, recipes, favoriteRecipes])
 
-  const filteredRecipes = (search ? recipes : [...favoriteRecipes, ...recentRecipes.filter(r => !favoriteRecipes.includes(r)), ...recipes.filter(r => !favoriteRecipes.includes(r) && !recentRecipes.includes(r))]).filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.keywords.some(t => t.toLowerCase().includes(search.toLowerCase()))
+  const filteredRecipes = (
+    search
+      ? recipes
+      : [
+          ...favoriteRecipes,
+          ...recentRecipes.filter((r) => !favoriteRecipes.includes(r)),
+          ...recipes.filter((r) => !favoriteRecipes.includes(r) && !recentRecipes.includes(r)),
+        ]
+  ).filter(
+    (r) =>
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.keywords.some((t) => t.toLowerCase().includes(search.toLowerCase()))
   )
 
   const mondayDate = new Date(weekStart + 'T00:00:00')
   const copyTargetMonday = copyTarget ? new Date(copyTarget + 'T00:00:00') : null
   const copyTargetHasMeals =
-    copyTargetPlan != null && Object.values(copyTargetPlan.days).some(d => Object.keys(d).length > 0)
+    copyTargetPlan != null &&
+    Object.values(copyTargetPlan.days).some((d) => Object.keys(d).length > 0)
   const sourceHasMeals =
-    mealPlan != null && Object.values(mealPlan.days).some(d => Object.keys(d).length > 0)
+    mealPlan != null && Object.values(mealPlan.days).some((d) => Object.keys(d).length > 0)
 
   // Dietary conflict detection for current week
   const userDietaryPrefs = getDietaryPrefs()
   const dietaryConflictRecipes = useMemo(() => {
     if (!mealPlan || userDietaryPrefs.length === 0) return []
-    const recipeMap = new Map(recipes.map(r => [r.id, r]))
+    const recipeMap = new Map(recipes.map((r) => [r.id, r]))
     const conflicting: string[] = []
     for (const dayPlan of Object.values(mealPlan.days)) {
       for (const rawSlot of Object.values(dayPlan)) {
@@ -618,8 +671,8 @@ export default function PlannerPage() {
           const recipe = recipeMap.get(recipeId)
           if (!recipe) continue
           const flagged = detectAllergenIngredients(
-            recipe.recipeIngredient.map(i => i.name),
-            userDietaryPrefs,
+            recipe.recipeIngredient.map((i) => i.name),
+            userDietaryPrefs
           )
           if (flagged.size > 0 && !conflicting.includes(recipe.name)) {
             conflicting.push(recipe.name)
@@ -643,7 +696,10 @@ export default function PlannerPage() {
         {/* Day skeletons */}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+            >
               <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <Skeleton className="h-4 w-28" />
               </div>
@@ -742,15 +798,20 @@ export default function PlannerPage() {
         {weekDays.map(({ date, label }) => {
           const dayPlan = mealPlan?.days[date] ?? {}
           return (
-            <div key={date} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div
+              key={date}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+            >
               <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">{label}</h3>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {MEAL_TYPES.map(meal => {
+                {MEAL_TYPES.map((meal) => {
                   const rawSlot = dayPlan[meal]
                   const slot = rawSlot ? normalizeMealSlot(rawSlot) : null
-                  const slotRecipes = slot ? slot.recipes.map(r => recipes.find(rec => rec.id === r.recipeId)) : []
+                  const slotRecipes = slot
+                    ? slot.recipes.map((r) => recipes.find((rec) => rec.id === r.recipeId))
+                    : []
 
                   const isDropTarget = dragOver?.date === date && dragOver?.meal === meal
                   return (
@@ -758,9 +819,9 @@ export default function PlannerPage() {
                       key={meal}
                       data-drop-date={date}
                       data-drop-meal={meal}
-                      onDragOver={e => handleSlotDragOver(e, date, meal)}
+                      onDragOver={(e) => handleSlotDragOver(e, date, meal)}
                       onDragLeave={handleSlotDragLeave}
-                      onDrop={e => handleSlotDrop(e, date, meal)}
+                      onDrop={(e) => handleSlotDrop(e, date, meal)}
                       className={`px-4 py-3 transition-colors${isDropTarget ? ' bg-green-50 dark:bg-green-900/20 ring-2 ring-inset ring-green-400 dark:ring-green-500' : ''}`}
                     >
                       <div className="flex items-start gap-3">
@@ -777,9 +838,9 @@ export default function PlannerPage() {
                               <div
                                 key={idx}
                                 draggable
-                                onDragStart={e => handleDragStart(e, date, meal, idx)}
+                                onDragStart={(e) => handleDragStart(e, date, meal, idx)}
                                 onDragEnd={handleDragEnd}
-                                onTouchStart={e => handleRecipeTouchStart(e, date, meal, idx)}
+                                onTouchStart={(e) => handleRecipeTouchStart(e, date, meal, idx)}
                                 onTouchEnd={handleRecipeTouchEnd}
                                 className={`flex items-center justify-between gap-2 select-none${isDragged ? ' opacity-40' : ''}`}
                               >
@@ -834,7 +895,9 @@ export default function PlannerPage() {
                     <span className="font-semibold text-gray-700 dark:text-gray-300">
                       {weeklyNutrition.byDay[date]!.cal.toLocaleString()} kcal
                     </span>
-                    <span className="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+                    <span className="text-gray-300 dark:text-gray-600" aria-hidden="true">
+                      ·
+                    </span>
                     <span>P&nbsp;{weeklyNutrition.byDay[date]!.protein}g</span>
                     <span>C&nbsp;{weeklyNutrition.byDay[date]!.carbs}g</span>
                     <span>F&nbsp;{weeklyNutrition.byDay[date]!.fat}g</span>
@@ -850,7 +913,9 @@ export default function PlannerPage() {
       {weeklyNutrition && (
         <div className="mt-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Weekly Nutrition</h3>
+            <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">
+              Weekly Nutrition
+            </h3>
             <span className="text-xs text-gray-400 dark:text-gray-500">
               {weeklyNutrition.daysWithData} of 7 days tracked
             </span>
@@ -858,20 +923,42 @@ export default function PlannerPage() {
           <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-700">
             {(
               [
-                { label: 'Calories', total: weeklyNutrition.total.cal, avg: weeklyNutrition.dailyAvg?.cal, unit: '' },
-                { label: 'Protein', total: weeklyNutrition.total.protein, avg: weeklyNutrition.dailyAvg?.protein, unit: 'g' },
-                { label: 'Carbs', total: weeklyNutrition.total.carbs, avg: weeklyNutrition.dailyAvg?.carbs, unit: 'g' },
-                { label: 'Fat', total: weeklyNutrition.total.fat, avg: weeklyNutrition.dailyAvg?.fat, unit: 'g' },
+                {
+                  label: 'Calories',
+                  total: weeklyNutrition.total.cal,
+                  avg: weeklyNutrition.dailyAvg?.cal,
+                  unit: '',
+                },
+                {
+                  label: 'Protein',
+                  total: weeklyNutrition.total.protein,
+                  avg: weeklyNutrition.dailyAvg?.protein,
+                  unit: 'g',
+                },
+                {
+                  label: 'Carbs',
+                  total: weeklyNutrition.total.carbs,
+                  avg: weeklyNutrition.dailyAvg?.carbs,
+                  unit: 'g',
+                },
+                {
+                  label: 'Fat',
+                  total: weeklyNutrition.total.fat,
+                  avg: weeklyNutrition.dailyAvg?.fat,
+                  unit: 'g',
+                },
               ] as const
             ).map(({ label, total, avg, unit }) => (
               <div key={label} className="p-3 text-center">
                 <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{label}</p>
                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                  {total.toLocaleString()}{unit}
+                  {total.toLocaleString()}
+                  {unit}
                 </p>
                 {avg != null && (
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                    ~{avg.toLocaleString()}{unit}/day
+                    ~{avg.toLocaleString()}
+                    {unit}/day
                   </p>
                 )}
               </div>
@@ -888,7 +975,7 @@ export default function PlannerPage() {
         >
           <div
             className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h3 className="font-bold text-gray-800 dark:text-gray-100">Copy week to…</h3>
@@ -948,7 +1035,9 @@ export default function PlannerPage() {
                 </button>
                 <button
                   onClick={executeCopy}
-                  disabled={!sourceHasMeals || copyTarget === weekStart || copyTargetPlan === undefined}
+                  disabled={
+                    !sourceHasMeals || copyTarget === weekStart || copyTargetPlan === undefined
+                  }
                   className="flex-1 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {copyTargetHasMeals ? 'Copy anyway' : 'Copy'}
@@ -973,7 +1062,7 @@ export default function PlannerPage() {
         >
           <div
             className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-3">
@@ -992,7 +1081,7 @@ export default function PlannerPage() {
                 type="search"
                 placeholder="Search recipes…"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 autoFocus
               />
@@ -1007,11 +1096,13 @@ export default function PlannerPage() {
                         Favorites
                       </p>
                       <div className="grid grid-cols-3 gap-2">
-                        {favoriteRecipes.slice(0, 6).map(recipe => (
+                        {favoriteRecipes.slice(0, 6).map((recipe) => (
                           <QuickPickCard
                             key={recipe.id}
                             recipe={recipe}
-                            onClick={() => addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)}
+                            onClick={() =>
+                              addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)
+                            }
                           />
                         ))}
                       </div>
@@ -1023,11 +1114,13 @@ export default function PlannerPage() {
                         Recent
                       </p>
                       <div className="grid grid-cols-3 gap-2">
-                        {recentRecipes.slice(0, 6).map(recipe => (
+                        {recentRecipes.slice(0, 6).map((recipe) => (
                           <QuickPickCard
                             key={recipe.id}
                             recipe={recipe}
-                            onClick={() => addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)}
+                            onClick={() =>
+                              addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)
+                            }
                           />
                         ))}
                       </div>
@@ -1037,7 +1130,12 @@ export default function PlannerPage() {
               )}
               {filteredRecipes.length === 0 ? (
                 <div className="flex flex-col items-center text-center py-10 px-4">
-                  <BookOpen size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
+                  <BookOpen
+                    size={32}
+                    strokeWidth={1.5}
+                    className="text-gray-300 dark:text-gray-600 mb-3"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                     {recipes.length === 0 ? 'No recipes yet' : 'No recipes found'}
                   </p>
@@ -1049,18 +1147,24 @@ export default function PlannerPage() {
                       Add your first recipe
                     </Link>
                   ) : (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try a different search term.</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Try a different search term.
+                    </p>
                   )}
                 </div>
               ) : (
-                filteredRecipes.map(recipe => (
+                filteredRecipes.map((recipe) => (
                   <button
                     key={recipe.id}
                     onClick={() => addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)}
                     className="w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-green-50 dark:hover:bg-green-900/20 active:bg-green-100 dark:active:bg-green-900/30"
                   >
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{recipe.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{recipe.description}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {recipe.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                      {recipe.description}
+                    </p>
                   </button>
                 ))
               )}
@@ -1077,7 +1181,7 @@ export default function PlannerPage() {
         >
           <div
             className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h3 className="font-bold text-gray-800 dark:text-gray-100">Meal plan templates</h3>
@@ -1093,20 +1197,32 @@ export default function PlannerPage() {
             <div className="overflow-y-auto flex-1">
               {templates.length === 0 ? (
                 <div className="flex flex-col items-center text-center py-10 px-4">
-                  <LayoutTemplate size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No templates yet</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Save a week as a template to reuse it later.</p>
+                  <LayoutTemplate
+                    size={32}
+                    strokeWidth={1.5}
+                    className="text-gray-300 dark:text-gray-600 mb-3"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    No templates yet
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    Save a week as a template to reuse it later.
+                  </p>
                 </div>
               ) : (
-                templates.map(template => (
+                templates.map((template) => (
                   <div
                     key={template.id}
                     className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{template.name}</p>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                        {template.name}
+                      </p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {Object.keys(template.days).length} day{Object.keys(template.days).length !== 1 ? 's' : ''}
+                        {Object.keys(template.days).length} day
+                        {Object.keys(template.days).length !== 1 ? 's' : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-3 shrink-0">
@@ -1141,7 +1257,9 @@ export default function PlannerPage() {
                 Save this week as template
               </button>
               {!sourceHasMeals && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">Add meals to save as a template.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">
+                  Add meals to save as a template.
+                </p>
               )}
             </div>
           </div>
@@ -1152,26 +1270,38 @@ export default function PlannerPage() {
       {saveTemplateOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => { setSaveTemplateOpen(false); setTemplateName('') }}
+          onClick={() => {
+            setSaveTemplateOpen(false)
+            setTemplateName('')
+          }}
         >
           <div
             className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
-            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">Save as template</h4>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Give this week's meals a name so you can reuse them.</p>
+            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">
+              Save as template
+            </h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Give this week's meals a name so you can reuse them.
+            </p>
             <input
               type="text"
               placeholder="e.g. High-protein week"
               value={templateName}
-              onChange={e => setTemplateName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && templateName.trim()) saveAsTemplate() }}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && templateName.trim()) saveAsTemplate()
+              }}
               className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
               autoFocus
             />
             <div className="flex gap-3">
               <button
-                onClick={() => { setSaveTemplateOpen(false); setTemplateName('') }}
+                onClick={() => {
+                  setSaveTemplateOpen(false)
+                  setTemplateName('')
+                }}
                 className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
@@ -1196,7 +1326,7 @@ export default function PlannerPage() {
         >
           <div
             className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h3 className="font-bold text-gray-800 dark:text-gray-100">Meal plan history</h3>
@@ -1212,12 +1342,21 @@ export default function PlannerPage() {
             <div className="overflow-y-auto flex-1">
               {histMealPlans.length === 0 ? (
                 <div className="flex flex-col items-center text-center py-10 px-4">
-                  <History size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No history yet</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Past weeks with meals will appear here.</p>
+                  <History
+                    size={32}
+                    strokeWidth={1.5}
+                    className="text-gray-300 dark:text-gray-600 mb-3"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    No history yet
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    Past weeks with meals will appear here.
+                  </p>
                 </div>
               ) : (
-                histMealPlans.map(plan => {
+                histMealPlans.map((plan) => {
                   const monday = new Date(plan.weekStartDate + 'T00:00:00')
                   const mealCount = countMeals(plan)
                   return (
@@ -1226,14 +1365,19 @@ export default function PlannerPage() {
                       className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{formatWeekRange(monday)}</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                          {formatWeekRange(monday)}
+                        </p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                           {mealCount} meal{mealCount !== 1 ? 's' : ''}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 ml-3 shrink-0">
                         <button
-                          onClick={() => { setWeekStart(plan.weekStartDate); setHistoryOpen(false) }}
+                          onClick={() => {
+                            setWeekStart(plan.weekStartDate)
+                            setHistoryOpen(false)
+                          }}
                           className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           View
@@ -1262,7 +1406,7 @@ export default function PlannerPage() {
         >
           <div
             className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
               Apply "{applyTemplateConfirm.name}"?

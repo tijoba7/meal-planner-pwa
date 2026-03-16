@@ -106,7 +106,9 @@ function GroupCard({ group }: { group: GroupWithMeta }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">{group.name}</p>
+          <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+            {group.name}
+          </p>
           {group.userRole === 'admin' && (
             <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-medium">
               Admin
@@ -114,7 +116,9 @@ function GroupCard({ group }: { group: GroupWithMeta }) {
           )}
         </div>
         {group.description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{group.description}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+            {group.description}
+          </p>
         )}
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
           {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
@@ -184,7 +188,11 @@ export default function GroupsPage() {
         </div>
       ) : groups.length === 0 ? (
         <div className="text-center py-16">
-          <UsersRound size={36} strokeWidth={1.25} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+          <UsersRound
+            size={36}
+            strokeWidth={1.25}
+            className="mx-auto text-gray-300 dark:text-gray-600 mb-3"
+          />
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No groups yet.</p>
           <button
             onClick={() => setShowCreate(true)}

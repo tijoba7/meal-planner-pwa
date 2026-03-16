@@ -6,7 +6,9 @@ export default function NotFoundPage() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
       <div className="flex flex-col items-center text-center max-w-sm">
-        <p className="text-7xl font-bold text-green-600 dark:text-green-400 leading-none mb-3">404</p>
+        <p className="text-7xl font-bold text-green-600 dark:text-green-400 leading-none mb-3">
+          404
+        </p>
         <p className="text-base font-semibold text-gray-800 dark:text-gray-100">Page not found</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           That page doesn't exist. Maybe the URL changed or you followed a broken link.

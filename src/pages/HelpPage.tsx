@@ -1,5 +1,16 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Search, HelpCircle, BookOpen, CalendarDays, ShoppingCart, Package, Keyboard, Info } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+  HelpCircle,
+  BookOpen,
+  CalendarDays,
+  ShoppingCart,
+  Package,
+  Keyboard,
+  Info,
+} from 'lucide-react'
 import { PageHeader } from '../components/ui'
 import { Card, CardBody } from '../components/ui'
 
@@ -92,12 +103,12 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: 'What are meal plan templates?',
         answer:
-          "Templates let you save a full week's plan and re-apply it later. Create a template from the current plan using the \"Save as template\" option, then load it any week.",
+          'Templates let you save a full week\'s plan and re-apply it later. Create a template from the current plan using the "Save as template" option, then load it any week.',
       },
       {
         question: 'Can I copy a meal plan to the next week?',
         answer:
-          "Yes. Use the \"Copy week\" action on the Meal Plan page to duplicate the current week's plan into the next week.",
+          'Yes. Use the "Copy week" action on the Meal Plan page to duplicate the current week\'s plan into the next week.',
       },
       {
         question: 'How do I generate a shopping list from my plan?',
@@ -191,8 +202,7 @@ const HELP_SECTIONS: HelpSection[] = [
       },
       {
         question: 'Where can I report a bug or request a feature?',
-        answer:
-          'Open an issue on GitHub. We welcome feedback and contributions.',
+        answer: 'Open an issue on GitHub. We welcome feedback and contributions.',
       },
     ],
   },
@@ -206,7 +216,15 @@ function matches(text: string, query: string): boolean {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function HelpItem({ question, answer, defaultOpen }: { question: string; answer: string; defaultOpen: boolean }) {
+function HelpItem({
+  question,
+  answer,
+  defaultOpen,
+}: {
+  question: string
+  answer: string
+  defaultOpen: boolean
+}) {
   const [open, setOpen] = useState(defaultOpen)
 
   // Re-open when search forces it
@@ -220,10 +238,21 @@ function HelpItem({ question, answer, defaultOpen }: { question: string; answer:
         aria-expanded={open}
       >
         <span>{question}</span>
-        {open
-          ? <ChevronDown size={16} strokeWidth={2} className="shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-          : <ChevronRight size={16} strokeWidth={2} className="shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-        }
+        {open ? (
+          <ChevronDown
+            size={16}
+            strokeWidth={2}
+            className="shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+        ) : (
+          <ChevronRight
+            size={16}
+            strokeWidth={2}
+            className="shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+        )}
       </button>
       {open && (
         <div className="px-4 pb-3 text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line leading-relaxed">
@@ -240,7 +269,7 @@ function SectionCard({ section, searchQuery }: { section: HelpSection; searchQue
   const visibleItems = useMemo(() => {
     if (!searchQuery) return section.items
     return section.items.filter(
-      (item) => matches(item.question, searchQuery) || matches(item.answer, searchQuery),
+      (item) => matches(item.question, searchQuery) || matches(item.answer, searchQuery)
     )
   }, [section.items, searchQuery])
 
@@ -260,10 +289,21 @@ function SectionCard({ section, searchQuery }: { section: HelpSection; searchQue
             {visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'}
           </span>
         </div>
-        {sectionOpen
-          ? <ChevronDown size={16} strokeWidth={2} className="shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-          : <ChevronRight size={16} strokeWidth={2} className="shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-        }
+        {sectionOpen ? (
+          <ChevronDown
+            size={16}
+            strokeWidth={2}
+            className="shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+        ) : (
+          <ChevronRight
+            size={16}
+            strokeWidth={2}
+            className="shrink-0 text-gray-400 dark:text-gray-500"
+            aria-hidden="true"
+          />
+        )}
       </button>
       {sectionOpen && (
         <div className="border-t border-gray-100 dark:border-gray-700">
@@ -288,20 +328,24 @@ export default function HelpPage() {
 
   const visibleSections = useMemo(() => {
     if (!searchQuery) return HELP_SECTIONS
-    return HELP_SECTIONS.filter((section) =>
-      matches(section.title, searchQuery) ||
-      section.items.some(
-        (item) => matches(item.question, searchQuery) || matches(item.answer, searchQuery),
-      ),
+    return HELP_SECTIONS.filter(
+      (section) =>
+        matches(section.title, searchQuery) ||
+        section.items.some(
+          (item) => matches(item.question, searchQuery) || matches(item.answer, searchQuery)
+        )
     )
   }, [searchQuery])
 
   const totalResults = useMemo(() => {
     if (!searchQuery) return null
     return visibleSections.reduce((acc, s) => {
-      return acc + s.items.filter(
-        (item) => matches(item.question, searchQuery) || matches(item.answer, searchQuery),
-      ).length
+      return (
+        acc +
+        s.items.filter(
+          (item) => matches(item.question, searchQuery) || matches(item.answer, searchQuery)
+        ).length
+      )
     }, 0)
   }, [searchQuery, visibleSections])
 

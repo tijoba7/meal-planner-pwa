@@ -10,10 +10,18 @@ import 'fake-indexeddb/auto'
 const _lsStore: Record<string, string> = {}
 const _localStorage = {
   getItem: (key: string) => _lsStore[key] ?? null,
-  setItem: (key: string, value: string) => { _lsStore[key] = String(value) },
-  removeItem: (key: string) => { delete _lsStore[key] },
-  clear: () => { Object.keys(_lsStore).forEach(k => delete _lsStore[k]) },
-  get length() { return Object.keys(_lsStore).length },
+  setItem: (key: string, value: string) => {
+    _lsStore[key] = String(value)
+  },
+  removeItem: (key: string) => {
+    delete _lsStore[key]
+  },
+  clear: () => {
+    Object.keys(_lsStore).forEach((k) => delete _lsStore[k])
+  },
+  get length() {
+    return Object.keys(_lsStore).length
+  },
   key: (index: number) => Object.keys(_lsStore)[index] ?? null,
 }
 Object.defineProperty(globalThis, 'localStorage', {

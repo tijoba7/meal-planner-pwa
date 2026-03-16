@@ -21,7 +21,12 @@ export default function RecipeImage({ src, alt, className = '' }: RecipeImagePro
         className={`bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${className}`}
         aria-hidden="true"
       >
-        <UtensilsCrossed size={28} strokeWidth={1.5} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        <UtensilsCrossed
+          size={28}
+          strokeWidth={1.5}
+          className="text-gray-400 dark:text-gray-500"
+          aria-hidden="true"
+        />
       </div>
     )
   }
@@ -29,9 +34,7 @@ export default function RecipeImage({ src, alt, className = '' }: RecipeImagePro
   return (
     <div className={`relative overflow-hidden ${className}`}>
       {/* Skeleton shown until image loads */}
-      {!loaded && (
-        <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 animate-pulse" />
-      )}
+      {!loaded && <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 animate-pulse" />}
       <img
         src={src}
         alt={alt}

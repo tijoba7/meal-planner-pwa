@@ -119,10 +119,12 @@ export async function pushMealPlan(plan: MealPlan, userId: string): Promise<void
     return
   }
 
-  const { error } = await supabase.from('meal_plans_cloud').upsert(
-    { id: plan.id, owner_id: userId, data: toJson(plan), updated_at: plan.updatedAt },
-    { onConflict: 'id' }
-  )
+  const { error } = await supabase
+    .from('meal_plans_cloud')
+    .upsert(
+      { id: plan.id, owner_id: userId, data: toJson(plan), updated_at: plan.updatedAt },
+      { onConflict: 'id' }
+    )
   if (error) addPending({ table: 'meal_plans', id: plan.id, op: 'upsert' })
   else removePending('meal_plans', plan.id)
 }

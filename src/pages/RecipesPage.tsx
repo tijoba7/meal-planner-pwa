@@ -97,7 +97,10 @@ export default function RecipesPage() {
   const ingredientRef = useRef<HTMLInputElement>(null)
 
   useKeyboardShortcuts({
-    '/': () => { searchRef.current?.focus(); searchRef.current?.select() },
+    '/': () => {
+      searchRef.current?.focus()
+      searchRef.current?.select()
+    },
   })
 
   const allCategories = useMemo(() => {
@@ -176,13 +179,20 @@ export default function RecipesPage() {
 
   // Reset to first page whenever any filter or sort changes
   const filterKey = `${query}|${showFavoritesOnly}|${sort}|${selectedCategories.join(',')}|${selectedCuisines.join(',')}|${selectedTags.join(',')}|${selectedDiets.join(',')}|${ingredientQuery}|${maxCookTime}`
-  useEffect(() => { setDisplayCount(PAGE_SIZE) }, [filterKey])
+  useEffect(() => {
+    setDisplayCount(PAGE_SIZE)
+  }, [filterKey])
 
   const filtered = sortRecipes(
     recipes.filter((r) => {
       if (showFavoritesOnly && !r.isFavorite) return false
-      if (selectedCategories.length > 0 && !selectedCategories.includes(r.recipeCategory?.trim() ?? '')) return false
-      if (selectedCuisines.length > 0 && !selectedCuisines.includes(r.recipeCuisine?.trim() ?? '')) return false
+      if (
+        selectedCategories.length > 0 &&
+        !selectedCategories.includes(r.recipeCategory?.trim() ?? '')
+      )
+        return false
+      if (selectedCuisines.length > 0 && !selectedCuisines.includes(r.recipeCuisine?.trim() ?? ''))
+        return false
       if (selectedTags.length > 0) {
         const recipeTags = r.keywords.map((k) => k.toLowerCase())
         if (!selectedTags.every((tag) => recipeTags.includes(tag))) return false
@@ -204,7 +214,7 @@ export default function RecipesPage() {
         r.keywords.some((t) => t.toLowerCase().includes(q))
       )
     }),
-    sort,
+    sort
   )
 
   const displayed = filtered.slice(0, displayCount)
@@ -255,11 +265,7 @@ export default function RecipesPage() {
               : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
-          <Heart
-            size={14}
-            aria-hidden="true"
-            className={showFavoritesOnly ? 'fill-current' : ''}
-          />
+          <Heart size={14} aria-hidden="true" className={showFavoritesOnly ? 'fill-current' : ''} />
           Favorites
         </button>
         <button
@@ -292,7 +298,10 @@ export default function RecipesPage() {
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4 space-y-4">
           {/* Ingredient search */}
           <div>
-            <label htmlFor="ingredient-search" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <label
+              htmlFor="ingredient-search"
+              className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5"
+            >
               Contains ingredient
             </label>
             <div className="relative">
@@ -320,7 +329,10 @@ export default function RecipesPage() {
           {/* Max cook time slider */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="max-cook-time" className="text-xs font-medium text-gray-600 dark:text-gray-400">
+              <label
+                htmlFor="max-cook-time"
+                className="text-xs font-medium text-gray-600 dark:text-gray-400"
+              >
                 Max cook time
               </label>
               <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
@@ -346,14 +358,18 @@ export default function RecipesPage() {
           {/* Category chips */}
           {allCategories.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Category</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                Category
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {allCategories.map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setSelectedCategories((prev) =>
-                      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-                    )}
+                    onClick={() =>
+                      setSelectedCategories((prev) =>
+                        prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+                      )
+                    }
                     aria-pressed={selectedCategories.includes(cat)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedCategories.includes(cat)
@@ -376,9 +392,11 @@ export default function RecipesPage() {
                 {allCuisines.map((cui) => (
                   <button
                     key={cui}
-                    onClick={() => setSelectedCuisines((prev) =>
-                      prev.includes(cui) ? prev.filter((c) => c !== cui) : [...prev, cui]
-                    )}
+                    onClick={() =>
+                      setSelectedCuisines((prev) =>
+                        prev.includes(cui) ? prev.filter((c) => c !== cui) : [...prev, cui]
+                      )
+                    }
                     aria-pressed={selectedCuisines.includes(cui)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedCuisines.includes(cui)
@@ -396,14 +414,18 @@ export default function RecipesPage() {
           {/* Tags & Dietary chips */}
           {allTags.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Tags & Dietary</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                Tags & Dietary
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {allTags.map((tag) => (
                   <button
                     key={tag}
-                    onClick={() => setSelectedTags((prev) =>
-                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                    )}
+                    onClick={() =>
+                      setSelectedTags((prev) =>
+                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                      )
+                    }
                     aria-pressed={selectedTags.includes(tag)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedTags.includes(tag)
@@ -425,9 +447,13 @@ export default function RecipesPage() {
               {DIETARY_PREFERENCES.map((pref) => (
                 <button
                   key={pref.id}
-                  onClick={() => setSelectedDiets((prev) =>
-                    prev.includes(pref.id) ? prev.filter((d) => d !== pref.id) : [...prev, pref.id]
-                  )}
+                  onClick={() =>
+                    setSelectedDiets((prev) =>
+                      prev.includes(pref.id)
+                        ? prev.filter((d) => d !== pref.id)
+                        : [...prev, pref.id]
+                    )
+                  }
                   aria-pressed={selectedDiets.includes(pref.id)}
                   title={pref.description}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
@@ -482,7 +508,11 @@ export default function RecipesPage() {
       </div>
 
       {loading ? (
-        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading recipes">
+        <ul
+          className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+          aria-busy="true"
+          aria-label="Loading recipes"
+        >
           {Array.from({ length: 4 }).map((_, i) => (
             <RecipeCardSkeleton key={i} />
           ))}
@@ -512,87 +542,99 @@ export default function RecipesPage() {
         )
       ) : (
         <>
-        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" aria-live="polite">
-          {displayed.map((recipe, index) => {
-            const prepMins = durationToMinutes(recipe.prepTime)
-            const cookMins = durationToMinutes(recipe.cookTime)
-            return (
-              <li
-                key={recipe.id}
-                className="relative animate-fade-in-up"
-                style={{ animationDelay: `${Math.min(index * 40, 200)}ms` }}
-              >
-                <Link
-                  to={`/recipes/${recipe.id}`}
-                  className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
+          <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+            {displayed.map((recipe, index) => {
+              const prepMins = durationToMinutes(recipe.prepTime)
+              const cookMins = durationToMinutes(recipe.cookTime)
+              return (
+                <li
+                  key={recipe.id}
+                  className="relative animate-fade-in-up"
+                  style={{ animationDelay: `${Math.min(index * 40, 200)}ms` }}
                 >
-                  {/* Thumbnail */}
-                  {(recipe.imageThumbnailUrl || recipe.image) && (
-                    <RecipeImage
-                      src={recipe.imageThumbnailUrl ?? recipe.image}
-                      alt={recipe.name}
-                      className="w-16 h-16 shrink-0 rounded-lg"
-                    />
-                  )}
+                  <Link
+                    to={`/recipes/${recipe.id}`}
+                    className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
+                  >
+                    {/* Thumbnail */}
+                    {(recipe.imageThumbnailUrl || recipe.image) && (
+                      <RecipeImage
+                        src={recipe.imageThumbnailUrl ?? recipe.image}
+                        alt={recipe.name}
+                        className="w-16 h-16 shrink-0 rounded-lg"
+                      />
+                    )}
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 pr-8">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-gray-800 dark:text-gray-100">{recipe.name}</h3>
-                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                        {prepMins + cookMins} min
-                      </span>
-                    </div>
-                    {recipe.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{recipe.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
-                      <span>{recipe.recipeYield} servings</span>
-                      <span>·</span>
-                      <span>prep {prepMins}m</span>
-                      <span>·</span>
-                      <span>cook {cookMins}m</span>
-                    </div>
-                    {recipe.keywords.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {recipe.keywords.map((tag) => (
-                          <span
-                            key={tag}
-                            className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 pr-8">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold text-gray-800 dark:text-gray-100">
+                          {recipe.name}
+                        </h3>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                          {prepMins + cookMins} min
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </Link>
-                {/* Favorite button — outside the Link to avoid nested interactivity */}
-                <button
-                  onClick={(e) => handleToggleFavorite(e, recipe.id)}
-                  aria-label={recipe.isFavorite ? `Remove "${recipe.name}" from favorites` : `Add "${recipe.name}" to favorites`}
-                  className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <Heart
-                    size={16}
-                    aria-hidden="true"
-                    className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-300 dark:text-gray-600'}
-                  />
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-        {hasMore && (
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={() => setDisplayCount((c) => c + PAGE_SIZE)}
-              className="px-6 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Show {Math.min(PAGE_SIZE, filtered.length - displayCount)} more recipes
-            </button>
-          </div>
-        )}
+                      {recipe.description && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                          {recipe.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                        <span>{recipe.recipeYield} servings</span>
+                        <span>·</span>
+                        <span>prep {prepMins}m</span>
+                        <span>·</span>
+                        <span>cook {cookMins}m</span>
+                      </div>
+                      {recipe.keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {recipe.keywords.map((tag) => (
+                            <span
+                              key={tag}
+                              className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                  {/* Favorite button — outside the Link to avoid nested interactivity */}
+                  <button
+                    onClick={(e) => handleToggleFavorite(e, recipe.id)}
+                    aria-label={
+                      recipe.isFavorite
+                        ? `Remove "${recipe.name}" from favorites`
+                        : `Add "${recipe.name}" to favorites`
+                    }
+                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Heart
+                      size={16}
+                      aria-hidden="true"
+                      className={
+                        recipe.isFavorite
+                          ? 'fill-red-500 text-red-500'
+                          : 'text-gray-300 dark:text-gray-600'
+                      }
+                    />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          {hasMore && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setDisplayCount((c) => c + PAGE_SIZE)}
+                className="px-6 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Show {Math.min(PAGE_SIZE, filtered.length - displayCount)} more recipes
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

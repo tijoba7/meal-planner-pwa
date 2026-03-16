@@ -1,12 +1,32 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useId } from 'react'
-import { X, ChevronDown, ChevronRight, ChevronLeft, Share2, Copy, Download, Plus, Trash2 } from 'lucide-react'
+import {
+  X,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  Share2,
+  Copy,
+  Download,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import EmptyState from '../components/EmptyState'
-import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
+import {
+  ShoppingCartIllustration,
+  ClipboardIllustration,
+} from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { convertUnit, type UnitSystem } from '../lib/units'
-import type { ShoppingList, ShoppingItem, MealPlan, Recipe, IngredientCategory, PantryItem } from '../types'
+import type {
+  ShoppingList,
+  ShoppingItem,
+  MealPlan,
+  Recipe,
+  IngredientCategory,
+  PantryItem,
+} from '../types'
 import { normalizeMealSlot } from '../types'
 import {
   getShoppingLists,
@@ -35,7 +55,10 @@ function parseQuickAdd(raw: string): { name: string; amount: number; unit: strin
   const [, qty, possibleUnit, rest] = m
   if (!UNITS.test(possibleUnit)) return null
   const amount = qty.includes('/')
-    ? (() => { const [n, d] = qty.split('/'); return +n / +d })()
+    ? (() => {
+        const [n, d] = qty.split('/')
+        return +n / +d
+      })()
     : parseFloat(qty)
   return { name: rest.trim(), amount, unit: possibleUnit.trim() }
 }
@@ -100,7 +123,10 @@ function ItemNameInput({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (!showDropdown) { setOpen(true); return }
+      if (!showDropdown) {
+        setOpen(true)
+        return
+      }
       setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
@@ -122,9 +148,16 @@ function ItemNameInput({
       <input
         type="text"
         value={value}
-        onChange={(e) => { onChange(e.target.value); setOpen(true); setActiveIdx(-1) }}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+          setActiveIdx(-1)
+        }}
         onFocus={() => setOpen(true)}
-        onBlur={() => { setOpen(false); setActiveIdx(-1) }}
+        onBlur={() => {
+          setOpen(false)
+          setActiveIdx(-1)
+        }}
         onKeyDown={handleKeyDown}
         placeholder='Name or "2 cups flour"'
         aria-label="Item name"
@@ -156,7 +189,11 @@ function ItemNameInput({
               key={s.name}
               role="option"
               aria-selected={idx === activeIdx}
-              onClick={() => { onSelectSuggestion(s.name, s.unit); setOpen(false); setActiveIdx(-1) }}
+              onClick={() => {
+                onSelectSuggestion(s.name, s.unit)
+                setOpen(false)
+                setActiveIdx(-1)
+              }}
               onMouseEnter={() => setActiveIdx(idx)}
               className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
                 idx === activeIdx
@@ -165,7 +202,11 @@ function ItemNameInput({
               }`}
             >
               <span>{s.name}</span>
-              {s.unit && <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">{s.unit}</span>}
+              {s.unit && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">
+                  {s.unit}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -290,7 +331,11 @@ function ItemRow({
   const touchStartY = useRef(0)
   const swipeAxisLocked = useRef<'h' | 'v' | null>(null)
   const cat = item.category ?? 'Other'
-  const { amount: rawDisplayAmount, unit: displayUnit } = convertUnit(item.amount, item.unit, unitSystem)
+  const { amount: rawDisplayAmount, unit: displayUnit } = convertUnit(
+    item.amount,
+    item.unit,
+    unitSystem
+  )
   const displayAmount = Math.round(rawDisplayAmount * 10) / 10
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -337,12 +382,19 @@ function ItemRow({
           className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label={`Uncheck ${item.name}`}
         >
-          <span className="w-5 h-5 rounded border-2 border-green-500 bg-green-500 text-white text-xs flex items-center justify-center" aria-hidden="true">
+          <span
+            className="w-5 h-5 rounded border-2 border-green-500 bg-green-500 text-white text-xs flex items-center justify-center"
+            aria-hidden="true"
+          >
             &#10003;
           </span>
         </button>
-        <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 line-through">{item.name}</span>
-        <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">{displayAmount} {displayUnit}</span>
+        <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 line-through">
+          {item.name}
+        </span>
+        <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">
+          {displayAmount} {displayUnit}
+        </span>
       </div>
     )
   }
@@ -357,7 +409,10 @@ function ItemRow({
       >
         <button
           tabIndex={swipeOpen ? 0 : -1}
-          onClick={() => { closeSwipe(); onRemove() }}
+          onClick={() => {
+            closeSwipe()
+            onRemove()
+          }}
           className="w-full h-full flex flex-col items-center justify-center gap-1"
           aria-label={`Delete ${item.name}`}
         >
@@ -380,7 +435,13 @@ function ItemRow({
       >
         {/* Checkbox — 44px touch target */}
         <button
-          onClick={() => { if (swipeOpen) { closeSwipe(); return } onToggle() }}
+          onClick={() => {
+            if (swipeOpen) {
+              closeSwipe()
+              return
+            }
+            onToggle()
+          }}
           className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label={`Check ${item.name}`}
         >
@@ -397,17 +458,28 @@ function ItemRow({
               <select
                 value={cat}
                 autoFocus
-                onChange={(e) => { onCategoryChange(e.target.value as IngredientCategory); setEditingCat(false) }}
+                onChange={(e) => {
+                  onCategoryChange(e.target.value as IngredientCategory)
+                  setEditingCat(false)
+                }}
                 onBlur={() => setEditingCat(false)}
                 className="text-xs border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500"
               >
                 {ALL_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
             ) : (
               <button
-                onClick={() => { if (swipeOpen) { closeSwipe(); return } setEditingCat(true) }}
+                onClick={() => {
+                  if (swipeOpen) {
+                    closeSwipe()
+                    return
+                  }
+                  setEditingCat(true)
+                }}
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[cat]} hover:opacity-80 transition-opacity`}
                 aria-label={`Change category for ${item.name}: currently ${cat}`}
               >
@@ -417,7 +489,9 @@ function ItemRow({
           </div>
         </div>
 
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{displayAmount} {displayUnit}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+          {displayAmount} {displayUnit}
+        </span>
 
         {/* X button — 44px touch target, always accessible */}
         <button
@@ -479,7 +553,10 @@ function CategorySection({
       {!collapsed && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           {items.map((item, i) => (
-            <div key={item.id} className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}>
+            <div
+              key={item.id}
+              className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}
+            >
               <ItemRow
                 item={item}
                 onToggle={() => onToggle(item.id)}
@@ -554,7 +631,11 @@ export default function ShoppingListPage() {
     if (!listName.trim()) return
     setCreating(true)
     const { items: aggregated, excludedCount } = aggregateIngredients(
-      startDate, endDate, mealPlans, recipesById, pantryItems
+      startDate,
+      endDate,
+      mealPlans,
+      recipesById,
+      pantryItems
     )
     const itemsWithIds: ShoppingItem[] = aggregated.map((item) => ({
       ...item,
@@ -569,9 +650,10 @@ export default function ShoppingListPage() {
     await reload()
     setActiveListId(list.id)
     setCreating(false)
-    const msg = excludedCount > 0
-      ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
-      : 'Shopping list created.'
+    const msg =
+      excludedCount > 0
+        ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
+        : 'Shopping list created.'
     toast.success(msg)
   }
 
@@ -725,7 +807,9 @@ export default function ShoppingListPage() {
 
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{activeList.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              {activeList.name}
+            </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {doneCount} of {total} items checked
             </p>
@@ -809,7 +893,9 @@ export default function ShoppingListPage() {
                   type="text"
                   value={newItemUnit}
                   onChange={(e) => setNewItemUnit(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem() }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddItem()
+                  }}
                   placeholder="Unit (e.g. oz)"
                   aria-label="Unit"
                   className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -854,7 +940,10 @@ export default function ShoppingListPage() {
             </p>
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               {checked.map((item, i) => (
-                <div key={item.id} className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}>
+                <div
+                  key={item.id}
+                  className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}
+                >
                   <ItemRow
                     item={item}
                     onToggle={() => handleToggle(item.id)}
@@ -881,7 +970,9 @@ export default function ShoppingListPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3 id="export-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">Share or Export</h3>
+                <h3 id="export-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">
+                  Share or Export
+                </h3>
                 <button
                   onClick={() => setShowExport(false)}
                   className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
@@ -896,7 +987,12 @@ export default function ShoppingListPage() {
                     onClick={handleShare}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
-                    <Share2 size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
+                    <Share2
+                      size={18}
+                      strokeWidth={2}
+                      className="text-green-600 dark:text-green-400 shrink-0"
+                      aria-hidden="true"
+                    />
                     Share via…
                   </button>
                 )}
@@ -904,14 +1000,24 @@ export default function ShoppingListPage() {
                   onClick={handleCopyToClipboard}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <Copy size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
+                  <Copy
+                    size={18}
+                    strokeWidth={2}
+                    className="text-green-600 dark:text-green-400 shrink-0"
+                    aria-hidden="true"
+                  />
                   Copy to clipboard
                 </button>
                 <button
                   onClick={handleDownload}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <Download size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
+                  <Download
+                    size={18}
+                    strokeWidth={2}
+                    className="text-green-600 dark:text-green-400 shrink-0"
+                    aria-hidden="true"
+                  />
                   Download as text file
                 </button>
               </div>
@@ -939,7 +1045,10 @@ export default function ShoppingListPage() {
       {loading ? (
         <div className="space-y-3" aria-busy="true" aria-label="Loading shopping lists">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4"
+            >
               <div className="flex items-center justify-between mb-2">
                 <Skeleton className="h-5 w-2/5" />
                 <Skeleton className="h-4 w-16" />
@@ -973,9 +1082,11 @@ export default function ShoppingListPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{list.name}</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                      {list.name}
+                    </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{" "}
+                      {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{' '}
                       {formatDate(list.createdAt.slice(0, 10))}
                     </p>
                   </div>
@@ -1025,7 +1136,12 @@ export default function ShoppingListPage() {
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 id="create-list-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">New Shopping List</h3>
+                <h3
+                  id="create-list-dialog-title"
+                  className="font-bold text-gray-800 dark:text-gray-100"
+                >
+                  New Shopping List
+                </h3>
                 <button
                   onClick={() => setShowCreate(false)}
                   className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -1037,7 +1153,12 @@ export default function ShoppingListPage() {
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label htmlFor="new-list-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">List name</label>
+                <label
+                  htmlFor="new-list-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                >
+                  List name
+                </label>
                 <input
                   id="new-list-name"
                   type="text"
@@ -1064,13 +1185,19 @@ export default function ShoppingListPage() {
                       className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                     />
                     <span className="text-xs text-gray-600 dark:text-gray-300">
-                      Exclude {pantryItems.length} pantry item{pantryItems.length !== 1 ? 's' : ''} already at home
+                      Exclude {pantryItems.length} pantry item{pantryItems.length !== 1 ? 's' : ''}{' '}
+                      already at home
                     </span>
                   </label>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="new-list-start-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>
+                    <label
+                      htmlFor="new-list-start-date"
+                      className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                    >
+                      Start date
+                    </label>
                     <input
                       id="new-list-start-date"
                       type="date"
@@ -1080,7 +1207,12 @@ export default function ShoppingListPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="new-list-end-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End date</label>
+                    <label
+                      htmlFor="new-list-end-date"
+                      className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                    >
+                      End date
+                    </label>
                     <input
                       id="new-list-end-date"
                       type="date"

@@ -6,7 +6,27 @@ import type { PantryItem, IngredientCategory } from '../types'
 import { getPantryItems, createPantryItem, updatePantryItem, deletePantryItem } from '../lib/db'
 import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
 
-const UNITS = ['', 'g', 'kg', 'ml', 'L', 'tsp', 'tbsp', 'cup', 'cups', 'oz', 'lb', 'piece', 'pieces', 'can', 'bag', 'box', 'bunch', 'cloves', 'slices']
+const UNITS = [
+  '',
+  'g',
+  'kg',
+  'ml',
+  'L',
+  'tsp',
+  'tbsp',
+  'cup',
+  'cups',
+  'oz',
+  'lb',
+  'piece',
+  'pieces',
+  'can',
+  'bag',
+  'box',
+  'bunch',
+  'cloves',
+  'slices',
+]
 
 const CATEGORY_COLORS: Record<IngredientCategory, string> = {
   Produce: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
@@ -140,7 +160,9 @@ export default function PantryPage() {
 
   const groups = groupByCategory(items)
   const expiredCount = items.filter((i) => i.expiryDate && isExpired(i.expiryDate)).length
-  const expiringSoonCount = items.filter((i) => i.expiryDate && !isExpired(i.expiryDate) && isExpiringSoon(i.expiryDate)).length
+  const expiringSoonCount = items.filter(
+    (i) => i.expiryDate && !isExpired(i.expiryDate) && isExpiringSoon(i.expiryDate)
+  ).length
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -172,9 +194,14 @@ export default function PantryPage() {
       {showAdd && (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Add pantry item</h3>
+            <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
+              Add pantry item
+            </h3>
             <button
-              onClick={() => { setShowAdd(false); setForm(BLANK_FORM) }}
+              onClick={() => {
+                setShowAdd(false)
+                setForm(BLANK_FORM)
+              }}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               aria-label="Cancel"
             >
@@ -183,7 +210,10 @@ export default function PantryPage() {
           </div>
           <form onSubmit={handleAdd} className="space-y-3">
             <div>
-              <label htmlFor="pantry-name" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+              <label
+                htmlFor="pantry-name"
+                className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1"
+              >
                 Item name <span className="text-red-500">*</span>
               </label>
               <input
@@ -199,7 +229,12 @@ export default function PantryPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="pantry-qty" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Quantity</label>
+                <label
+                  htmlFor="pantry-qty"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1"
+                >
+                  Quantity
+                </label>
                 <input
                   id="pantry-qty"
                   type="number"
@@ -212,7 +247,12 @@ export default function PantryPage() {
                 />
               </div>
               <div>
-                <label htmlFor="pantry-unit" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Unit</label>
+                <label
+                  htmlFor="pantry-unit"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1"
+                >
+                  Unit
+                </label>
                 <select
                   id="pantry-unit"
                   value={form.unit}
@@ -220,13 +260,20 @@ export default function PantryPage() {
                   className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
                   {UNITS.map((u) => (
-                    <option key={u} value={u}>{u || '—'}</option>
+                    <option key={u} value={u}>
+                      {u || '—'}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
             <div>
-              <label htmlFor="pantry-expiry" className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Expiry date (optional)</label>
+              <label
+                htmlFor="pantry-expiry"
+                className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1"
+              >
+                Expiry date (optional)
+              </label>
               <input
                 id="pantry-expiry"
                 type="date"
@@ -245,7 +292,10 @@ export default function PantryPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setShowAdd(false); setForm(BLANK_FORM) }}
+                onClick={() => {
+                  setShowAdd(false)
+                  setForm(BLANK_FORM)
+                }}
                 className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
@@ -258,7 +308,10 @@ export default function PantryPage() {
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-pulse">
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-pulse"
+            >
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2" />
               <div className="space-y-2">
                 {Array.from({ length: 2 }).map((_, j) => (
@@ -278,22 +331,40 @@ export default function PantryPage() {
       ) : (
         <div className="space-y-4">
           {groups.map(([category, catItems]) => (
-            <div key={category} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div
+              key={category}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+            >
               <button
                 onClick={() => toggleCollapse(category)}
                 className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 aria-expanded={!collapsed.has(category)}
               >
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[category]}`}>
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[category]}`}
+                  >
                     {category}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{catItems.length}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {catItems.length}
+                  </span>
                 </div>
-                {collapsed.has(category)
-                  ? <ChevronRight size={14} strokeWidth={2} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                  : <ChevronDown size={14} strokeWidth={2} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                }
+                {collapsed.has(category) ? (
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2}
+                    className="text-gray-400 dark:text-gray-500"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={2}
+                    className="text-gray-400 dark:text-gray-500"
+                    aria-hidden="true"
+                  />
+                )}
               </button>
 
               {!collapsed.has(category) && (
@@ -315,7 +386,9 @@ export default function PantryPage() {
                               min="0"
                               step="any"
                               value={editForm.quantity}
-                              onChange={(e) => setEditForm((f) => ({ ...f, quantity: e.target.value }))}
+                              onChange={(e) =>
+                                setEditForm((f) => ({ ...f, quantity: e.target.value }))
+                              }
                               placeholder="Qty"
                               className="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
@@ -325,14 +398,18 @@ export default function PantryPage() {
                               className="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                             >
                               {UNITS.map((u) => (
-                                <option key={u} value={u}>{u || '—'}</option>
+                                <option key={u} value={u}>
+                                  {u || '—'}
+                                </option>
                               ))}
                             </select>
                           </div>
                           <input
                             type="date"
                             value={editForm.expiryDate}
-                            onChange={(e) => setEditForm((f) => ({ ...f, expiryDate: e.target.value }))}
+                            onChange={(e) =>
+                              setEditForm((f) => ({ ...f, expiryDate: e.target.value }))
+                            }
                             className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                           />
                           <div className="flex gap-2">
@@ -355,7 +432,9 @@ export default function PantryPage() {
                         </div>
                       ) : confirmDeleteId === item.id ? (
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600 dark:text-gray-300">Remove "{item.name}"?</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-300">
+                            Remove "{item.name}"?
+                          </span>
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleDelete(item.id)}
@@ -374,7 +453,9 @@ export default function PantryPage() {
                       ) : (
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{item.name}</p>
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                              {item.name}
+                            </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                               {item.quantity} {item.unit || ''}
                               {item.expiryDate && (
@@ -383,15 +464,15 @@ export default function PantryPage() {
                                     isExpired(item.expiryDate)
                                       ? ' ml-2 text-red-500 font-medium'
                                       : isExpiringSoon(item.expiryDate)
-                                      ? ' ml-2 text-amber-600 font-medium'
-                                      : ' ml-2 text-gray-400 dark:text-gray-500'
+                                        ? ' ml-2 text-amber-600 font-medium'
+                                        : ' ml-2 text-gray-400 dark:text-gray-500'
                                   }
                                 >
                                   {isExpired(item.expiryDate)
                                     ? '· Expired'
                                     : isExpiringSoon(item.expiryDate)
-                                    ? `· Expires soon`
-                                    : `· Exp. ${new Date(item.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                                      ? `· Expires soon`
+                                      : `· Exp. ${new Date(item.expiryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                                 </span>
                               )}
                             </p>

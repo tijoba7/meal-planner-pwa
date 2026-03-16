@@ -30,10 +30,22 @@ const SAMPLE_RECIPE = {
     { name: 'fresh basil', amount: 1, unit: 'handful' },
   ],
   recipeInstructions: [
-    { '@type': 'HowToStep' as const, text: 'Boil a large pot of salted water. Cook spaghetti according to package directions until al dente.' },
-    { '@type': 'HowToStep' as const, text: 'Heat olive oil in a skillet over medium heat. Add minced garlic and cook 1 minute until fragrant.' },
-    { '@type': 'HowToStep' as const, text: 'Add crushed tomatoes, salt, and pepper. Simmer 15 minutes, stirring occasionally.' },
-    { '@type': 'HowToStep' as const, text: 'Drain pasta, toss with sauce. Tear fresh basil on top and serve.' },
+    {
+      '@type': 'HowToStep' as const,
+      text: 'Boil a large pot of salted water. Cook spaghetti according to package directions until al dente.',
+    },
+    {
+      '@type': 'HowToStep' as const,
+      text: 'Heat olive oil in a skillet over medium heat. Add minced garlic and cook 1 minute until fragrant.',
+    },
+    {
+      '@type': 'HowToStep' as const,
+      text: 'Add crushed tomatoes, salt, and pepper. Simmer 15 minutes, stirring occasionally.',
+    },
+    {
+      '@type': 'HowToStep' as const,
+      text: 'Drain pasta, toss with sauce. Tear fresh basil on top and serve.',
+    },
   ],
   keywords: ['pasta', 'italian', 'vegetarian', 'quick'],
   isFavorite: false,
@@ -151,8 +163,8 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
                   i === step
                     ? 'bg-green-600'
                     : i < step
-                    ? 'bg-green-300 dark:bg-green-700'
-                    : 'bg-gray-200 dark:bg-gray-600'
+                      ? 'bg-green-300 dark:bg-green-700'
+                      : 'bg-gray-200 dark:bg-gray-600'
                 }`}
               />
             ))}
@@ -172,7 +184,12 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
           {current.id === 'welcome' && (
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Utensils size={28} strokeWidth={1.5} className="text-green-600 dark:text-green-400" aria-hidden="true" />
+                <Utensils
+                  size={28}
+                  strokeWidth={1.5}
+                  className="text-green-600 dark:text-green-400"
+                  aria-hidden="true"
+                />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                 {current.title}
@@ -196,11 +213,20 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
                 {FEATURES.map((f) => (
                   <li key={f.title} className="flex gap-4 items-start">
                     <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center shrink-0">
-                      <f.icon size={18} strokeWidth={1.75} className="text-green-600 dark:text-green-400" aria-hidden="true" />
+                      <f.icon
+                        size={18}
+                        strokeWidth={1.75}
+                        className="text-green-600 dark:text-green-400"
+                        aria-hidden="true"
+                      />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{f.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{f.description}</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        {f.title}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                        {f.description}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -212,14 +238,17 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
           {current.id === 'start' && (
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <BookOpen size={28} strokeWidth={1.5} className="text-green-600 dark:text-green-400" aria-hidden="true" />
+                <BookOpen
+                  size={28}
+                  strokeWidth={1.5}
+                  className="text-green-600 dark:text-green-400"
+                  aria-hidden="true"
+                />
               </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
                 {current.title}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                {current.subtitle}
-              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{current.subtitle}</p>
               <div className="flex flex-col gap-2">
                 <button
                   onClick={goSampleRecipe}

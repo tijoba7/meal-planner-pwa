@@ -1,5 +1,13 @@
 import Dexie, { type Table } from 'dexie'
-import type { Recipe, MealPlan, ShoppingList, ShoppingItem, MealPlanTemplate, Collection, PantryItem } from '../types'
+import type {
+  Recipe,
+  MealPlan,
+  ShoppingList,
+  ShoppingItem,
+  MealPlanTemplate,
+  Collection,
+  PantryItem,
+} from '../types'
 
 // ─── Database ────────────────────────────────────────────────────────────────
 
@@ -131,7 +139,7 @@ export async function getRecipe(recipeId: string): Promise<Recipe | undefined> {
 
 export async function createRecipe(
   data: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>,
-  recipeId?: string,
+  recipeId?: string
 ): Promise<Recipe> {
   const recipe: Recipe = { ...data, id: recipeId ?? id(), dateCreated: now(), dateModified: now() }
   await db.recipes.add(recipe)
@@ -297,7 +305,10 @@ export async function addRecipeToCollection(collectionId: string, recipeId: stri
   })
 }
 
-export async function removeRecipeFromCollection(collectionId: string, recipeId: string): Promise<void> {
+export async function removeRecipeFromCollection(
+  collectionId: string,
+  recipeId: string
+): Promise<void> {
   const collection = await db.collections.get(collectionId)
   if (!collection) throw new Error('Collection not found')
   await db.collections.update(collectionId, {
@@ -359,12 +370,24 @@ const SEED_RECIPES: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>[] = [
     ],
     recipeInstructions: [
       { '@type': 'HowToStep', text: 'Bring a large pot of salted water to boil.' },
-      { '@type': 'HowToStep', text: 'Heat olive oil in a large pan over medium heat. Sauté diced onion until soft, about 5 minutes.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Heat olive oil in a large pan over medium heat. Sauté diced onion until soft, about 5 minutes.',
+      },
       { '@type': 'HowToStep', text: 'Add minced garlic and cook for 1 minute.' },
-      { '@type': 'HowToStep', text: 'Add ground beef and cook until browned, breaking it up as it cooks.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Add ground beef and cook until browned, breaking it up as it cooks.',
+      },
       { '@type': 'HowToStep', text: 'Stir in tomato paste and cook for 2 minutes.' },
-      { '@type': 'HowToStep', text: 'Add canned tomatoes and oregano. Simmer for 30 minutes, stirring occasionally.' },
-      { '@type': 'HowToStep', text: 'Cook spaghetti according to package directions. Drain and serve topped with sauce.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Add canned tomatoes and oregano. Simmer for 30 minutes, stirring occasionally.',
+      },
+      {
+        '@type': 'HowToStep',
+        text: 'Cook spaghetti according to package directions. Drain and serve topped with sauce.',
+      },
     ],
     keywords: ['italian', 'pasta', 'beef', 'dinner'],
   },
@@ -386,7 +409,10 @@ const SEED_RECIPES: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>[] = [
     ],
     recipeInstructions: [
       { '@type': 'HowToStep', text: 'Season chicken breasts with salt, pepper, and olive oil.' },
-      { '@type': 'HowToStep', text: 'Grill or pan-fry over medium-high heat for 6–7 minutes per side until cooked through.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Grill or pan-fry over medium-high heat for 6–7 minutes per side until cooked through.',
+      },
       { '@type': 'HowToStep', text: 'Let chicken rest for 5 minutes, then slice.' },
       { '@type': 'HowToStep', text: 'Chop romaine lettuce and place in a large bowl.' },
       { '@type': 'HowToStep', text: 'Add Caesar dressing and toss to coat.' },
@@ -413,12 +439,24 @@ const SEED_RECIPES: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>[] = [
       { name: 'cooked rice', amount: 2, unit: 'cups' },
     ],
     recipeInstructions: [
-      { '@type': 'HowToStep', text: 'Prepare all vegetables: cut broccoli into florets, slice pepper and carrot, trim snap peas.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Prepare all vegetables: cut broccoli into florets, slice pepper and carrot, trim snap peas.',
+      },
       { '@type': 'HowToStep', text: 'Mix soy sauce and sesame oil in a small bowl.' },
-      { '@type': 'HowToStep', text: 'Heat vegetable oil in a wok or large frying pan over high heat.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Heat vegetable oil in a wok or large frying pan over high heat.',
+      },
       { '@type': 'HowToStep', text: 'Add garlic and ginger, stir-fry for 30 seconds.' },
-      { '@type': 'HowToStep', text: 'Add harder vegetables (carrot, broccoli) first and stir-fry for 3 minutes.' },
-      { '@type': 'HowToStep', text: 'Add remaining vegetables and stir-fry for 2–3 minutes until tender-crisp.' },
+      {
+        '@type': 'HowToStep',
+        text: 'Add harder vegetables (carrot, broccoli) first and stir-fry for 3 minutes.',
+      },
+      {
+        '@type': 'HowToStep',
+        text: 'Add remaining vegetables and stir-fry for 2–3 minutes until tender-crisp.',
+      },
       { '@type': 'HowToStep', text: 'Pour sauce over and toss to coat. Serve over rice.' },
     ],
     keywords: ['vegetarian', 'asian', 'quick', 'dinner', 'healthy'],

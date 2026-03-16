@@ -75,6 +75,10 @@ export default defineConfig(({ mode }) => {
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
+        // Use iife format so rolldown does not set `inlineDynamicImports: true`
+        // (which emits a deprecation warning in Vite v8). iife produces a
+        // single-file classic SW — functionally identical for this codebase.
+        rollupFormat: 'iife',
       },
     }),
     visualizer({
@@ -96,6 +100,15 @@ export default defineConfig(({ mode }) => {
   ],
   build: {
     sourcemap: true, // required for Sentry source maps
+    // Sentry bundle is ~440 kB; raise the limit so it doesn't warn.
+    chunkSizeWarningLimit: 700,
+    rolldownOptions: {
+      checks: {
+        // vite-plugin-pwa + Sentry dominate plugin time; this metric adds no
+        // actionable signal for this project.
+        pluginTimings: false,
+      },
+    },
   },
   server: {
     headers: {

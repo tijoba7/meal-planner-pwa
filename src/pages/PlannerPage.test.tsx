@@ -106,7 +106,7 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <PlannerPage />
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 
@@ -215,7 +215,7 @@ describe('PlannerPage', () => {
       renderPage()
       await waitFor(() => {
         expect(mockCreateMealPlan).toHaveBeenCalledWith(
-          expect.objectContaining({ weekStartDate: mondayStr, days: {} }),
+          expect.objectContaining({ weekStartDate: mondayStr, days: {} })
         )
       })
     })
@@ -440,8 +440,8 @@ describe('PlannerPage', () => {
       const [, payload] = mockUpdateMealPlan.mock.calls[0]
       const allRecipes = Object.values(payload.days ?? {}).flatMap((day) =>
         Object.values(day as Record<string, { recipes: { recipeId: string }[] }>).flatMap(
-          (slot) => slot?.recipes ?? [],
-        ),
+          (slot) => slot?.recipes ?? []
+        )
       )
       expect(allRecipes).toContainEqual(expect.objectContaining({ recipeId: 'r1' }))
     })
@@ -485,7 +485,7 @@ describe('PlannerPage', () => {
       await waitFor(() => {
         expect(mockUpdateMealPlan).toHaveBeenCalledWith(
           'plan-1',
-          expect.objectContaining({ days: expect.any(Object) }),
+          expect.objectContaining({ days: expect.any(Object) })
         )
       })
     })
@@ -514,7 +514,9 @@ describe('PlannerPage', () => {
       renderPage()
       await screen.findByRole('heading', { name: 'Weekly Planner' })
 
-      await user.click(screen.getByRole('button', { name: "Copy this week's meal plan to another week" }))
+      await user.click(
+        screen.getByRole('button', { name: "Copy this week's meal plan to another week" })
+      )
 
       expect(screen.getByRole('heading', { name: 'Copy week to…' })).toBeInTheDocument()
     })
@@ -524,7 +526,9 @@ describe('PlannerPage', () => {
       renderPage()
       await screen.findByRole('heading', { name: 'Weekly Planner' })
 
-      await user.click(screen.getByRole('button', { name: "Copy this week's meal plan to another week" }))
+      await user.click(
+        screen.getByRole('button', { name: "Copy this week's meal plan to another week" })
+      )
       await screen.findByRole('heading', { name: 'Copy week to…' })
 
       await user.click(screen.getByRole('button', { name: 'Close' }))

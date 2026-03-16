@@ -32,19 +32,12 @@ export function Modal({
   if (!open) return null
 
   const backdropAlign =
-    position === 'center'
-      ? 'items-center p-4'
-      : 'items-end sm:items-center sm:p-4'
+    position === 'center' ? 'items-center p-4' : 'items-end sm:items-center sm:p-4'
 
-  const panelRounding =
-    position === 'center'
-      ? 'rounded-xl'
-      : 'rounded-t-2xl sm:rounded-2xl'
+  const panelRounding = position === 'center' ? 'rounded-xl' : 'rounded-t-2xl sm:rounded-2xl'
 
   const panelAnimation =
-    position === 'center'
-      ? 'animate-scale-in'
-      : 'animate-slide-up sm:animate-scale-in'
+    position === 'center' ? 'animate-scale-in' : 'animate-slide-up sm:animate-scale-in'
 
   return (
     <div
@@ -78,7 +71,13 @@ export function Modal({
 }
 
 /** Convenience body wrapper with standard padding. */
-export function ModalBody({ className = '', children }: { className?: string; children: React.ReactNode }) {
+export function ModalBody({
+  className = '',
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
   return <div className={`p-5 ${className}`}>{children}</div>
 }
 
@@ -124,7 +123,10 @@ export function ConfirmModal({
         className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <h4 id="confirm-modal-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
+        <h4
+          id="confirm-modal-title"
+          className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2"
+        >
           {title}
         </h4>
         {description && (

@@ -4,7 +4,14 @@ import { getStoredApiKey, setStoredApiKey } from '../lib/scraper'
 import { useTheme } from '../contexts/ThemeContext'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { db } from '../lib/db'
-import type { Recipe, MealPlan, ShoppingList, MealPlanTemplate, Collection, PantryItem } from '../types'
+import type {
+  Recipe,
+  MealPlan,
+  ShoppingList,
+  MealPlanTemplate,
+  Collection,
+  PantryItem,
+} from '../types'
 import { DIETARY_PREFERENCES, getDietaryPrefs, saveDietaryPrefs } from '../lib/dietary'
 import PerformanceDashboard from '../components/PerformanceDashboard'
 
@@ -39,7 +46,7 @@ interface ImportProgress {
 
 function requireId(items: unknown[], label: string) {
   const bad = (items as Record<string, unknown>[]).find(
-    (r) => typeof r !== 'object' || r === null || typeof r['id'] !== 'string',
+    (r) => typeof r !== 'object' || r === null || typeof r['id'] !== 'string'
   )
   if (bad !== undefined) {
     throw new Error(`Invalid backup: some ${label} are missing a required "id" field.`)
@@ -66,8 +73,12 @@ function parseBackup(raw: unknown): ImportPreview {
 
   const recipes = (Array.isArray(data.recipes) ? data.recipes : []) as Recipe[]
   const mealPlans = (Array.isArray(data.mealPlans) ? data.mealPlans : []) as MealPlan[]
-  const shoppingLists = (Array.isArray(data.shoppingLists) ? data.shoppingLists : []) as ShoppingList[]
-  const mealPlanTemplates = (Array.isArray(data.mealPlanTemplates) ? data.mealPlanTemplates : []) as MealPlanTemplate[]
+  const shoppingLists = (
+    Array.isArray(data.shoppingLists) ? data.shoppingLists : []
+  ) as ShoppingList[]
+  const mealPlanTemplates = (
+    Array.isArray(data.mealPlanTemplates) ? data.mealPlanTemplates : []
+  ) as MealPlanTemplate[]
   const collections = (Array.isArray(data.collections) ? data.collections : []) as Collection[]
   const pantryItems = (Array.isArray(data.pantryItems) ? data.pantryItems : []) as PantryItem[]
 
@@ -81,11 +92,11 @@ function parseBackup(raw: unknown): ImportPreview {
 
   // Detect schema mismatch (v1 recipes used `title` instead of `name`)
   const hasV1Recipe = recipes.some(
-    (r) => !('name' in r) && 'title' in (r as Record<string, unknown>),
+    (r) => !('name' in r) && 'title' in (r as Record<string, unknown>)
   )
   if (hasV1Recipe) {
     throw new Error(
-      'This backup was created with an older version of Mise and cannot be imported directly. Please export from the latest version first.',
+      'This backup was created with an older version of Mise and cannot be imported directly. Please export from the latest version first.'
     )
   }
 
@@ -106,7 +117,7 @@ const BATCH = 50
 async function importBatched<T>(
   table: { bulkPut(items: T[]): Promise<unknown> },
   items: T[],
-  onProgress: (done: number) => void,
+  onProgress: (done: number) => void
 ) {
   for (let i = 0; i < items.length; i += BATCH) {
     await table.bulkPut(items.slice(i, i + BATCH))
@@ -244,16 +255,20 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
-  const [importStep, setImportStep] = useState<'idle' | 'preview' | 'importing' | 'success' | 'error'>('idle')
+  const [importStep, setImportStep] = useState<
+    'idle' | 'preview' | 'importing' | 'success' | 'error'
+  >('idle')
   const [importError, setImportError] = useState<string | null>(null)
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
 
   // Notifications
   const [notifPrefs, setNotifPrefsState] = useState<NotificationPrefs>(() => getNotifPrefs())
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(() => {
-    if (typeof Notification === 'undefined') return 'unsupported'
-    return Notification.permission
-  })
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
+    () => {
+      if (typeof Notification === 'undefined') return 'unsupported'
+      return Notification.permission
+    }
+  )
 
   // Dietary preferences
   const [dietaryPrefs, setDietaryPrefsState] = useState<string[]>(() => getDietaryPrefs())
@@ -339,9 +354,8 @@ export default function SettingsPage() {
     setImportStep('importing')
     setImportProgress({ label: 'Preparing…', pct: 0 })
     try {
-      const {
-        recipes, mealPlans, shoppingLists, mealPlanTemplates, collections, pantryItems,
-      } = importPreview
+      const { recipes, mealPlans, shoppingLists, mealPlanTemplates, collections, pantryItems } =
+        importPreview
 
       if (importMode === 'replace') {
         setImportProgress({ label: 'Clearing existing data…', pct: 5 })
@@ -355,8 +369,8 @@ export default function SettingsPage() {
         ])
       }
 
-      const progress = (label: string, base: number, range: number, items: unknown[]) =>
-        (done: number) => {
+      const progress =
+        (label: string, base: number, range: number, items: unknown[]) => (done: number) => {
           const pct = base + Math.round((done / items.length) * range)
           setImportProgress({ label: `${label} (${done}/${items.length})…`, pct })
         }
@@ -367,29 +381,51 @@ export default function SettingsPage() {
       }
       if (mealPlans.length > 0) {
         setImportProgress({ label: `Importing meal plans (${mealPlans.length})…`, pct: 40 })
-        await importBatched(db.mealPlans, mealPlans, progress('Importing meal plans', 40, 15, mealPlans))
+        await importBatched(
+          db.mealPlans,
+          mealPlans,
+          progress('Importing meal plans', 40, 15, mealPlans)
+        )
       }
       if (shoppingLists.length > 0) {
         setImportProgress({ label: `Importing shopping lists (${shoppingLists.length})…`, pct: 55 })
-        await importBatched(db.shoppingLists, shoppingLists, progress('Importing shopping lists', 55, 15, shoppingLists))
+        await importBatched(
+          db.shoppingLists,
+          shoppingLists,
+          progress('Importing shopping lists', 55, 15, shoppingLists)
+        )
       }
       if (mealPlanTemplates.length > 0) {
         setImportProgress({ label: `Importing templates (${mealPlanTemplates.length})…`, pct: 70 })
-        await importBatched(db.mealPlanTemplates, mealPlanTemplates, progress('Importing templates', 70, 10, mealPlanTemplates))
+        await importBatched(
+          db.mealPlanTemplates,
+          mealPlanTemplates,
+          progress('Importing templates', 70, 10, mealPlanTemplates)
+        )
       }
       if (collections.length > 0) {
         setImportProgress({ label: `Importing collections (${collections.length})…`, pct: 80 })
-        await importBatched(db.collections, collections, progress('Importing collections', 80, 10, collections))
+        await importBatched(
+          db.collections,
+          collections,
+          progress('Importing collections', 80, 10, collections)
+        )
       }
       if (pantryItems.length > 0) {
         setImportProgress({ label: `Importing pantry items (${pantryItems.length})…`, pct: 90 })
-        await importBatched(db.pantryItems, pantryItems, progress('Importing pantry items', 90, 8, pantryItems))
+        await importBatched(
+          db.pantryItems,
+          pantryItems,
+          progress('Importing pantry items', 90, 8, pantryItems)
+        )
       }
 
       setImportProgress({ label: 'Done', pct: 100 })
       setImportStep('success')
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Import failed. The file may be corrupted.')
+      setImportError(
+        err instanceof Error ? err.message : 'Import failed. The file may be corrupted.'
+      )
       setImportStep('error')
     }
   }
@@ -501,10 +537,12 @@ export default function SettingsPage() {
             <RowLabel>Units</RowLabel>
             <RowDescription>Ingredient measurements</RowDescription>
             <div className="flex gap-2 mt-2">
-              {([
-                { value: 'imperial', label: 'Imperial' },
-                { value: 'metric', label: 'Metric' },
-              ] as const).map((opt) => (
+              {(
+                [
+                  { value: 'imperial', label: 'Imperial' },
+                  { value: 'metric', label: 'Metric' },
+                ] as const
+              ).map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setUnitSystem(opt.value)}
@@ -528,7 +566,9 @@ export default function SettingsPage() {
         <SettingsCard>
           <SettingsRow>
             <RowLabel>Your dietary needs</RowLabel>
-            <RowDescription>Recipes will be filtered and allergens highlighted based on your selections.</RowDescription>
+            <RowDescription>
+              Recipes will be filtered and allergens highlighted based on your selections.
+            </RowDescription>
             <div className="flex flex-wrap gap-2 mt-3">
               {DIETARY_PREFERENCES.map((pref) => {
                 const selected = dietaryPrefs.includes(pref.id)
@@ -553,7 +593,10 @@ export default function SettingsPage() {
             {dietaryPrefs.length > 0 && (
               <button
                 type="button"
-                onClick={() => { setDietaryPrefsState([]); saveDietaryPrefs([]) }}
+                onClick={() => {
+                  setDietaryPrefsState([])
+                  saveDietaryPrefs([])
+                }}
                 className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium mt-2"
               >
                 Clear all
@@ -571,7 +614,8 @@ export default function SettingsPage() {
             <SettingsRow>
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
                 <p className="text-xs text-amber-800 dark:text-amber-200">
-                  Notifications are blocked in your browser. Enable them in your browser settings to use this feature.
+                  Notifications are blocked in your browser. Enable them in your browser settings to
+                  use this feature.
                 </p>
               </div>
             </SettingsRow>
@@ -645,7 +689,9 @@ export default function SettingsPage() {
           </SettingsRow>
           <SettingsRow>
             <RowLabel>Local storage</RowLabel>
-            <RowDescription>All data is stored locally in your browser. No account required.</RowDescription>
+            <RowDescription>
+              All data is stored locally in your browser. No account required.
+            </RowDescription>
           </SettingsRow>
           <SettingsRow>
             <div className="flex items-center justify-between">
@@ -685,7 +731,9 @@ export default function SettingsPage() {
           </SettingsRow>
           <SettingsRow>
             <RowLabel>Clear all data</RowLabel>
-            <RowDescription>Permanently delete all recipes, meal plans, and shopping lists.</RowDescription>
+            <RowDescription>
+              Permanently delete all recipes, meal plans, and shopping lists.
+            </RowDescription>
             <div className="flex items-center gap-3 mt-3">
               <button
                 onClick={handleClearData}
@@ -718,11 +766,13 @@ export default function SettingsPage() {
           <SettingsRow>
             <RowLabel>AI Recipe Import</RowLabel>
             <RowDescription>
-              Used to extract recipes from URLs (Instagram, Pinterest, TikTok, recipe sites). Your key is stored
-              locally and never sent anywhere except Anthropic's API.
+              Used to extract recipes from URLs (Instagram, Pinterest, TikTok, recipe sites). Your
+              key is stored locally and never sent anywhere except Anthropic's API.
             </RowDescription>
             <form onSubmit={handleSaveKey} className="flex gap-2 mt-3">
-              <label htmlFor="api-key-input" className="sr-only">Anthropic API key</label>
+              <label htmlFor="api-key-input" className="sr-only">
+                Anthropic API key
+              </label>
               <input
                 id="api-key-input"
                 type="password"
@@ -754,7 +804,9 @@ export default function SettingsPage() {
             <RowLabel>Display name</RowLabel>
             <RowDescription>Shown in exports and shared content</RowDescription>
             <form onSubmit={handleSaveDisplayName} className="flex gap-2 mt-3">
-              <label htmlFor="display-name-input" className="sr-only">Display name</label>
+              <label htmlFor="display-name-input" className="sr-only">
+                Display name
+              </label>
               <input
                 id="display-name-input"
                 type="text"
@@ -798,7 +850,9 @@ export default function SettingsPage() {
               <RowLabel>Mise</RowLabel>
               <span className="text-sm text-gray-400 dark:text-gray-500">v0.1.0</span>
             </div>
-            <RowDescription>Everything in its place — a local-first meal planner and recipe store.</RowDescription>
+            <RowDescription>
+              Everything in its place — a local-first meal planner and recipe store.
+            </RowDescription>
           </SettingsRow>
           <SettingsRow>
             <RowLabel>Open source</RowLabel>
@@ -823,7 +877,9 @@ export default function SettingsPage() {
             {importStep === 'preview' && importPreview && (
               <>
                 <div className="p-5 border-b border-gray-100 dark:border-gray-700">
-                  <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">Import backup</h2>
+                  <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                    Import backup
+                  </h2>
                   {importPreview.exportedAt && (
                     <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
                       Exported {new Date(importPreview.exportedAt).toLocaleDateString()}
@@ -847,7 +903,9 @@ export default function SettingsPage() {
                       .map(({ label, count }) => (
                         <div key={label} className="flex justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-300">{label}</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-100">{count}</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-100">
+                            {count}
+                          </span>
                         </div>
                       ))}
                   </div>
@@ -888,8 +946,12 @@ export default function SettingsPage() {
                           className="mt-0.5 accent-green-600"
                         />
                         <div>
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{label}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{description}</p>
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                            {label}
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                            {description}
+                          </p>
                         </div>
                       </label>
                     ))}
@@ -920,7 +982,9 @@ export default function SettingsPage() {
               <div className="p-8 flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Importing…</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      Importing…
+                    </p>
                     <span className="text-sm text-gray-400 dark:text-gray-500">
                       {importProgress?.pct ?? 0}%
                     </span>
@@ -942,17 +1006,29 @@ export default function SettingsPage() {
               <div className="p-6 space-y-4">
                 <div className="flex flex-col items-center gap-2 py-2">
                   <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <Check size={24} strokeWidth={2} className="text-green-600" aria-hidden="true" />
+                    <Check
+                      size={24}
+                      strokeWidth={2}
+                      className="text-green-600"
+                      aria-hidden="true"
+                    />
                   </div>
-                  <p className="text-base font-semibold text-gray-800 dark:text-gray-100">Import complete</p>
+                  <p className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                    Import complete
+                  </p>
                   {importPreview && (
                     <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
                       {[
-                        importPreview.recipes.length > 0 && `${importPreview.recipes.length} recipes`,
-                        importPreview.mealPlans.length > 0 && `${importPreview.mealPlans.length} meal plans`,
-                        importPreview.shoppingLists.length > 0 && `${importPreview.shoppingLists.length} shopping lists`,
-                        importPreview.collections.length > 0 && `${importPreview.collections.length} collections`,
-                        importPreview.pantryItems.length > 0 && `${importPreview.pantryItems.length} pantry items`,
+                        importPreview.recipes.length > 0 &&
+                          `${importPreview.recipes.length} recipes`,
+                        importPreview.mealPlans.length > 0 &&
+                          `${importPreview.mealPlans.length} meal plans`,
+                        importPreview.shoppingLists.length > 0 &&
+                          `${importPreview.shoppingLists.length} shopping lists`,
+                        importPreview.collections.length > 0 &&
+                          `${importPreview.collections.length} collections`,
+                        importPreview.pantryItems.length > 0 &&
+                          `${importPreview.pantryItems.length} pantry items`,
                       ]
                         .filter(Boolean)
                         .join(', ')}{' '}
@@ -975,8 +1051,12 @@ export default function SettingsPage() {
                   <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                     <X size={24} strokeWidth={2} className="text-red-600" aria-hidden="true" />
                   </div>
-                  <p className="text-base font-semibold text-gray-800 dark:text-gray-100">Import failed</p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500 text-center">{importError}</p>
+                  <p className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                    Import failed
+                  </p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
+                    {importError}
+                  </p>
                 </div>
                 <button
                   onClick={handleImportDismiss}

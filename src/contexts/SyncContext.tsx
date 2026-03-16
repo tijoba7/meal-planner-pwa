@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  type ReactNode,
+} from 'react'
 import { useAuth } from './AuthContext'
 import { startSync, stopSync, pullFromCloud } from '../lib/syncService'
 
@@ -81,7 +89,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const handleOffline = () => {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.ready
-          .then((reg) => (reg as unknown as { sync: { register(tag: string): Promise<void> } }).sync.register('mise-pull'))
+          .then((reg) =>
+            (reg as unknown as { sync: { register(tag: string): Promise<void> } }).sync.register(
+              'mise-pull'
+            )
+          )
           .catch(() => {
             // BackgroundSync not supported — rely on window.online fallback
           })
@@ -107,7 +119,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       navigator.serviceWorker?.removeEventListener('message', handleSwMessage)
       stopSync()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, backgroundPull])
 
   return (

@@ -161,7 +161,9 @@ describe('extractRecipeFromUrl', () => {
 
     it('includes page text in the Claude prompt when the page fetch succeeds', async () => {
       mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html><body>pasta recipe content here</body></html>'))
+        .mockResolvedValueOnce(
+          makePageResponse('<html><body>pasta recipe content here</body></html>')
+        )
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
       await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
@@ -233,12 +235,10 @@ describe('extractRecipeFromUrl', () => {
 
   describe('malformed response handling', () => {
     it('returns an error when Claude responds with unparseable text', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'Not JSON at all!' }] }),
-        })
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'Not JSON at all!' }] }),
+      })
 
       const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
 
@@ -250,26 +250,24 @@ describe('extractRecipeFromUrl', () => {
     it('strips markdown code fences before parsing the JSON', async () => {
       const withFences = '```json\n' + JSON.stringify(validRecipePayload) + '\n```'
 
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: withFences }] }),
-        })
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: withFences }] }),
+      })
 
       const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
       expect(result.ok).toBe(true)
     })
 
     it('returns an error when Claude responds with {"error": "..."}', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            content: [{ type: 'text', text: JSON.stringify({ error: 'No recipe found at this URL' }) }],
-          }),
-        })
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          content: [
+            { type: 'text', text: JSON.stringify({ error: 'No recipe found at this URL' }) },
+          ],
+        }),
+      })
 
       const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
 
@@ -306,13 +304,11 @@ describe('extractRecipeFromUrl', () => {
     })
 
     it('returns a generic HTTP error message when the API error body has no message', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          json: vi.fn().mockResolvedValue({}),
-        })
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: vi.fn().mockResolvedValue({}),
+      })
 
       const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
 
@@ -322,12 +318,10 @@ describe('extractRecipeFromUrl', () => {
     })
 
     it('returns an error when the Claude response content array is empty', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ content: [] }),
-        })
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ content: [] }),
+      })
 
       const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
       // Empty text → empty string → JSON.parse('') throws → parse error
@@ -436,7 +430,13 @@ describe('extractRecipeFromUrl', () => {
     })
 
     it('leaves optional fields undefined when absent from the response', async () => {
-      const { image: _i, author: _a, recipeCategory: _rc, recipeCuisine: _rcu, ...minimal } = validRecipePayload
+      const {
+        image: _i,
+        author: _a,
+        recipeCategory: _rc,
+        recipeCuisine: _rcu,
+        ...minimal
+      } = validRecipePayload
 
       mockFetch
         .mockResolvedValueOnce(makePageResponse('<html></html>'))

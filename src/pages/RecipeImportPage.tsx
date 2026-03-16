@@ -61,7 +61,10 @@ export default function RecipeImportPage() {
     const successful = results.filter((r) => r.ok)
     if (successful.length === 0) {
       const firstError = results.find((r) => !r.ok)
-      setState({ phase: 'error', message: firstError?.ok === false ? firstError.error : 'No recipes found.' })
+      setState({
+        phase: 'error',
+        message: firstError?.ok === false ? firstError.error : 'No recipes found.',
+      })
       return
     }
     if (successful.length === 1 && successful[0].ok) {
@@ -105,7 +108,11 @@ export default function RecipeImportPage() {
     }
 
     if (!apiKey) {
-      setState({ phase: 'error', message: 'AI API key required for URL and text import. Add your key in Settings, or import a .paprikarecipe / .json file instead.' })
+      setState({
+        phase: 'error',
+        message:
+          'AI API key required for URL and text import. Add your key in Settings, or import a .paprikarecipe / .json file instead.',
+      })
       return
     }
 
@@ -152,7 +159,10 @@ export default function RecipeImportPage() {
       const results = await importFromFile(file)
       applyFileResults(results)
     } catch (err) {
-      setState({ phase: 'error', message: err instanceof Error ? err.message : 'Failed to read file.' })
+      setState({
+        phase: 'error',
+        message: err instanceof Error ? err.message : 'Failed to read file.',
+      })
     }
   }
 
@@ -206,14 +216,20 @@ export default function RecipeImportPage() {
   if (!apiKey && state.phase === 'idle') {
     return (
       <div className="p-4 max-w-2xl mx-auto">
-        <Link to="/" className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
+        <Link
+          to="/"
+          className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4"
+        >
           ← Recipes
         </Link>
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Import Recipe</h2>
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5 text-center">
-          <p className="text-amber-800 dark:text-amber-300 font-medium mb-1">AI API key required for URL &amp; text import</p>
+          <p className="text-amber-800 dark:text-amber-300 font-medium mb-1">
+            AI API key required for URL &amp; text import
+          </p>
           <p className="text-sm text-amber-700 dark:text-amber-400 mb-4">
-            Paste a URL or recipe text to import with AI. You can also import .paprikarecipe and .json files without an API key.
+            Paste a URL or recipe text to import with AI. You can also import .paprikarecipe and
+            .json files without an API key.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Link
@@ -231,7 +247,13 @@ export default function RecipeImportPage() {
             </button>
           </div>
         </div>
-        <input ref={fileRef} type="file" accept=".paprikarecipe,.json" className="hidden" onChange={handleFileChange} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".paprikarecipe,.json"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </div>
     )
   }
@@ -240,7 +262,10 @@ export default function RecipeImportPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-10">
-      <Link to="/" className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
+      <Link
+        to="/"
+        className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4"
+      >
         ← Recipes
       </Link>
       <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Import Recipe</h2>
@@ -249,23 +274,32 @@ export default function RecipeImportPage() {
       {(state.phase === 'idle' || state.phase === 'error') && (
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Paste a URL, multiple URLs (one per line), recipe text, or JSON (JSON-LD / Paprika / Crouton).
+            Paste a URL, multiple URLs (one per line), recipe text, or JSON (JSON-LD / Paprika /
+            Crouton).
           </p>
           <form onSubmit={handleImport} className="space-y-3">
             <div>
-              <label htmlFor="recipe-input" className="sr-only">Recipe URL or text</label>
+              <label htmlFor="recipe-input" className="sr-only">
+                Recipe URL or text
+              </label>
               <textarea
                 id="recipe-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={'Paste a URL:\nhttps://www.allrecipes.com/recipe/…\n\nOr multiple URLs (one per line):\nhttps://…\nhttps://…\n\nOr paste recipe text directly.'}
+                placeholder={
+                  'Paste a URL:\nhttps://www.allrecipes.com/recipe/…\n\nOr multiple URLs (one per line):\nhttps://…\nhttps://…\n\nOr paste recipe text directly.'
+                }
                 rows={6}
                 className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
                 aria-describedby={state.phase === 'error' ? 'import-error' : undefined}
               />
             </div>
             {state.phase === 'error' && (
-              <p id="import-error" role="alert" className="text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+              <p
+                id="import-error"
+                role="alert"
+                className="text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"
+              >
                 {state.message}
               </p>
             )}
@@ -288,15 +322,26 @@ export default function RecipeImportPage() {
               </button>
             </div>
           </form>
-          <input ref={fileRef} type="file" accept=".paprikarecipe,.json" className="hidden" onChange={handleFileChange} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".paprikarecipe,.json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
         </>
       )}
 
       {/* Loading */}
       {state.phase === 'loading' && (
         <div className="text-center py-12" role="status" aria-label={state.label}>
-          <div className="inline-block w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4" aria-hidden="true" />
-          <p className="text-gray-500 dark:text-gray-400 text-sm" aria-hidden="true">{state.label}</p>
+          <div
+            className="inline-block w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4"
+            aria-hidden="true"
+          />
+          <p className="text-gray-500 dark:text-gray-400 text-sm" aria-hidden="true">
+            {state.label}
+          </p>
         </div>
       )}
 
@@ -350,7 +395,9 @@ function RecipeReview({
   return (
     <div className="space-y-5">
       <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
-        <p className="text-sm text-green-700 dark:text-green-400 font-medium">Recipe extracted! Review before saving.</p>
+        <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+          Recipe extracted! Review before saving.
+        </p>
       </div>
 
       {recipe.image && (
@@ -359,19 +406,29 @@ function RecipeReview({
 
       <div>
         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{recipe.name}</h3>
-        {recipe.author && <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">by {recipe.author}</p>}
-        {recipe.description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{recipe.description}</p>}
+        {recipe.author && (
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">by {recipe.author}</p>
+        )}
+        {recipe.description && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{recipe.description}</p>
+        )}
       </div>
 
       <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400">
         <span>Serves {recipe.recipeYield}</span>
-        {recipe.prepTime && recipe.prepTime !== 'PT0M' && <span>Prep {fmtDuration(recipe.prepTime)}</span>}
-        {recipe.cookTime && recipe.cookTime !== 'PT0M' && <span>Cook {fmtDuration(recipe.cookTime)}</span>}
+        {recipe.prepTime && recipe.prepTime !== 'PT0M' && (
+          <span>Prep {fmtDuration(recipe.prepTime)}</span>
+        )}
+        {recipe.cookTime && recipe.cookTime !== 'PT0M' && (
+          <span>Cook {fmtDuration(recipe.cookTime)}</span>
+        )}
       </div>
 
       {recipe.recipeIngredient.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Ingredients</h4>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Ingredients
+          </h4>
           <ul className="space-y-1">
             {recipe.recipeIngredient.map((ing, i) => (
               <li key={i} className="text-sm text-gray-600 dark:text-gray-400 flex gap-2">
@@ -387,7 +444,9 @@ function RecipeReview({
 
       {recipe.recipeInstructions.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Instructions</h4>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Instructions
+          </h4>
           <ol className="space-y-2">
             {recipe.recipeInstructions.map((step, i) => (
               <li key={i} className="text-sm text-gray-600 dark:text-gray-400 flex gap-3">
@@ -404,7 +463,10 @@ function RecipeReview({
       {recipe.keywords.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {recipe.keywords.map((kw) => (
-            <span key={kw} className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full">
+            <span
+              key={kw}
+              className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
+            >
               {kw}
             </span>
           ))}
@@ -475,10 +537,18 @@ function BatchView({
         {items.map((item, i) => (
           <li key={i} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800">
             <div className="mt-0.5 shrink-0">
-              {item.status === 'loading' && <Loader2 size={18} className="text-green-500 animate-spin" />}
-              {item.status === 'pending' && <Circle size={18} className="text-gray-300 dark:text-gray-600" />}
-              {item.status === 'done' && item.savedId && <CheckCircle2 size={18} className="text-green-500" />}
-              {item.status === 'done' && !item.savedId && <CheckCircle2 size={18} className="text-gray-400 dark:text-gray-500" />}
+              {item.status === 'loading' && (
+                <Loader2 size={18} className="text-green-500 animate-spin" />
+              )}
+              {item.status === 'pending' && (
+                <Circle size={18} className="text-gray-300 dark:text-gray-600" />
+              )}
+              {item.status === 'done' && item.savedId && (
+                <CheckCircle2 size={18} className="text-green-500" />
+              )}
+              {item.status === 'done' && !item.savedId && (
+                <CheckCircle2 size={18} className="text-gray-400 dark:text-gray-500" />
+              )}
               {item.status === 'error' && <XCircle size={18} className="text-red-500" />}
             </div>
 

@@ -70,7 +70,7 @@ function renderLayout(initialPath = '/') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Layout />
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 
@@ -78,12 +78,13 @@ function renderLayout(initialPath = '/') {
 
 describe('Layout', () => {
   beforeEach(() => {
-    vi.mocked(AuthContext.useAuth).mockReturnValue(
-      { user: null, signOut: mockSignOut } as unknown as ReturnType<typeof AuthContext.useAuth>,
-    )
-    vi.mocked(ProfileContext.useProfile).mockReturnValue(
-      { profile: null } as unknown as ReturnType<typeof ProfileContext.useProfile>,
-    )
+    vi.mocked(AuthContext.useAuth).mockReturnValue({
+      user: null,
+      signOut: mockSignOut,
+    } as unknown as ReturnType<typeof AuthContext.useAuth>)
+    vi.mocked(ProfileContext.useProfile).mockReturnValue({ profile: null } as unknown as ReturnType<
+      typeof ProfileContext.useProfile
+    >)
     vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(false)
     vi.mocked(OnboardingWizard.isOnboardingDone).mockReturnValue(true)
     mockNavigate.mockClear()
@@ -242,9 +243,10 @@ describe('Layout', () => {
   describe('when Supabase is available and user is signed out', () => {
     beforeEach(() => {
       vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(true)
-      vi.mocked(AuthContext.useAuth).mockReturnValue(
-        { user: null, signOut: mockSignOut } as unknown as ReturnType<typeof AuthContext.useAuth>,
-      )
+      vi.mocked(AuthContext.useAuth).mockReturnValue({
+        user: null,
+        signOut: mockSignOut,
+      } as unknown as ReturnType<typeof AuthContext.useAuth>)
     })
 
     it('shows sign in links (sidebar + mobile header)', () => {
@@ -276,9 +278,10 @@ describe('Layout', () => {
 
     beforeEach(() => {
       vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(true)
-      vi.mocked(AuthContext.useAuth).mockReturnValue(
-        { user: mockUser, signOut: mockSignOut } as unknown as ReturnType<typeof AuthContext.useAuth>,
-      )
+      vi.mocked(AuthContext.useAuth).mockReturnValue({
+        user: mockUser,
+        signOut: mockSignOut,
+      } as unknown as ReturnType<typeof AuthContext.useAuth>)
     })
 
     it('shows the sign out button', () => {

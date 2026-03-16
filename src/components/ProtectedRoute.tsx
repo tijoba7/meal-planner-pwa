@@ -25,16 +25,21 @@ export default function ProtectedRoute({ children }: Props) {
           <div className="mx-auto w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
             <Settings size={28} className="text-red-600 dark:text-red-400" strokeWidth={1.5} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Supabase not configured</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Supabase not configured
+          </h1>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            This app requires Supabase to function. Set the following environment variables and restart the dev server:
+            This app requires Supabase to function. Set the following environment variables and
+            restart the dev server:
           </p>
           <pre className="text-left text-xs bg-gray-100 dark:bg-gray-800 rounded-lg p-4 text-gray-800 dark:text-gray-200 overflow-x-auto">
-{`VITE_SUPABASE_URL=https://your-project.supabase.co
+            {`VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key`}
           </pre>
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Add these to a <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">.env.local</code> file in the project root.
+            Add these to a{' '}
+            <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">.env.local</code> file in
+            the project root.
           </p>
         </div>
       </div>

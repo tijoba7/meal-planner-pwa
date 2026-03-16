@@ -49,8 +49,8 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="mx-auto w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-              <Mail size={28} className="text-green-600 dark:text-green-400" strokeWidth={1.5} />
-            </div>
+            <Mail size={28} className="text-green-600 dark:text-green-400" strokeWidth={1.5} />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Check your email</h1>
           <p className="text-gray-600 dark:text-gray-400">
             We sent a magic link to <strong>{email}</strong>. Click it to sign in.
@@ -71,13 +71,16 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Sign in to your account</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Everything in its place.</p>
         </div>
 
         {/* Mode toggle */}
         <div className="flex rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
           <button
-            onClick={() => { setMode('password'); setError(null) }}
+            onClick={() => {
+              setMode('password')
+              setError(null)
+            }}
             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
               mode === 'password'
                 ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100'
@@ -87,7 +90,10 @@ export default function LoginPage() {
             Password
           </button>
           <button
-            onClick={() => { setMode('magic-link'); setError(null) }}
+            onClick={() => {
+              setMode('magic-link')
+              setError(null)
+            }}
             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
               mode === 'magic-link'
                 ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100'
@@ -101,7 +107,10 @@ export default function LoginPage() {
         {mode === 'password' ? (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 Email
               </label>
               <input
@@ -117,10 +126,16 @@ export default function LoginPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
                   Password
                 </label>
-                <Link to="/auth/reset-password" className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300">
+                <Link
+                  to="/auth/reset-password"
+                  className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -149,7 +164,10 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email-ml" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label
+                htmlFor="email-ml"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
                 Email
               </label>
               <input
@@ -178,11 +196,13 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
           No account?{' '}
-          <Link to="/auth/signup" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
+          <Link
+            to="/auth/signup"
+            className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+          >
             Sign up
           </Link>
         </p>
-
       </div>
     </div>
   )

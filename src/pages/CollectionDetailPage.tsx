@@ -34,17 +34,25 @@ export default function CollectionDetailPage() {
     let cancelled = false
     Promise.all([getCollection(id), getRecipes()]).then(([col, recipes]) => {
       if (cancelled) return
-      if (!col) { setNotFound(true); return }
+      if (!col) {
+        setNotFound(true)
+        return
+      }
       setCollection(col)
       setAllRecipes(recipes)
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   if (notFound) {
     return (
       <div className="p-4 max-w-2xl mx-auto">
-        <Link to="/collections" className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium mb-4">
+        <Link
+          to="/collections"
+          className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium mb-4"
+        >
           <ArrowLeft size={14} aria-hidden="true" /> Collections
         </Link>
         <p className="text-gray-500 dark:text-gray-400">Collection not found.</p>
@@ -73,19 +81,15 @@ export default function CollectionDetailPage() {
   async function handleRemoveRecipe(recipeId: string) {
     if (!collection) return
     await removeRecipeFromCollection(collection.id, recipeId)
-    setCollection((prev) => prev
-      ? { ...prev, recipeIds: prev.recipeIds.filter((rid) => rid !== recipeId) }
-      : prev
+    setCollection((prev) =>
+      prev ? { ...prev, recipeIds: prev.recipeIds.filter((rid) => rid !== recipeId) } : prev
     )
   }
 
   async function handleAddRecipe(recipeId: string) {
     if (!collection) return
     await addRecipeToCollection(collection.id, recipeId)
-    setCollection((prev) => prev
-      ? { ...prev, recipeIds: [...prev.recipeIds, recipeId] }
-      : prev
-    )
+    setCollection((prev) => (prev ? { ...prev, recipeIds: [...prev.recipeIds, recipeId] } : prev))
   }
 
   async function handleSaveEdit(e: React.FormEvent) {
@@ -109,7 +113,10 @@ export default function CollectionDetailPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
-      <Link to="/collections" className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium mb-4">
+      <Link
+        to="/collections"
+        className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium mb-4"
+      >
         <ArrowLeft size={14} aria-hidden="true" /> Collections
       </Link>
 
@@ -117,12 +124,21 @@ export default function CollectionDetailPage() {
       <div className="flex items-start justify-between gap-3 mb-6">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 shrink-0 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-            <Library size={20} strokeWidth={1.75} className="text-green-600 dark:text-green-400" aria-hidden="true" />
+            <Library
+              size={20}
+              strokeWidth={1.75}
+              className="text-green-600 dark:text-green-400"
+              aria-hidden="true"
+            />
           </div>
           <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">{collection.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">
+              {collection.name}
+            </h2>
             {collection.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{collection.description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {collection.description}
+              </p>
             )}
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               {collection.recipeIds.length} recipe{collection.recipeIds.length !== 1 ? 's' : ''}
@@ -157,7 +173,10 @@ export default function CollectionDetailPage() {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Recipes</h3>
         <button
-          onClick={() => { setShowAddRecipes(true); setAddSearch('') }}
+          onClick={() => {
+            setShowAddRecipes(true)
+            setAddSearch('')
+          }}
           className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors"
         >
           <Plus size={14} aria-hidden="true" />
@@ -171,7 +190,13 @@ export default function CollectionDetailPage() {
           icon={Library}
           title="No recipes yet"
           description="Add recipes to this collection to organize your cookbook."
-          action={{ label: 'Add recipes', onClick: () => { setShowAddRecipes(true); setAddSearch('') } }}
+          action={{
+            label: 'Add recipes',
+            onClick: () => {
+              setShowAddRecipes(true)
+              setAddSearch('')
+            },
+          }}
         />
       ) : (
         <ul className="space-y-3">
@@ -192,9 +217,13 @@ export default function CollectionDetailPage() {
                     />
                   )}
                   <div className="flex-1 min-w-0 pr-8">
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">{recipe.name}</h4>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">
+                      {recipe.name}
+                    </h4>
                     {recipe.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{recipe.description}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        {recipe.description}
+                      </p>
                     )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
                       <span>{recipe.recipeYield} servings</span>
@@ -245,7 +274,9 @@ export default function CollectionDetailPage() {
             <div className="overflow-y-auto flex-1">
               {addableRecipes.length === 0 ? (
                 <p className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-                  {addSearch.trim() ? 'No matching recipes.' : 'All your recipes are already in this collection.'}
+                  {addSearch.trim()
+                    ? 'No matching recipes.'
+                    : 'All your recipes are already in this collection.'}
                 </p>
               ) : (
                 <ul className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -263,12 +294,20 @@ export default function CollectionDetailPage() {
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{recipe.name}</p>
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                            {recipe.name}
+                          </p>
                           {recipe.keywords.length > 0 && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{recipe.keywords.join(', ')}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                              {recipe.keywords.join(', ')}
+                            </p>
                           )}
                         </div>
-                        <Check size={16} className="shrink-0 text-green-600 dark:text-green-400 opacity-0" aria-hidden="true" />
+                        <Check
+                          size={16}
+                          className="shrink-0 text-green-600 dark:text-green-400 opacity-0"
+                          aria-hidden="true"
+                        />
                       </button>
                     </li>
                   ))}
@@ -303,7 +342,10 @@ export default function CollectionDetailPage() {
             </div>
             <form onSubmit={handleSaveEdit} className="p-4 space-y-4">
               <div>
-                <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="edit-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Name
                 </label>
                 <input
@@ -317,7 +359,10 @@ export default function CollectionDetailPage() {
                 />
               </div>
               <div>
-                <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="edit-description"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Description <span className="font-normal text-gray-400">(optional)</span>
                 </label>
                 <input
@@ -351,9 +396,19 @@ export default function CollectionDetailPage() {
 
       {/* Delete confirmation */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="delete-collection-title">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-collection-title"
+        >
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl">
-            <h4 id="delete-collection-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete collection?</h4>
+            <h4
+              id="delete-collection-title"
+              className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2"
+            >
+              Delete collection?
+            </h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               This removes the collection but won't delete any recipes.
             </p>

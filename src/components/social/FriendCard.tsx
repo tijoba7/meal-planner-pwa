@@ -5,8 +5,8 @@ import type { Profile } from '../../types/supabase'
 
 export type FriendRelation =
   | 'none'
-  | 'pending_sent'      // current user sent the request
-  | 'pending_received'  // other user sent the request
+  | 'pending_sent' // current user sent the request
+  | 'pending_received' // other user sent the request
   | 'friends'
   | 'blocked'
 
@@ -53,9 +53,7 @@ export default function FriendCard({
         >
           {profile.display_name}
         </Link>
-        {profile.bio && (
-          <p className="text-xs text-gray-400 truncate mt-0.5">{profile.bio}</p>
-        )}
+        {profile.bio && <p className="text-xs text-gray-400 truncate mt-0.5">{profile.bio}</p>}
       </div>
 
       <div className="flex items-center gap-2 shrink-0">

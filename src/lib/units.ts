@@ -147,7 +147,7 @@ export function gToDisplayUnit(g: number, unit: string): number {
 export function convertUnit(
   amount: number,
   unit: string,
-  system: UnitSystem,
+  system: UnitSystem
 ): { amount: number; unit: string } {
   if (!unit || amount === 0) return { amount, unit }
 

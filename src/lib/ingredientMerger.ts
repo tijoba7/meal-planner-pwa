@@ -15,9 +15,9 @@ import { volumeToMl, weightToG, mlToDisplayUnit, gToDisplayUnit } from './units'
 interface MergeEntry {
   name: string
   unit: string
-  rawAmount: number  // count/other units
-  mlBase?: number    // accumulated volume (ml)
-  gBase?: number     // accumulated weight (grams)
+  rawAmount: number // count/other units
+  mlBase?: number // accumulated volume (ml)
+  gBase?: number // accumulated weight (grams)
 }
 
 // ─── Name normalisation ───────────────────────────────────────────────────────

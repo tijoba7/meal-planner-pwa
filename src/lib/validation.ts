@@ -26,11 +26,7 @@ const PRIVATE_IP_PATTERNS: RegExp[] = [
   /^fe80:/i, // IPv6 link-local
 ]
 
-export type UrlValidationError =
-  | 'too_long'
-  | 'invalid_url'
-  | 'invalid_protocol'
-  | 'private_host'
+export type UrlValidationError = 'too_long' | 'invalid_url' | 'invalid_protocol' | 'private_host'
 
 /**
  * Validates a URL before fetching / passing to the AI.

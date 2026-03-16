@@ -45,11 +45,12 @@ export default function SignUpPage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="mx-auto w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-              <Mail size={28} className="text-green-600 dark:text-green-400" strokeWidth={1.5} />
-            </div>
+            <Mail size={28} className="text-green-600 dark:text-green-400" strokeWidth={1.5} />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Almost there!</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            We sent a confirmation link to <strong>{email}</strong>. Check your inbox to activate your account.
+            We sent a confirmation link to <strong>{email}</strong>. Check your inbox to activate
+            your account.
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Already confirmed?{' '}
@@ -70,12 +71,17 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Create an account to share recipes</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+            Sync recipes and meal plans across all your devices.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Email
             </label>
             <input
@@ -91,7 +97,10 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Password
             </label>
             <input
@@ -107,7 +116,10 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="confirm"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Confirm password
             </label>
             <input
@@ -135,7 +147,10 @@ export default function SignUpPage() {
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
           Already have an account?{' '}
-          <Link to="/auth/login" className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium">
+          <Link
+            to="/auth/login"
+            className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+          >
             Sign in
           </Link>
         </p>

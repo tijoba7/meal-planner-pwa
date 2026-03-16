@@ -17,11 +17,24 @@ interface EmptyStateProps {
   action?: EmptyStateAction
 }
 
-export default function EmptyState({ icon, illustration, title, description, action }: EmptyStateProps) {
-  const graphic = illustration ?? (icon ? React.createElement(icon, { size: 36, strokeWidth: 1.5, className: 'text-green-400' }) : null)
+export default function EmptyState({
+  icon,
+  illustration,
+  title,
+  description,
+  action,
+}: EmptyStateProps) {
+  const graphic =
+    illustration ??
+    (icon
+      ? React.createElement(icon, { size: 36, strokeWidth: 1.5, className: 'text-green-400' })
+      : null)
   return (
     <div className="flex flex-col items-center text-center py-16 px-4">
-      <div className="w-20 h-20 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-5" aria-hidden="true">
+      <div
+        className="w-20 h-20 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-5"
+        aria-hidden="true"
+      >
         {graphic}
       </div>
       <p className="text-base font-semibold text-gray-700 dark:text-gray-200">{title}</p>

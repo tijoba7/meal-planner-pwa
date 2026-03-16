@@ -73,7 +73,7 @@ function renderPage() {
           <Route path="/recipes/import" element={<RecipeImportPage />} />
         </Routes>
       </MemoryRouter>
-    </ToastProvider>,
+    </ToastProvider>
   )
 }
 
@@ -305,7 +305,7 @@ describe('RecipeImportPage', () => {
 
       await waitFor(() => {
         expect(mockCreateRecipe).toHaveBeenCalledWith(
-          expect.objectContaining({ name: 'Pasta Carbonara' }),
+          expect.objectContaining({ name: 'Pasta Carbonara' })
         )
       })
     })
@@ -313,7 +313,11 @@ describe('RecipeImportPage', () => {
     it('shows "Saving…" label and disables buttons while saving', async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSave!: (value: any) => void
-      mockCreateRecipe.mockReturnValue(new Promise((resolve) => { resolveSave = resolve }))
+      mockCreateRecipe.mockReturnValue(
+        new Promise((resolve) => {
+          resolveSave = resolve
+        })
+      )
 
       const user = userEvent.setup()
       renderPage()

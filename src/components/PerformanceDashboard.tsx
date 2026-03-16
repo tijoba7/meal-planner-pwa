@@ -18,10 +18,34 @@ interface VitalRow {
 }
 
 const VITAL_META: VitalRow[] = [
-  { name: 'LCP', label: 'Largest Contentful Paint', unit: 'ms', goodThreshold: 2500, needsImprovementThreshold: 4000 },
-  { name: 'INP', label: 'Interaction to Next Paint', unit: 'ms', goodThreshold: 200, needsImprovementThreshold: 500 },
-  { name: 'CLS', label: 'Cumulative Layout Shift', unit: '', goodThreshold: 0.1, needsImprovementThreshold: 0.25 },
-  { name: 'TTFB', label: 'Time to First Byte', unit: 'ms', goodThreshold: 800, needsImprovementThreshold: 1800 },
+  {
+    name: 'LCP',
+    label: 'Largest Contentful Paint',
+    unit: 'ms',
+    goodThreshold: 2500,
+    needsImprovementThreshold: 4000,
+  },
+  {
+    name: 'INP',
+    label: 'Interaction to Next Paint',
+    unit: 'ms',
+    goodThreshold: 200,
+    needsImprovementThreshold: 500,
+  },
+  {
+    name: 'CLS',
+    label: 'Cumulative Layout Shift',
+    unit: '',
+    goodThreshold: 0.1,
+    needsImprovementThreshold: 0.25,
+  },
+  {
+    name: 'TTFB',
+    label: 'Time to First Byte',
+    unit: 'ms',
+    goodThreshold: 800,
+    needsImprovementThreshold: 1800,
+  },
 ]
 
 function ratingColor(rating: Metric['rating']) {
@@ -77,9 +101,7 @@ export default function PerformanceDashboard() {
           </div>
         )
       })}
-      <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">
-        Measured this session
-      </p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">Measured this session</p>
     </div>
   )
 }

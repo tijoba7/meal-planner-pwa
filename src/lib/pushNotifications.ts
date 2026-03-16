@@ -31,11 +31,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 /** True when the current environment supports push notifications. */
 export function isPushSupported(): boolean {
-  return (
-    'serviceWorker' in navigator &&
-    'PushManager' in window &&
-    Boolean(VAPID_PUBLIC_KEY)
-  )
+  return 'serviceWorker' in navigator && 'PushManager' in window && Boolean(VAPID_PUBLIC_KEY)
 }
 
 /** Current Notification permission state. */

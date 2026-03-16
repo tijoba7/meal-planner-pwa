@@ -106,7 +106,9 @@ export async function getCloudRecipeMeta(recipeId: string): Promise<RecipeCloudM
  * Fetch a single shared cloud recipe by its ID (with author profile).
  * Returns null if not found or not visible to the current user (RLS).
  */
-export async function getSharedRecipe(cloudRecipeId: string): Promise<CloudRecipeWithAuthor | null> {
+export async function getSharedRecipe(
+  cloudRecipeId: string
+): Promise<CloudRecipeWithAuthor | null> {
   if (!supabase) return null
   const { data } = await supabase
     .from('recipes_cloud')

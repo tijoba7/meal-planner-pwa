@@ -80,7 +80,7 @@ function renderPage(id = 'recipe-123') {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
-    </AuthProvider>,
+    </AuthProvider>
   )
 }
 
@@ -237,7 +237,7 @@ describe('RecipeDetailPage', () => {
   // so we use a custom textContent matcher rather than getByText string matching.
   function findServings(n: number) {
     return screen.getByText(
-      (_, el) => el?.textContent?.replace(/\s+/g, ' ').trim() === `${n} servings`,
+      (_, el) => el?.textContent?.replace(/\s+/g, ' ').trim() === `${n} servings`
     )
   }
 
@@ -265,9 +265,7 @@ describe('RecipeDetailPage', () => {
     it('disables the decrease button when servings is already 1', async () => {
       mockGetRecipe.mockResolvedValue({ ...sampleRecipe, recipeYield: '1' })
       renderPage()
-      expect(
-        await screen.findByRole('button', { name: 'Decrease servings' }),
-      ).toBeDisabled()
+      expect(await screen.findByRole('button', { name: 'Decrease servings' })).toBeDisabled()
     })
 
     it('shows a reset button when servings are scaled, and resets on click', async () => {

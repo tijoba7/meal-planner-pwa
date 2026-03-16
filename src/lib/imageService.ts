@@ -56,7 +56,7 @@ function resizeToBlob(file: File, maxDim: number, quality: number): Promise<Blob
             ? resolve(blob)
             : reject(new Error('canvas.toBlob returned null — browser may not support WebP')),
         'image/webp',
-        quality,
+        quality
       )
     }
 
@@ -98,7 +98,7 @@ export async function resizeToDataUrl(file: File, maxDim: number): Promise<strin
 export async function uploadRecipeImage(
   userId: string,
   recipeId: string,
-  file: File,
+  file: File
 ): Promise<UploadedImage> {
   if (!supabase) throw new Error('Supabase is not configured')
 

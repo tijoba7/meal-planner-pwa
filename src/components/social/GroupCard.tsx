@@ -33,7 +33,13 @@ interface GroupCardProps {
  *   onJoin={(id) => joinGroup(id)}
  * />
  */
-export default function GroupCard({ data, onJoin, onLeave, onAcceptInvite, disabled }: GroupCardProps) {
+export default function GroupCard({
+  data,
+  onJoin,
+  onLeave,
+  onAcceptInvite,
+  disabled,
+}: GroupCardProps) {
   const { group, memberCount, membership = 'none', isPrivate } = data
 
   return (
@@ -42,7 +48,12 @@ export default function GroupCard({ data, onJoin, onLeave, onAcceptInvite, disab
       <Link to={`/groups/${group.id}`} aria-label={`Open ${group.name}`} className="shrink-0">
         <div className="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center overflow-hidden">
           {group.avatar_url ? (
-            <img src={group.avatar_url} alt={group.name} className="w-full h-full object-cover" loading="lazy" />
+            <img
+              src={group.avatar_url}
+              alt={group.name}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
           ) : (
             <Users size={22} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
           )}
@@ -59,7 +70,12 @@ export default function GroupCard({ data, onJoin, onLeave, onAcceptInvite, disab
             {group.name}
           </Link>
           {isPrivate && (
-            <Lock size={11} strokeWidth={2} className="text-gray-400 shrink-0" aria-label="Private group" />
+            <Lock
+              size={11}
+              strokeWidth={2}
+              className="text-gray-400 shrink-0"
+              aria-label="Private group"
+            />
           )}
         </div>
         {group.description && (

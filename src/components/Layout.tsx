@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, CalendarDays, Library, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, Package, HelpCircle, type LucideIcon } from 'lucide-react'
+import {
+  Bell,
+  BookOpen,
+  CalendarDays,
+  Library,
+  ShoppingCart,
+  Settings,
+  LogIn,
+  LogOut,
+  Compass,
+  Users,
+  UsersRound,
+  User,
+  Package,
+  HelpCircle,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -98,7 +114,9 @@ export default function Layout() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-colors ${
-      isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+      isActive
+        ? 'text-green-600 dark:text-green-400'
+        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
     }`
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -126,27 +144,50 @@ export default function Layout() {
       {/* Sidebar — icon-only on tablet (md), full labels on desktop (lg+) */}
       <aside className="print:hidden hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
         <div className="flex items-center justify-center lg:block px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-xl font-bold text-green-700 dark:text-green-400 lg:hidden" aria-hidden="true">M</span>
+          <span
+            className="text-xl font-bold text-green-700 dark:text-green-400 lg:hidden"
+            aria-hidden="true"
+          >
+            M
+          </span>
           <div className="hidden lg:block">
             <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Everything in its place.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Everything in its place.
+            </p>
           </div>
         </div>
         <nav aria-label="Main navigation" className="flex flex-col gap-1 p-2 lg:p-3 flex-1">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass} title={item.label} onMouseEnter={() => prefetch(item.to)} onFocus={() => prefetch(item.to)}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={sidebarLinkClass}
+              title={item.label}
+              onMouseEnter={() => prefetch(item.to)}
+              onFocus={() => prefetch(item.to)}
+            >
               <div className="relative">
                 <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
                 {item.to === '/notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none" aria-hidden="true">
+                  <span
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none"
+                    aria-hidden="true"
+                  >
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </div>
               <span className="hidden lg:block">
-                {item.to === '/notifications' && unreadCount > 0
-                  ? <>{item.label}<span className="sr-only"> ({unreadCount} unread)</span></>
-                  : item.label}
+                {item.to === '/notifications' && unreadCount > 0 ? (
+                  <>
+                    {item.label}
+                    <span className="sr-only"> ({unreadCount} unread)</span>
+                  </>
+                ) : (
+                  item.label
+                )}
               </span>
               {/* Always-visible screen reader label on tablet */}
               <span className="sr-only lg:hidden">
@@ -171,7 +212,9 @@ export default function Layout() {
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             title="Keyboard shortcuts (?)"
           >
-            <kbd className="inline-flex items-center justify-center w-5 h-5 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400">?</kbd>
+            <kbd className="inline-flex items-center justify-center w-5 h-5 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400">
+              ?
+            </kbd>
             <span>Keyboard shortcuts</span>
           </button>
         </div>
@@ -186,15 +229,25 @@ export default function Layout() {
                   aria-label="View profile"
                   className="flex items-center justify-center lg:justify-start gap-2 p-2 lg:px-3 lg:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  {profile
-                    ? <Avatar profile={profile} size="sm" />
-                    : <User size={16} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                  }
+                  {profile ? (
+                    <Avatar profile={profile} size="sm" />
+                  ) : (
+                    <User
+                      size={16}
+                      strokeWidth={1.75}
+                      className="text-gray-400 dark:text-gray-500"
+                      aria-hidden="true"
+                    />
+                  )}
                   <div className="min-w-0 hidden lg:block">
                     {profile && (
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{profile.display_name}</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
+                        {profile.display_name}
+                      </p>
                     )}
-                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                      {user.email}
+                    </p>
                   </div>
                 </Link>
                 <button
@@ -223,17 +276,18 @@ export default function Layout() {
       {/* Mobile header */}
       <header className="print:hidden md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-green-700 dark:text-green-400">Mise</h1>
-        {supIsAvailable && (
-          user ? (
+        {supIsAvailable &&
+          (user ? (
             <Link
               to="/profile"
               aria-label="View profile"
               className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              {profile
-                ? <Avatar profile={profile} size="sm" />
-                : <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
-              }
+              {profile ? (
+                <Avatar profile={profile} size="sm" />
+              ) : (
+                <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
+              )}
             </Link>
           ) : (
             <Link
@@ -243,32 +297,52 @@ export default function Layout() {
             >
               <LogIn size={18} strokeWidth={1.75} />
             </Link>
-          )
-        )}
+          ))}
       </header>
 
       {/* Main content — pb accounts for bottom tab bar + iOS safe area inset */}
-      <main id="main-content" className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 print:pb-0 print:overflow-visible">
+      <main
+        id="main-content"
+        className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 print:pb-0 print:overflow-visible"
+      >
         <div key={location.pathname} className="animate-fade-in">
           <Outlet />
         </div>
       </main>
 
       {/* Mobile bottom tab bar — pb handles iOS home indicator safe area */}
-      <nav aria-label="Mobile navigation" className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10 pb-[env(safe-area-inset-bottom)]">
+      <nav
+        aria-label="Mobile navigation"
+        className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10 pb-[env(safe-area-inset-bottom)]"
+      >
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onMouseEnter={() => prefetch(item.to)} onFocus={() => prefetch(item.to)}>
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={linkClass}
+            onMouseEnter={() => prefetch(item.to)}
+            onFocus={() => prefetch(item.to)}
+          >
             <div className="relative">
               <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />
               {item.to === '/notifications' && unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none" aria-hidden="true">
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none"
+                  aria-hidden="true"
+                >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </div>
-            {item.to === '/notifications' && unreadCount > 0
-              ? <>{item.label}<span className="sr-only"> ({unreadCount} unread)</span></>
-              : item.label}
+            {item.to === '/notifications' && unreadCount > 0 ? (
+              <>
+                {item.label}
+                <span className="sr-only"> ({unreadCount} unread)</span>
+              </>
+            ) : (
+              item.label
+            )}
           </NavLink>
         ))}
       </nav>

@@ -316,7 +316,17 @@ export const NUTRITION_DB: NutritionEntry[] = [
   },
   {
     name: 'Pasta (cooked)',
-    aliases: ['pasta', 'spaghetti', 'penne', 'fettuccine', 'linguine', 'rigatoni', 'noodle', 'noodles', 'macaroni'],
+    aliases: [
+      'pasta',
+      'spaghetti',
+      'penne',
+      'fettuccine',
+      'linguine',
+      'rigatoni',
+      'noodle',
+      'noodles',
+      'macaroni',
+    ],
     per100g: { calories: 158, protein: 5.8, carbs: 31, fat: 0.9, fiber: 1.8, sodium: 1 },
     densityGml: 1.0,
   },
@@ -367,7 +377,15 @@ export const NUTRITION_DB: NutritionEntry[] = [
   // ─── Vegetables ─────────────────────────────────────────────────────────────
   {
     name: 'Onion',
-    aliases: ['onion', 'yellow onion', 'white onion', 'red onion', 'spring onion', 'green onion', 'scallion'],
+    aliases: [
+      'onion',
+      'yellow onion',
+      'white onion',
+      'red onion',
+      'spring onion',
+      'green onion',
+      'scallion',
+    ],
     per100g: { calories: 40, protein: 1.1, carbs: 9.3, fat: 0.1, fiber: 1.7, sodium: 4 },
     typicalWeightG: 110,
   },
@@ -824,7 +842,14 @@ export const NUTRITION_DB: NutritionEntry[] = [
   },
   {
     name: 'Vinegar',
-    aliases: ['white vinegar', 'apple cider vinegar', 'rice vinegar', 'balsamic vinegar', 'red wine vinegar', 'vinegar'],
+    aliases: [
+      'white vinegar',
+      'apple cider vinegar',
+      'rice vinegar',
+      'balsamic vinegar',
+      'red wine vinegar',
+      'vinegar',
+    ],
     per100g: { calories: 20, protein: 0, carbs: 0.9, fat: 0, fiber: 0, sodium: 2 },
     densityGml: 1.0,
   },

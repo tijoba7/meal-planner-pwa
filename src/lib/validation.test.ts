@@ -86,10 +86,18 @@ describe('checkImportRateLimit', () => {
   let store: Record<string, string> = {}
   const localStorageMock: Storage = {
     getItem: (key) => store[key] ?? null,
-    setItem: (key, value) => { store[key] = String(value) },
-    removeItem: (key) => { delete store[key] },
-    clear: () => { store = {} },
-    get length() { return Object.keys(store).length },
+    setItem: (key, value) => {
+      store[key] = String(value)
+    },
+    removeItem: (key) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
+    get length() {
+      return Object.keys(store).length
+    },
     key: (index) => Object.keys(store)[index] ?? null,
   }
 
@@ -288,9 +296,11 @@ describe('sanitizeRecipeData', () => {
 
   it('preserves extra fields from the original recipe object', () => {
     type Extended = ReturnType<typeof sanitizeRecipeData> & { id: string; dateCreated: string }
-    const input = { ...baseRecipe, id: 'recipe-1', dateCreated: '2026-01-01' } as unknown as Parameters<
-      typeof sanitizeRecipeData
-    >[0]
+    const input = {
+      ...baseRecipe,
+      id: 'recipe-1',
+      dateCreated: '2026-01-01',
+    } as unknown as Parameters<typeof sanitizeRecipeData>[0]
     const result = sanitizeRecipeData(input) as Extended
     expect(result.id).toBe('recipe-1')
     expect(result.dateCreated).toBe('2026-01-01')

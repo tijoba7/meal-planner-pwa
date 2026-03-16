@@ -1,17 +1,39 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  UsersRound, Rss, Users, Plus, Trash2, LogOut, UserMinus,
-  Crown, Loader2, ChevronLeft, Settings, X, Heart, Star,
+  UsersRound,
+  Rss,
+  Users,
+  Plus,
+  Trash2,
+  LogOut,
+  UserMinus,
+  Crown,
+  Loader2,
+  ChevronLeft,
+  Settings,
+  X,
+  Heart,
+  Star,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseAvailable } from '../lib/supabase'
 import { Avatar } from '../components/ProfileCard'
 import {
-  getGroup, getGroupMembers, getMyGroupRole, getGroupFeed,
-  inviteMember, removeMember, updateMemberRole, leaveGroup,
-  updateGroup, deleteGroup, shareRecipeToGroup, removeRecipeFromGroup,
-  getGroupRecipeIds, type GroupMemberWithProfile,
+  getGroup,
+  getGroupMembers,
+  getMyGroupRole,
+  getGroupFeed,
+  inviteMember,
+  removeMember,
+  updateMemberRole,
+  leaveGroup,
+  updateGroup,
+  deleteGroup,
+  shareRecipeToGroup,
+  removeRecipeFromGroup,
+  getGroupRecipeIds,
+  type GroupMemberWithProfile,
 } from '../lib/groupService'
 import { getFriends } from '../lib/friendshipService'
 import { getEngagementStats, type EngagementStats } from '../lib/engagementService'
@@ -51,7 +73,9 @@ function GroupRecipeCard({
           />
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-tight">{recipe.name}</h3>
+          <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-tight">
+            {recipe.name}
+          </h3>
           <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
             by {item.profiles?.display_name ?? 'Unknown'}
           </p>
@@ -129,9 +153,7 @@ function MemberCard({
           {member.role === 'admin' && (
             <Crown size={11} className="text-yellow-500 shrink-0" fill="currentColor" />
           )}
-          {isCurrentUser && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">(you)</span>
-          )}
+          {isCurrentUser && <span className="text-xs text-gray-400 dark:text-gray-500">(you)</span>}
         </div>
         {member.profile.bio && (
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.profile.bio}</p>
@@ -164,7 +186,11 @@ function MemberCard({
             title="Remove member"
             className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500 transition-colors disabled:opacity-50"
           >
-            {busy === 'remove' ? <Loader2 size={11} className="animate-spin" /> : <UserMinus size={11} />}
+            {busy === 'remove' ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : (
+              <UserMinus size={11} />
+            )}
             Remove
           </button>
         </div>
@@ -193,7 +219,10 @@ function ShareRecipeModal({
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
     Promise.all([
       supabase
         .from('recipes_cloud')
@@ -226,8 +255,13 @@ function ShareRecipeModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Share a recipe</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            Share a recipe
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
             <X size={18} className="text-gray-500" />
           </button>
         </div>
@@ -304,7 +338,9 @@ function InviteMemberModal({
   onInvited: () => void
   onClose: () => void
 }) {
-  const [friends, setFriends] = useState<{ id: string; display_name: string; avatar_url: string | null; bio: string | null }[]>([])
+  const [friends, setFriends] = useState<
+    { id: string; display_name: string; avatar_url: string | null; bio: string | null }[]
+  >([])
   const [loading, setLoading] = useState(true)
   const [inviting, setInviting] = useState<string | null>(null)
   const [invited, setInvited] = useState<Set<string>>(new Set())
@@ -336,8 +372,13 @@ function InviteMemberModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Invite friends</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            Invite friends
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
             <X size={18} className="text-gray-500" />
           </button>
         </div>
@@ -413,7 +454,11 @@ function EditGroupModal({
     if (name.trim().length === 0) return
     setBusy(true)
     const { error: err } = await updateGroup(group.id, { name, description: description || null })
-    if (err) { setError(err.message); setBusy(false); return }
+    if (err) {
+      setError(err.message)
+      setBusy(false)
+      return
+    }
     onSaved({ name: name.trim(), description: description.trim() || null })
     setBusy(false)
   }
@@ -424,7 +469,9 @@ function EditGroupModal({
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit group</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Name
+            </label>
             <input
               type="text"
               value={name}
@@ -434,7 +481,9 @@ function EditGroupModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -445,10 +494,16 @@ function EditGroupModal({
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={onClose}
+            <button
+              type="button"
+              onClick={onClose}
               className="flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >Cancel</button>
-            <button type="submit" disabled={busy || name.trim().length === 0}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy || name.trim().length === 0}
               className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {busy && <Loader2 size={14} className="animate-spin" />}Save
@@ -485,7 +540,10 @@ export default function GroupDetailPage() {
   const [leaveBusy, setLeaveBusy] = useState(false)
 
   const loadAll = useCallback(async () => {
-    if (!groupId || !user || !supAvailable) { setLoading(false); return }
+    if (!groupId || !user || !supAvailable) {
+      setLoading(false)
+      return
+    }
 
     const [g, mems, role, recipes] = await Promise.all([
       getGroup(groupId),
@@ -494,7 +552,10 @@ export default function GroupDetailPage() {
       getGroupFeed(groupId),
     ])
 
-    if (!g) { navigate('/groups', { replace: true }); return }
+    if (!g) {
+      navigate('/groups', { replace: true })
+      return
+    }
 
     setGroup(g)
     setMembers(mems)
@@ -507,7 +568,9 @@ export default function GroupDetailPage() {
     }
   }, [groupId, user, supAvailable, navigate])
 
-  useEffect(() => { loadAll() }, [loadAll])
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
 
   if (!supAvailable || !user) {
     return (
@@ -563,20 +626,23 @@ export default function GroupDetailPage() {
 
   async function handleToggleRole(userId: string, newRole: 'admin' | 'member') {
     await updateMemberRole(group!.id, userId, newRole)
-    setMembers((prev) =>
-      prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m))
-    )
+    setMembers((prev) => prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m)))
   }
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <Link to="/groups" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+        <Link
+          to="/groups"
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
           <ChevronLeft size={18} className="text-gray-500 dark:text-gray-400" />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">{group.name}</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+            {group.name}
+          </h1>
           {group.description && (
             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{group.description}</p>
           )}
@@ -620,7 +686,11 @@ export default function GroupDetailPage() {
             title="Delete group"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
           >
-            {deleteBusy ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} strokeWidth={1.75} />}
+            {deleteBusy ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Trash2 size={13} strokeWidth={1.75} />
+            )}
             Delete
           </button>
         ) : (
@@ -630,7 +700,11 @@ export default function GroupDetailPage() {
             title="Leave group"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500 transition-colors disabled:opacity-50"
           >
-            {leaveBusy ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} strokeWidth={1.75} />}
+            {leaveBusy ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <LogOut size={13} strokeWidth={1.75} />
+            )}
             Leave
           </button>
         )}
@@ -657,10 +731,14 @@ export default function GroupDetailPage() {
       </div>
 
       {/* Feed tab */}
-      {tab === 'feed' && (
-        feed.length === 0 ? (
+      {tab === 'feed' &&
+        (feed.length === 0 ? (
           <div className="text-center py-14">
-            <Rss size={32} strokeWidth={1.25} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <Rss
+              size={32}
+              strokeWidth={1.25}
+              className="mx-auto text-gray-300 dark:text-gray-600 mb-3"
+            />
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No recipes shared yet.</p>
             <button
               onClick={() => setShowShareRecipe(true)}
@@ -681,8 +759,7 @@ export default function GroupDetailPage() {
               />
             ))}
           </ul>
-        )
-      )}
+        ))}
 
       {/* Members tab */}
       {tab === 'members' && (
@@ -726,7 +803,7 @@ export default function GroupDetailPage() {
         <EditGroupModal
           group={group}
           onSaved={(updates) => {
-            setGroup((prev) => prev ? { ...prev, ...updates } : prev)
+            setGroup((prev) => (prev ? { ...prev, ...updates } : prev))
             setShowEdit(false)
           }}
           onClose={() => setShowEdit(false)}

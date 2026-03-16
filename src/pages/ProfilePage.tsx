@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Camera, Check, Loader2, Pencil, Sparkles, X, Users, Link2, Copy, RefreshCw } from 'lucide-react'
+import {
+  Camera,
+  Check,
+  Loader2,
+  Pencil,
+  Sparkles,
+  X,
+  Users,
+  Link2,
+  Copy,
+  RefreshCw,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useProfile } from '../contexts/ProfileContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -75,10 +86,7 @@ export default function ProfilePage() {
 
   // Detect "fresh" profile (trigger created it with just email prefix, no bio/avatar)
   const isNewProfile =
-    profile &&
-    !profile.bio &&
-    !profile.avatar_url &&
-    profile.dietary_preferences.length === 0
+    profile && !profile.bio && !profile.avatar_url && profile.dietary_preferences.length === 0
 
   function startEditing() {
     if (!profile) return
@@ -96,9 +104,7 @@ export default function ProfilePage() {
   }
 
   function toggleDietary(pref: string) {
-    setDietary(prev =>
-      prev.includes(pref) ? prev.filter(p => p !== pref) : [...prev, pref],
-    )
+    setDietary((prev) => (prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]))
   }
 
   async function handleSave(e: FormEvent) {
@@ -171,9 +177,15 @@ export default function ProfilePage() {
       {/* Onboarding banner */}
       {isNewProfile && !editing && (
         <div className="mb-6 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 flex gap-3">
-          <Sparkles size={20} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+          <Sparkles
+            size={20}
+            className="text-green-600 dark:text-green-400 shrink-0 mt-0.5"
+            strokeWidth={1.75}
+          />
           <div>
-            <p className="text-sm font-medium text-green-800 dark:text-green-300">Welcome to Mise!</p>
+            <p className="text-sm font-medium text-green-800 dark:text-green-300">
+              Welcome to Mise!
+            </p>
             <p className="text-sm text-green-700 dark:text-green-400 mt-0.5">
               Add a photo, bio, and dietary preferences so others can find and connect with you.
             </p>
@@ -221,7 +233,9 @@ export default function ProfilePage() {
         >
           <Users size={14} strokeWidth={1.75} />
           <span className="font-medium">{friendCount}</span>
-          <span className="text-gray-400 dark:text-gray-500">{friendCount === 1 ? 'friend' : 'friends'}</span>
+          <span className="text-gray-400 dark:text-gray-500">
+            {friendCount === 1 ? 'friend' : 'friends'}
+          </span>
         </Link>
       </div>
 
@@ -229,15 +243,21 @@ export default function ProfilePage() {
       {editing ? (
         <form onSubmit={handleSave} className="space-y-5">
           <div>
-            <label htmlFor="profile-display-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Display name <span className="text-red-500" aria-hidden="true">*</span>
+            <label
+              htmlFor="profile-display-name"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+            >
+              Display name{' '}
+              <span className="text-red-500" aria-hidden="true">
+                *
+              </span>
               <span className="sr-only">(required)</span>
             </label>
             <input
               id="profile-display-name"
               type="text"
               value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
+              onChange={(e) => setDisplayName(e.target.value)}
               maxLength={60}
               className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="Your name"
@@ -245,26 +265,40 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label htmlFor="profile-bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Bio</label>
+            <label
+              htmlFor="profile-bio"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+            >
+              Bio
+            </label>
             <textarea
               id="profile-bio"
               value={bio}
-              onChange={e => setBio(e.target.value)}
+              onChange={(e) => setBio(e.target.value)}
               maxLength={200}
               rows={3}
               className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
               placeholder="Tell others a bit about yourself and your cooking style…"
               aria-describedby="profile-bio-count"
             />
-            <p id="profile-bio-count" className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right" aria-live="polite">{bio.length}/200</p>
+            <p
+              id="profile-bio-count"
+              className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right"
+              aria-live="polite"
+            >
+              {bio.length}/200
+            </p>
           </div>
 
           <div>
-            <p id="dietary-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <p
+              id="dietary-label"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Dietary preferences
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-labelledby="dietary-label">
-              {DIETARY_OPTIONS.map(pref => {
+              {DIETARY_OPTIONS.map((pref) => {
                 const active = dietary.includes(pref)
                 return (
                   <button
@@ -285,7 +319,11 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-3 pt-1">
             <button
@@ -314,8 +352,12 @@ export default function ProfilePage() {
         <div className="space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{profile.display_name}</h2>
-              {profile.bio && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{profile.bio}</p>}
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {profile.display_name}
+              </h2>
+              {profile.bio && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{profile.bio}</p>
+              )}
             </div>
             <button
               onClick={startEditing}
@@ -333,7 +375,7 @@ export default function ProfilePage() {
                 Dietary preferences
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {profile.dietary_preferences.map(pref => (
+                {profile.dietary_preferences.map((pref) => (
                   <span
                     key={pref}
                     className="px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium border border-green-200 dark:border-green-800"
@@ -352,7 +394,11 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           {/* Invite link section */}
           <div className="border-t border-gray-100 dark:border-gray-700 pt-5">
@@ -384,7 +430,11 @@ export default function ProfilePage() {
                     title="Copy link"
                     className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
                   >
-                    {copied ? <Check size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={1.75} />}
+                    {copied ? (
+                      <Check size={12} strokeWidth={2} />
+                    ) : (
+                      <Copy size={12} strokeWidth={1.75} />
+                    )}
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
                 </div>

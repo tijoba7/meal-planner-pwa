@@ -29,12 +29,12 @@ async function resizeToJpeg(file: File, maxSize = 400): Promise<File> {
       canvas.height = h
       canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
       canvas.toBlob(
-        blob =>
+        (blob) =>
           blob
             ? resolve(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
             : reject(new Error('Canvas resize failed')),
         'image/jpeg',
-        0.85,
+        0.85
       )
     }
     img.onerror = () => {
@@ -115,7 +115,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, updateProfile, uploadAvatar, refreshProfile }}>
+    <ProfileContext.Provider
+      value={{ profile, loading, updateProfile, uploadAvatar, refreshProfile }}
+    >
       {children}
     </ProfileContext.Provider>
   )

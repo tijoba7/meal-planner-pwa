@@ -26,7 +26,11 @@ export default function ProfileCard({ profile, linkable = true, size = 'md' }: P
           loading="lazy"
         />
       ) : (
-        <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
+        <User
+          size={iconSizes[size]}
+          strokeWidth={1.75}
+          className="text-gray-400 dark:text-gray-500"
+        />
       )}
     </div>
   )
@@ -78,7 +82,11 @@ export function Avatar({ profile, size = 'md', className = '' }: AvatarProps) {
           loading="lazy"
         />
       ) : (
-        <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
+        <User
+          size={iconSizes[size]}
+          strokeWidth={1.75}
+          className="text-gray-400 dark:text-gray-500"
+        />
       )}
     </div>
   )

@@ -74,7 +74,9 @@ export default function RecipeFeedCard({
           </Link>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-gray-400">{relativeTime(recipe.publishedAt)}</span>
-            <span aria-hidden="true" className="text-gray-200">·</span>
+            <span aria-hidden="true" className="text-gray-200">
+              ·
+            </span>
             <VisibilityBadge visibility={recipe.visibility} />
           </div>
         </div>

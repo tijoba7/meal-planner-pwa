@@ -11,11 +11,11 @@ interface BadgeProps {
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
   default: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
-  green:   'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
-  blue:    'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
-  red:     'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',
-  amber:   'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300',
-  gray:    'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+  green: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
+  blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
+  red: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',
+  amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300',
+  gray: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
 }
 
 /**

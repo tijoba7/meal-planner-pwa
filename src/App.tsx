@@ -54,55 +54,62 @@ function PageLoader() {
 export default function App() {
   return (
     <ThemeProvider>
-    <ToastProvider>
-    <AuthProvider>
-      <SyncProvider>
-      <MigrationProvider>
-      <ProfileProvider>
-        <ErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* Auth pages — full-screen, outside the main Layout */}
-          <Route path="/auth/login" element={<LoginPage />} />
-          <Route path="/auth/signup" element={<SignUpPage />} />
-          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+      <ToastProvider>
+        <AuthProvider>
+          <SyncProvider>
+            <MigrationProvider>
+              <ProfileProvider>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      {/* Auth pages — full-screen, outside the main Layout */}
+                      <Route path="/auth/login" element={<LoginPage />} />
+                      <Route path="/auth/signup" element={<SignUpPage />} />
+                      <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Main app — requires authentication */}
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<RecipesPage />} />
-            <Route path="recipes/new" element={<RecipeFormPage />} />
-            <Route path="recipes/import" element={<RecipeImportPage />} />
-            <Route path="recipes/:id" element={<RecipeDetailPage />} />
-            <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
-            <Route path="meal-plan" element={<PlannerPage />} />
-            <Route path="shopping" element={<ShoppingListPage />} />
-            <Route path="pantry" element={<PantryPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="users/:userId" element={<PublicProfilePage />} />
-            <Route path="friends" element={<FriendsPage />} />
-            <Route path="invite/:token" element={<InvitePage />} />
-            <Route path="discover" element={<DiscoverPage />} />
-            <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
-            <Route path="groups" element={<GroupsPage />} />
-            <Route path="groups/:id" element={<GroupDetailPage />} />
-            <Route path="collections" element={<CollectionsPage />} />
-            <Route path="collections/:id" element={<CollectionDetailPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="help" element={<HelpPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
+                      {/* Main app — requires authentication */}
+                      <Route
+                        path="/"
+                        element={
+                          <ProtectedRoute>
+                            <Layout />
+                          </ProtectedRoute>
+                        }
+                      >
+                        <Route index element={<RecipesPage />} />
+                        <Route path="recipes/new" element={<RecipeFormPage />} />
+                        <Route path="recipes/import" element={<RecipeImportPage />} />
+                        <Route path="recipes/:id" element={<RecipeDetailPage />} />
+                        <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
+                        <Route path="meal-plan" element={<PlannerPage />} />
+                        <Route path="shopping" element={<ShoppingListPage />} />
+                        <Route path="pantry" element={<PantryPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                        <Route path="users/:userId" element={<PublicProfilePage />} />
+                        <Route path="friends" element={<FriendsPage />} />
+                        <Route path="invite/:token" element={<InvitePage />} />
+                        <Route path="discover" element={<DiscoverPage />} />
+                        <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
+                        <Route path="groups" element={<GroupsPage />} />
+                        <Route path="groups/:id" element={<GroupDetailPage />} />
+                        <Route path="collections" element={<CollectionsPage />} />
+                        <Route path="collections/:id" element={<CollectionDetailPage />} />
+                        <Route path="notifications" element={<NotificationsPage />} />
+                        <Route path="help" element={<HelpPage />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                      </Route>
 
-          {/* Top-level catch-all (e.g. /auth/unknown) */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        </Suspense>
-        </ErrorBoundary>
-      </ProfileProvider>
-      </MigrationProvider>
-      </SyncProvider>
-    </AuthProvider>
-    </ToastProvider>
+                      {/* Top-level catch-all (e.g. /auth/unknown) */}
+                      <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                  </Suspense>
+                </ErrorBoundary>
+              </ProfileProvider>
+            </MigrationProvider>
+          </SyncProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   )
 }

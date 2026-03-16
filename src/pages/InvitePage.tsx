@@ -48,7 +48,7 @@ export default function InvitePage() {
       return
     }
 
-    resolveInviteToken(token).then(async profile => {
+    resolveInviteToken(token).then(async (profile) => {
       if (!profile) {
         setInvalid(true)
         setLoading(false)
@@ -119,10 +119,7 @@ export default function InvitePage() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           That's your own invite link!
         </p>
-        <Link
-          to="/friends"
-          className="text-sm text-green-600 dark:text-green-400 hover:underline"
-        >
+        <Link to="/friends" className="text-sm text-green-600 dark:text-green-400 hover:underline">
           Go to Friends
         </Link>
       </div>
@@ -175,9 +172,7 @@ export default function InvitePage() {
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
                   {inviter.display_name} wants to connect with you on Mise.
                 </p>
-                {status === 'error' && (
-                  <p className="text-sm text-red-500 mb-3">{errorMsg}</p>
-                )}
+                {status === 'error' && <p className="text-sm text-red-500 mb-3">{errorMsg}</p>}
                 <button
                   onClick={handleAdd}
                   disabled={status === 'sending'}

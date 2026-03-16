@@ -268,9 +268,7 @@ describe('shopping list CRUD', () => {
   })
 
   it('creates list with items', async () => {
-    const items: ShoppingItem[] = [
-      { id: 'i1', name: 'Milk', amount: 1, unit: 'L', checked: false },
-    ]
+    const items: ShoppingItem[] = [{ id: 'i1', name: 'Milk', amount: 1, unit: 'L', checked: false }]
     const created = await createShoppingList({ ...sampleShoppingList, items })
     expect(created.items).toHaveLength(1)
     expect(created.items[0].name).toBe('Milk')
@@ -301,9 +299,7 @@ describe('shopping list CRUD', () => {
 
 describe('toggleShoppingItem', () => {
   it('toggles an item from unchecked to checked', async () => {
-    const items: ShoppingItem[] = [
-      { id: 'i1', name: 'Milk', amount: 1, unit: 'L', checked: false },
-    ]
+    const items: ShoppingItem[] = [{ id: 'i1', name: 'Milk', amount: 1, unit: 'L', checked: false }]
     const list = await createShoppingList({ ...sampleShoppingList, items })
     await toggleShoppingItem(list.id, 'i1')
     const updated = await getShoppingList(list.id)
@@ -311,9 +307,7 @@ describe('toggleShoppingItem', () => {
   })
 
   it('toggles an item from checked to unchecked', async () => {
-    const items: ShoppingItem[] = [
-      { id: 'i1', name: 'Milk', amount: 1, unit: 'L', checked: true },
-    ]
+    const items: ShoppingItem[] = [{ id: 'i1', name: 'Milk', amount: 1, unit: 'L', checked: true }]
     const list = await createShoppingList({ ...sampleShoppingList, items })
     await toggleShoppingItem(list.id, 'i1')
     const updated = await getShoppingList(list.id)

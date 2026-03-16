@@ -33,11 +33,23 @@ export default function MigrationPrompt() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {isDone ? (
-              <CheckCircle className="text-green-600 dark:text-green-400 shrink-0" size={22} strokeWidth={1.75} />
+              <CheckCircle
+                className="text-green-600 dark:text-green-400 shrink-0"
+                size={22}
+                strokeWidth={1.75}
+              />
             ) : isError ? (
-              <AlertCircle className="text-red-500 dark:text-red-400 shrink-0" size={22} strokeWidth={1.75} />
+              <AlertCircle
+                className="text-red-500 dark:text-red-400 shrink-0"
+                size={22}
+                strokeWidth={1.75}
+              />
             ) : (
-              <CloudUpload className="text-green-600 dark:text-green-400 shrink-0" size={22} strokeWidth={1.75} />
+              <CloudUpload
+                className="text-green-600 dark:text-green-400 shrink-0"
+                size={22}
+                strokeWidth={1.75}
+              />
             )}
             <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 leading-tight">
               {isDone && 'Recipes uploaded'}

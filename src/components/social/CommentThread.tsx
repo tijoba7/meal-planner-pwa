@@ -121,11 +121,7 @@ export default function CommentThread({
       ) : (
         <div className="divide-y divide-gray-100">
           {comments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              onReply={(id) => setReplyToId(id)}
-            />
+            <CommentItem key={comment.id} comment={comment} onReply={(id) => setReplyToId(id)} />
           ))}
         </div>
       )}

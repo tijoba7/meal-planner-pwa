@@ -13,7 +13,12 @@ export default function HomePage() {
           className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow flex items-center gap-4"
         >
           <div className="shrink-0 w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
-            <CalendarDays size={24} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
+            <CalendarDays
+              size={24}
+              strokeWidth={1.75}
+              className="text-green-600"
+              aria-hidden="true"
+            />
           </div>
           <div>
             <p className="font-semibold text-gray-800">Weekly Planner</p>
@@ -39,7 +44,12 @@ export default function HomePage() {
           className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow flex items-center gap-4"
         >
           <div className="shrink-0 w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
-            <ShoppingCart size={24} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
+            <ShoppingCart
+              size={24}
+              strokeWidth={1.75}
+              className="text-green-600"
+              aria-hidden="true"
+            />
           </div>
           <div>
             <p className="font-semibold text-gray-800">Shopping List</p>

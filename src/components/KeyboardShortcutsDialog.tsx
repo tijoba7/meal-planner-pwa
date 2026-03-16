@@ -78,13 +78,8 @@ export default function KeyboardShortcutsDialog({ onClose }: Props) {
               </p>
               <dl className="space-y-2">
                 {group.rows.map((row) => (
-                  <div
-                    key={row.description}
-                    className="flex items-center justify-between gap-4"
-                  >
-                    <dd className="text-sm text-gray-600 dark:text-gray-300">
-                      {row.description}
-                    </dd>
+                  <div key={row.description} className="flex items-center justify-between gap-4">
+                    <dd className="text-sm text-gray-600 dark:text-gray-300">{row.description}</dd>
                     <dt className="flex items-center gap-1 shrink-0">
                       {row.keys.map((k) => (
                         <kbd

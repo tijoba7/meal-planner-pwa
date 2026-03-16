@@ -16,10 +16,7 @@ function isEditableTarget(el: EventTarget | null): boolean {
  *   `KeyboardEvent.key` value (e.g. 'n', '/', '?', 'ArrowLeft').
  * @param enabled  Whether shortcuts are active (default true).
  */
-export function useKeyboardShortcuts(
-  shortcuts: Record<string, () => void>,
-  enabled = true,
-) {
+export function useKeyboardShortcuts(shortcuts: Record<string, () => void>, enabled = true) {
   const shortcutsRef = useRef(shortcuts)
   useLayoutEffect(() => {
     shortcutsRef.current = shortcuts

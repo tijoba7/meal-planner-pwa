@@ -18,12 +18,12 @@ import { formatDistanceToNow } from '../lib/formatDate'
 // ─── Preference config ────────────────────────────────────────────────────────
 
 const PREF_OPTIONS: { type: NotificationType; label: string }[] = [
-  { type: 'friend_request',  label: 'Friend requests' },
+  { type: 'friend_request', label: 'Friend requests' },
   { type: 'friend_accepted', label: 'Friend request accepted' },
   { type: 'recipe_reaction', label: 'Reactions on my recipes' },
-  { type: 'recipe_comment',  label: 'Comments on my recipes' },
-  { type: 'comment_reply',   label: 'Replies to my comments' },
-  { type: 'group_invite',    label: 'Group invitations' },
+  { type: 'recipe_comment', label: 'Comments on my recipes' },
+  { type: 'comment_reply', label: 'Replies to my comments' },
+  { type: 'group_invite', label: 'Group invitations' },
 ]
 
 // ─── Icon + label helpers ─────────────────────────────────────────────────────
@@ -74,7 +74,11 @@ function notificationLink(n: AppNotification): string | null {
   switch (n.type) {
     case 'friend_request':
     case 'friend_accepted':
-      return p.requester_id ? `/users/${p.requester_id}` : (p.acceptor_id ? `/users/${p.acceptor_id}` : '/friends')
+      return p.requester_id
+        ? `/users/${p.requester_id}`
+        : p.acceptor_id
+          ? `/users/${p.acceptor_id}`
+          : '/friends'
     case 'recipe_reaction':
     case 'recipe_comment':
     case 'comment_reply':
@@ -161,17 +165,19 @@ export default function NotificationsPage() {
   const [showPrefs, setShowPrefs] = useState(false)
 
   const load = useCallback(async () => {
-    if (!user || !supAvailable) { setLoading(false); return }
-    const [items, muted] = await Promise.all([
-      getNotifications(user.id),
-      getMutedTypes(user.id),
-    ])
+    if (!user || !supAvailable) {
+      setLoading(false)
+      return
+    }
+    const [items, muted] = await Promise.all([getNotifications(user.id), getMutedTypes(user.id)])
     setNotifications(items)
     setMutedTypesState(muted)
     setLoading(false)
   }, [user, supAvailable])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   // Realtime subscription: prepend new notifications as they arrive
   useEffect(() => {
@@ -184,7 +190,7 @@ export default function NotificationsPage() {
 
   async function handleRead(id: string) {
     setNotifications((prev) =>
-      prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
+      prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
     )
     await markRead(id)
   }
@@ -247,11 +253,7 @@ export default function NotificationsPage() {
               disabled={markingAll}
               className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors disabled:opacity-50"
             >
-              {markingAll ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Check size={12} />
-              )}
+              {markingAll ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
               Mark all as read
             </button>
           )}
@@ -268,14 +270,20 @@ export default function NotificationsPage() {
       {/* Notification preferences */}
       {showPrefs && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-3">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Notification preferences</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Turn off types you don't want to receive.</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Notification preferences
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Turn off types you don't want to receive.
+          </p>
           <ul className="space-y-2">
             {PREF_OPTIONS.map(({ type, label }) => {
               const muted = mutedTypes.includes(type)
               return (
                 <li key={type} className="flex items-center justify-between gap-3">
-                  <span className={`text-sm ${muted ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
+                  <span
+                    className={`text-sm ${muted ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}
+                  >
                     {label}
                   </span>
                   <button
@@ -306,9 +314,14 @@ export default function NotificationsPage() {
         </div>
       ) : notifications.length === 0 ? (
         <div className="text-center py-16">
-          <Bell size={36} strokeWidth={1.25} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+          <Bell
+            size={36}
+            strokeWidth={1.25}
+            className="mx-auto text-gray-300 dark:text-gray-600 mb-3"
+          />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No notifications yet. When friends react to your recipes or send you requests, they'll show up here.
+            No notifications yet. When friends react to your recipes or send you requests, they'll
+            show up here.
           </p>
         </div>
       ) : (

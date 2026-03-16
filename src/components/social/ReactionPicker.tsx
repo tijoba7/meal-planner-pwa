@@ -29,7 +29,12 @@ const QUICK_EMOJIS = ['😋', '🔥', '👌', '🥰']
  *   onUnreact={(type) => removeReaction(recipeId, type)}
  * />
  */
-export default function ReactionPicker({ reactions, onReact, onUnreact, disabled }: ReactionPickerProps) {
+export default function ReactionPicker({
+  reactions,
+  onReact,
+  onUnreact,
+  disabled,
+}: ReactionPickerProps) {
   const like = reactions.find((r) => r.type === 'like')
   const bookmark = reactions.find((r) => r.type === 'bookmark')
   const emojiReactions = reactions.filter((r) => r.type === 'emoji')
@@ -105,7 +110,11 @@ export default function ReactionPicker({ reactions, onReact, onUnreact, disabled
       ))}
 
       {/* Quick emoji add */}
-      <div className="flex items-center gap-0.5 ml-0.5" role="group" aria-label="Add emoji reaction">
+      <div
+        className="flex items-center gap-0.5 ml-0.5"
+        role="group"
+        aria-label="Add emoji reaction"
+      >
         {QUICK_EMOJIS.map((emoji) => (
           <button
             key={emoji}

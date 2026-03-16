@@ -23,9 +23,7 @@ export interface ExtractedRecipe {
   recipeCuisine?: string
 }
 
-export type ScrapeResult =
-  | { ok: true; recipe: ExtractedRecipe }
-  | { ok: false; error: string }
+export type ScrapeResult = { ok: true; recipe: ExtractedRecipe } | { ok: false; error: string }
 
 export type BatchItemState = {
   label: string
@@ -101,7 +99,11 @@ async function fetchPageText(url: string): Promise<string | null> {
   }
 }
 
-async function callClaude(systemPrompt: string, userMessage: string, apiKey: string): Promise<ScrapeResult> {
+async function callClaude(
+  systemPrompt: string,
+  userMessage: string,
+  apiKey: string
+): Promise<ScrapeResult> {
   let raw: string
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -129,12 +131,18 @@ async function callClaude(systemPrompt: string, userMessage: string, apiKey: str
     const data = (await res.json()) as { content: Array<{ type: string; text: string }> }
     raw = data.content.find((b) => b.type === 'text')?.text ?? ''
   } catch (err) {
-    return { ok: false, error: `Network error: ${err instanceof Error ? err.message : String(err)}` }
+    return {
+      ok: false,
+      error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
+    }
   }
 
   let parsed: Record<string, unknown>
   try {
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+    const cleaned = raw
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/, '')
+      .trim()
     parsed = JSON.parse(cleaned) as Record<string, unknown>
   } catch {
     return { ok: false, error: 'Could not parse AI response as JSON.' }
@@ -169,7 +177,10 @@ export async function extractRecipeFromUrl(url: string, apiKey: string): Promise
   const rateLimit = checkImportRateLimit()
   if (!rateLimit.allowed) {
     const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
-    return { ok: false, error: `Too many import requests. Please wait ${wait} before trying again.` }
+    return {
+      ok: false,
+      error: `Too many import requests. Please wait ${wait} before trying again.`,
+    }
   }
 
   const pageText = await fetchPageText(url)
@@ -189,7 +200,10 @@ export async function extractRecipeFromText(text: string, apiKey: string): Promi
   const rateLimit = checkImportRateLimit()
   if (!rateLimit.allowed) {
     const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
-    return { ok: false, error: `Too many import requests. Please wait ${wait} before trying again.` }
+    return {
+      ok: false,
+      error: `Too many import requests. Please wait ${wait} before trying again.`,
+    }
   }
   const MAX_TEXT_CHARS = 12_000
   return callClaude(TEXT_SYSTEM_PROMPT, `Recipe text:\n\n${truncate(text, MAX_TEXT_CHARS)}`, apiKey)
@@ -235,7 +249,10 @@ export function detectInputMode(raw: string): InputMode {
     }
   }
 
-  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
+  const lines = trimmed
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
   const urlLines = lines.filter((l) => /^https?:\/\//i.test(l))
 
   if (urlLines.length > 1) return { type: 'batch-urls', urls: urlLines }
@@ -257,7 +274,8 @@ export function parseJsonLdRecipe(data: unknown): ScrapeResult {
     }
     const o = obj as Record<string, unknown>
     const type = o['@type']
-    if (type === 'Recipe' || (Array.isArray(type) && (type as string[]).includes('Recipe'))) return o
+    if (type === 'Recipe' || (Array.isArray(type) && (type as string[]).includes('Recipe')))
+      return o
     if (o['@graph']) return findRecipeNode(o['@graph'])
     return null
   }
@@ -277,8 +295,11 @@ export function parseJsonLdRecipe(data: unknown): ScrapeResult {
   const keywords: string[] = Array.isArray(kwRaw)
     ? kwRaw.map((k) => String(k).trim().toLowerCase()).filter(Boolean)
     : typeof kwRaw === 'string'
-    ? kwRaw.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
-    : []
+      ? kwRaw
+          .split(',')
+          .map((k) => k.trim().toLowerCase())
+          .filter(Boolean)
+      : []
 
   let image: string | undefined
   const imgRaw = node.image
@@ -306,15 +327,27 @@ export function parseJsonLdRecipe(data: unknown): ScrapeResult {
         .map((i) => {
           if (typeof i === 'string') return parseIngredientString(i)
           const io = i as Record<string, unknown>
-          return { name: String(io.name ?? '').trim(), amount: Number(io.amount ?? 0), unit: String(io.unit ?? '').trim() }
+          return {
+            name: String(io.name ?? '').trim(),
+            amount: Number(io.amount ?? 0),
+            unit: String(io.unit ?? '').trim(),
+          }
         })
         .filter((i) => i.name)
     : []
 
   const catRaw = node.recipeCategory
-  const recipeCategory = Array.isArray(catRaw) ? String(catRaw[0] ?? '') || undefined : catRaw ? String(catRaw) : undefined
+  const recipeCategory = Array.isArray(catRaw)
+    ? String(catRaw[0] ?? '') || undefined
+    : catRaw
+      ? String(catRaw)
+      : undefined
   const cusRaw = node.recipeCuisine
-  const recipeCuisine = Array.isArray(cusRaw) ? String(cusRaw[0] ?? '') || undefined : cusRaw ? String(cusRaw) : undefined
+  const recipeCuisine = Array.isArray(cusRaw)
+    ? String(cusRaw[0] ?? '') || undefined
+    : cusRaw
+      ? String(cusRaw)
+      : undefined
 
   const recipe: ExtractedRecipe = {
     name,
@@ -338,7 +371,10 @@ export function parseJsonLdRecipe(data: unknown): ScrapeResult {
 function flattenJsonLdInstructions(raw: unknown): HowToStep[] {
   if (!raw) return []
   if (typeof raw === 'string') {
-    return raw.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean)
+    return raw
+      .split(/\n{2,}/)
+      .map((t) => t.trim())
+      .filter(Boolean)
       .map((text) => ({ '@type': 'HowToStep' as const, text }))
   }
   if (!Array.isArray(raw)) return []
@@ -351,7 +387,10 @@ function flattenJsonLdInstructions(raw: unknown): HowToStep[] {
       if (o['@type'] === 'HowToSection' && Array.isArray(o.itemListElement)) {
         for (const sub of o.itemListElement as unknown[]) {
           if (sub && typeof sub === 'object' && (sub as Record<string, unknown>).text) {
-            steps.push({ '@type': 'HowToStep', text: String((sub as Record<string, unknown>).text).trim() })
+            steps.push({
+              '@type': 'HowToStep',
+              text: String((sub as Record<string, unknown>).text).trim(),
+            })
           }
         }
       } else if (o.text) {
@@ -386,15 +425,23 @@ export function parsePaprikaRecipe(data: unknown): ScrapeResult {
   const name = String(d.name ?? '').trim()
   if (!name) return { ok: false, error: 'Paprika recipe has no name.' }
 
-  const ingredientLines = String(d.ingredients ?? '').split('\n').map((s) => s.trim()).filter(Boolean)
+  const ingredientLines = String(d.ingredients ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
   const directionParagraphs = String(d.directions ?? '')
-    .split(/\n\n+/).map((s) => s.trim().replace(/\n/g, ' ')).filter(Boolean)
+    .split(/\n\n+/)
+    .map((s) => s.trim().replace(/\n/g, ' '))
+    .filter(Boolean)
 
   const categories: string[] = Array.isArray(d.categories)
     ? (d.categories as unknown[]).map(String).filter(Boolean)
     : typeof d.categories === 'string'
-    ? d.categories.split(',').map((s) => s.trim()).filter(Boolean)
-    : []
+      ? d.categories
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
 
   const recipe: ExtractedRecipe = {
     name,
@@ -403,7 +450,10 @@ export function parsePaprikaRecipe(data: unknown): ScrapeResult {
     prepTime: parseTimeToPT(String(d.prepTime ?? d.prep_time ?? '')),
     cookTime: parseTimeToPT(String(d.cookTime ?? d.cook_time ?? '')),
     recipeIngredient: ingredientLines.map(parseIngredientString).filter((i) => i.name),
-    recipeInstructions: directionParagraphs.map((text) => ({ '@type': 'HowToStep' as const, text })),
+    recipeInstructions: directionParagraphs.map((text) => ({
+      '@type': 'HowToStep' as const,
+      text,
+    })),
     keywords: categories.map((c) => c.toLowerCase()),
     image: d.imageUrl ? String(d.imageUrl) : undefined,
     author: undefined,
@@ -445,7 +495,9 @@ export function parseCroutonExport(data: unknown): ScrapeResult[] {
             const io = i as Record<string, unknown>
             const qty = io.quantity ? String(io.quantity) : ''
             const ingName = String(io.name ?? '')
-            return qty ? parseIngredientString(`${qty} ${ingName}`) : { name: ingName, amount: 0, unit: '' }
+            return qty
+              ? parseIngredientString(`${qty} ${ingName}`)
+              : { name: ingName, amount: 0, unit: '' }
           }
           return { name: String(i), amount: 0, unit: '' }
         })
@@ -453,7 +505,9 @@ export function parseCroutonExport(data: unknown): ScrapeResult[] {
 
     const rawSteps = d.steps
     const recipeInstructions: HowToStep[] = Array.isArray(rawSteps)
-      ? rawSteps.map((s) => ({ '@type': 'HowToStep' as const, text: String(s).trim() })).filter((s) => s.text)
+      ? rawSteps
+          .map((s) => ({ '@type': 'HowToStep' as const, text: String(s).trim() }))
+          .filter((s) => s.text)
       : []
 
     const tags: string[] = Array.isArray(d.tags)
@@ -482,20 +536,70 @@ export function parseCroutonExport(data: unknown): ScrapeResult[] {
 // ─── Ingredient string parser ──────────────────────────────────────────────────
 
 const KNOWN_UNITS = new Set([
-  'cup', 'cups', 'tablespoon', 'tablespoons', 'tbsp', 'tbs',
-  'teaspoon', 'teaspoons', 'tsp', 'ounce', 'ounces', 'oz',
-  'pound', 'pounds', 'lb', 'lbs', 'gram', 'grams', 'g',
-  'kilogram', 'kilograms', 'kg', 'milliliter', 'milliliters', 'ml',
-  'liter', 'liters', 'l', 'pint', 'pints', 'quart', 'quarts',
-  'pinch', 'pinches', 'dash', 'dashes', 'clove', 'cloves',
-  'can', 'cans', 'piece', 'pieces', 'slice', 'slices',
-  'stalk', 'stalks', 'bunch', 'bunches', 'package', 'packages', 'pkg',
+  'cup',
+  'cups',
+  'tablespoon',
+  'tablespoons',
+  'tbsp',
+  'tbs',
+  'teaspoon',
+  'teaspoons',
+  'tsp',
+  'ounce',
+  'ounces',
+  'oz',
+  'pound',
+  'pounds',
+  'lb',
+  'lbs',
+  'gram',
+  'grams',
+  'g',
+  'kilogram',
+  'kilograms',
+  'kg',
+  'milliliter',
+  'milliliters',
+  'ml',
+  'liter',
+  'liters',
+  'l',
+  'pint',
+  'pints',
+  'quart',
+  'quarts',
+  'pinch',
+  'pinches',
+  'dash',
+  'dashes',
+  'clove',
+  'cloves',
+  'can',
+  'cans',
+  'piece',
+  'pieces',
+  'slice',
+  'slices',
+  'stalk',
+  'stalks',
+  'bunch',
+  'bunches',
+  'package',
+  'packages',
+  'pkg',
 ])
 
 function parseFraction(s: string): number {
   const unicodeFractions: Record<string, number> = {
-    '½': 0.5, '¼': 0.25, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3,
-    '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
+    '½': 0.5,
+    '¼': 0.25,
+    '¾': 0.75,
+    '⅓': 1 / 3,
+    '⅔': 2 / 3,
+    '⅛': 0.125,
+    '⅜': 0.375,
+    '⅝': 0.625,
+    '⅞': 0.875,
   }
   let total = 0
   for (const part of s.trim().split(/\s+/)) {
@@ -551,10 +655,16 @@ export async function decompressPaprikaFile(buffer: ArrayBuffer): Promise<Scrape
     const total = chunks.reduce((n, c) => n + c.length, 0)
     const combined = new Uint8Array(total)
     let offset = 0
-    for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.length }
+    for (const chunk of chunks) {
+      combined.set(chunk, offset)
+      offset += chunk.length
+    }
     return parsePaprikaRecipe(JSON.parse(new TextDecoder().decode(combined)) as unknown)
   } catch (err) {
-    return { ok: false, error: `Failed to read Paprika file: ${err instanceof Error ? err.message : String(err)}` }
+    return {
+      ok: false,
+      error: `Failed to read Paprika file: ${err instanceof Error ? err.message : String(err)}`,
+    }
   }
 }
 
@@ -580,7 +690,12 @@ export async function importFromFile(file: File): Promise<ScrapeResult[]> {
     if (crouton.some((r) => r.ok)) return crouton
     const paprika = parsePaprikaRecipe(json)
     if (paprika.ok) return [paprika]
-    return [{ ok: false, error: 'Unrecognized JSON format. Supports JSON-LD, Crouton, and Paprika exports.' }]
+    return [
+      {
+        ok: false,
+        error: 'Unrecognized JSON format. Supports JSON-LD, Crouton, and Paprika exports.',
+      },
+    ]
   }
 
   return [{ ok: false, error: 'Unsupported file type. Use .paprikarecipe or .json.' }]

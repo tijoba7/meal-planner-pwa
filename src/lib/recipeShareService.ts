@@ -9,10 +9,11 @@
  * Never call these functions without a signed-in session.
  */
 
-import type { Json, RecipeVisibility } from '../types/supabase'
+import type { RecipeVisibility } from '../types/supabase'
 import type { Recipe } from '../types'
 import { supabase } from './supabase'
 import { db } from './db'
+import { toJson } from './jsonUtils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ export async function publishRecipe(
     {
       id: recipe.id,
       author_id: userId,
-      data: recipe as unknown as Json,
+      data: toJson(recipe),
       visibility,
       published_at: visibility !== 'private' ? now : null,
       updated_at: now,

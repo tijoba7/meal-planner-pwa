@@ -680,11 +680,11 @@ export default function PlannerPage() {
       {/* Copy week modal */}
       {copyModalOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={() => setCopyModalOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl"
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -765,11 +765,11 @@ export default function PlannerPage() {
       {/* Recipe picker modal */}
       {pickerTarget && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={closePicker}
         >
           <div
-            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh]"
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -832,11 +832,11 @@ export default function PlannerPage() {
       {/* Template gallery modal */}
       {templateGalleryOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={() => setTemplateGalleryOpen(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh]"
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -911,11 +911,11 @@ export default function PlannerPage() {
       {/* Save template dialog */}
       {saveTemplateOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => { setSaveTemplateOpen(false); setTemplateName('') }}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl"
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">Save as template</h4>
@@ -951,11 +951,11 @@ export default function PlannerPage() {
       {/* Apply template confirmation */}
       {applyTemplateConfirm && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setApplyTemplateConfirm(null)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl"
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">

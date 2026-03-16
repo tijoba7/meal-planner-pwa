@@ -223,8 +223,8 @@ function ShareRecipeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Share a recipe</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -333,8 +333,8 @@ function InviteMemberModal({
   const eligible = friends.filter((f) => !existingMemberIds.has(f.id))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Invite friends</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -419,8 +419,8 @@ function EditGroupModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-6 shadow-xl animate-slide-up sm:animate-scale-in">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit group</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

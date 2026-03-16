@@ -483,9 +483,9 @@ export default function RecipeDetailPage() {
 
       {/* Share panel */}
       {showSharePanel && (
-        <div className="print:hidden fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-50">
+        <div className="print:hidden fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-50 animate-fade-in">
           <div
-            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm shadow-xl"
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm shadow-xl animate-slide-up sm:animate-scale-in"
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-panel-title"
@@ -595,9 +595,9 @@ export default function RecipeDetailPage() {
 
       {/* Delete confirm dialog */}
       {showDeleteConfirm && (
-        <div className="print:hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="print:hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div
-            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl"
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-recipe-dialog-title"

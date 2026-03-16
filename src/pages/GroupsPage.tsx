@@ -36,8 +36,8 @@ function CreateGroupDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl p-6 shadow-xl animate-slide-up sm:animate-scale-in">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Create Group
         </h2>

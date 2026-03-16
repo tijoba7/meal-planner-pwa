@@ -233,7 +233,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   if (!step) return null
 
   return (
-    <div ref={dialogRef} className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Cooking mode">
+    <div ref={dialogRef} className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col animate-fade-in" role="dialog" aria-modal="true" aria-label="Cooking mode">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">

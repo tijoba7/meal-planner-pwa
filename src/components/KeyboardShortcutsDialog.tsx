@@ -42,12 +42,12 @@ export default function KeyboardShortcutsDialog({ onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

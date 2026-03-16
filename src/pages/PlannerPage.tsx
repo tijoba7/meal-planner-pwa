@@ -625,6 +625,7 @@ export default function PlannerPage() {
                           })}
                           <button
                             onClick={() => setPickerTarget({ date, meal })}
+                            aria-label={`Add recipe to ${meal} on ${date}`}
                             className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 group"
                           >
                             <span className="w-4 h-4 flex items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-gray-600 group-hover:border-green-400">

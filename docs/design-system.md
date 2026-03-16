@@ -513,7 +513,183 @@ List items / grid children need no changes — the card layout works in both sta
 
 ---
 
-## 8. Audit Changes (MEA-21)
+## 8. Social Patterns
+
+All social components live in `src/components/social/`. Import from the barrel:
+
+```tsx
+import { RecipeFeedCard, CommentThread, FriendCard, ShareDialog, NotificationItem, GroupCard, ReactionPicker, VisibilityBadge } from '../components/social'
+```
+
+### VisibilityBadge
+
+Small inline pill showing who can see a recipe.
+
+```tsx
+<VisibilityBadge visibility="friends" />
+// renders: green-50/green-700 pill with Users icon
+```
+
+| Visibility | Background | Text | Icon |
+|---|---|---|---|
+| `private` | `gray-100` | `gray-500` | `Lock` |
+| `friends` | `green-50` | `green-700` | `Users` |
+| `public` | `green-100` | `green-800` | `Globe` |
+
+---
+
+### ReactionPicker
+
+Horizontal reaction bar: like (heart), bookmark, custom emoji, plus a quick-add row.
+
+- Active like: `bg-red-50 text-red-500`, heart filled (`fill="currentColor"`)
+- Active bookmark: `bg-green-50 text-green-600`, bookmark filled
+- Active emoji: `bg-green-50 ring-1 ring-green-200`
+- Quick-add emojis: `😋 🔥 👌 🥰`
+
+```tsx
+<ReactionPicker
+  reactions={[{ type: 'like', count: 3, hasReacted: false }]}
+  onReact={(type, emojiCode) => addReaction(recipeId, type, emojiCode)}
+  onUnreact={(type, emojiCode) => removeReaction(recipeId, type, emojiCode)}
+/>
+```
+
+---
+
+### RecipeFeedCard
+
+Social feed card: author row, recipe image/title/description, reaction bar, comment count.
+
+```tsx
+<RecipeFeedCard
+  recipe={{ id: 'r1', name: 'Pasta', visibility: 'public', publishedAt: '...' }}
+  author={profile}
+  reactions={reactions}
+  commentCount={4}
+  onReact={handleReact}
+  onUnreact={handleUnreact}
+  onCommentClick={() => setShowComments(true)}
+/>
+```
+
+- Author row: `Avatar (sm)` + display_name link + relative timestamp + `VisibilityBadge`
+- Image: `aspect-video rounded-lg` inside `mx-4`, subtle scale on hover
+- Reactions + comments: separated by `border-t border-gray-100`
+
+---
+
+### CommentThread
+
+Threaded comment list with nested replies (1 level) and compose input at the bottom.
+
+```tsx
+<CommentThread
+  comments={comments}
+  currentUserProfile={profile}
+  onSubmit={async (body, parentId) => await postComment(recipeId, body, parentId)}
+/>
+```
+
+- Replies indented with `ml-9 pl-3 border-l-2 border-gray-100`
+- Compose: `Avatar (sm)` + pill input with Send icon button
+- Deleted comments render `"This comment was deleted."` in italic gray
+
+---
+
+### FriendCard
+
+User card with contextual action buttons based on friendship state.
+
+```tsx
+<FriendCard
+  profile={user}
+  relation="pending_received"
+  onAccept={() => acceptFriend(user.id)}
+  onDecline={() => declineFriend(user.id)}
+/>
+```
+
+| `relation` | Actions shown |
+|---|---|
+| `none` | Green "Add" button with `UserPlus` |
+| `pending_sent` | Gray "Pending" badge with `Clock` |
+| `pending_received` | Green "Accept" + gray outlined "Decline" |
+| `friends` | Green outlined "Friends" with `UserCheck` |
+| `blocked` | Red-50 "Blocked" badge with `UserX` |
+
+---
+
+### ShareDialog
+
+Bottom sheet (mobile) / centered modal (sm+) for sharing a recipe. Handles copy-link and optional visibility toggling.
+
+```tsx
+<ShareDialog
+  recipeName="Pasta Carbonara"
+  shareUrl={`https://mise.app/recipes/${recipe.id}`}
+  currentVisibility={recipe.visibility}
+  onVisibilityChange={(v) => updateVisibility(recipe.id, v)}
+  onClose={() => setShowShare(false)}
+/>
+```
+
+- Uses the standard bottom sheet pattern: `items-end sm:items-center`, `rounded-t-2xl sm:rounded-2xl`
+- Visibility options rendered as full-width toggle buttons with icon + label + description
+- Selected option: `border-green-500 bg-green-50` with a `Check` icon
+
+---
+
+### NotificationItem
+
+Single notification row. Renders as a `<Link>` when a relevant entity is available.
+
+```tsx
+<NotificationItem
+  notification={{ id: '1', type: 'reaction', actor: profile, recipeId: 'r1', createdAt: '...' }}
+  onClick={() => markRead(notification.id)}
+/>
+```
+
+Supported `type` values: `friend_request`, `friend_accepted`, `reaction`, `comment`, `recipe_shared`, `group_invite`, `mention`.
+
+- Unread: `bg-green-50/40` row + `font-medium text-gray-800` text + green dot
+- Actor avatar with type-icon badge (`w-5 h-5 rounded-full` in matching semantic color)
+- Auto-links to recipe, user profile, or group based on available entity IDs
+
+---
+
+### GroupCard
+
+Card for a cooking group with member count and contextual membership action.
+
+```tsx
+<GroupCard
+  data={{
+    group: { id: 'g1', name: 'Weeknight Cooks', description: '...', avatar_url: null },
+    memberCount: 24,
+    membership: 'none',   // 'none' | 'member' | 'admin' | 'invited'
+    isPrivate: false,
+  }}
+  onJoin={(id) => joinGroup(id)}
+  onLeave={(id) => leaveGroup(id)}
+/>
+```
+
+- Group avatar: `w-12 h-12 rounded-xl bg-green-50 border border-green-100` with `Users` fallback icon (square, not circular)
+- Private groups display a `Lock` icon next to the name
+- Admin membership shows a non-interactive green "Admin" chip
+
+| `membership` | Action shown |
+|---|---|
+| `none` (public) | Green filled "Join" |
+| `invited` | Green filled "Join" |
+| `member` | Gray outlined "Leave" (red on hover) |
+| `admin` | "Admin" chip (non-interactive) |
+
+---
+
+## 9. Audit Changes (MEA-21)
 
 Changes applied during the initial design system establishment pass:
 

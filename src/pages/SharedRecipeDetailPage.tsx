@@ -79,6 +79,7 @@ function CommentItem({
   onDelete: (id: string) => void
   depth?: number
 }) {
+  const toast = useToast()
   const isOwn = currentUserId === comment.user_id
   const isRecipeOwner = currentUserId === recipeOwnerId
   const canModerate = isOwn || isRecipeOwner
@@ -120,7 +121,7 @@ function CommentItem({
             )}
             {!isOwn && (
               <button
-                onClick={() => alert('Report submitted. Thank you for helping keep Mise safe.')}
+                onClick={() => toast.success('Report submitted. Thank you for helping keep Mise safe.')}
                 aria-label="Report comment"
                 className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-0.5"
               >

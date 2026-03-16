@@ -1,11 +1,26 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig, loadEnv } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Fail-fast: production builds require all critical env vars to be set.
+  if (mode === 'production') {
+    const env = loadEnv(mode, process.cwd(), '')
+    const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SENTRY_DSN']
+    const missing = required.filter((k) => !env[k])
+    if (missing.length > 0) {
+      throw new Error(
+        `Production build requires the following env vars:\n` +
+        missing.map((k) => `  - ${k}`).join('\n') +
+        `\n\nSet them in your deployment environment or .env.production file.`
+      )
+    }
+  }
+
+  return {
   test: {
     globals: true,
     environment: 'jsdom',
@@ -92,4 +107,5 @@ export default defineConfig({
       'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
     },
   },
+  }
 })

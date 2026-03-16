@@ -18,10 +18,10 @@ interface EmptyStateProps {
 }
 
 export default function EmptyState({ icon, illustration, title, description, action }: EmptyStateProps) {
-  const graphic = illustration ?? (icon ? React.createElement(icon, { size: 48, strokeWidth: 1.5, className: 'text-gray-300 dark:text-gray-600 w-full h-full' }) : null)
+  const graphic = illustration ?? (icon ? React.createElement(icon, { size: 36, strokeWidth: 1.5, className: 'text-green-400' }) : null)
   return (
     <div className="flex flex-col items-center text-center py-16 px-4">
-      <div className="w-24 h-24 mb-5" aria-hidden="true">
+      <div className="w-20 h-20 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-5" aria-hidden="true">
         {graphic}
       </div>
       <p className="text-base font-semibold text-gray-700 dark:text-gray-200">{title}</p>
@@ -33,14 +33,14 @@ export default function EmptyState({ icon, illustration, title, description, act
           {action.href ? (
             <Link
               to={action.href}
-              className="bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors"
+              className="bg-green-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
             >
               {action.label}
             </Link>
           ) : (
             <button
               onClick={action.onClick}
-              className="bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors"
+              className="bg-green-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
             >
               {action.label}
             </button>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { AlertTriangle, ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
+import { AlertTriangle, Check, ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { getDietaryPrefs, detectAllergenIngredients, DIETARY_PREFERENCES } from '../lib/dietary'
@@ -684,7 +684,7 @@ export default function RecipeDetailPage() {
                         <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
                           shared ? 'bg-green-600 border-green-600' : 'border-gray-300 dark:border-gray-500'
                         }`}>
-                          {shared && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                          {shared && <Check size={10} strokeWidth={3} aria-hidden="true" />}
                         </div>
                         <span className={`text-sm truncate ${shared ? 'text-green-700 dark:text-green-300 font-medium' : 'text-gray-700 dark:text-gray-200'}`}>
                           {group.name}
@@ -771,7 +771,7 @@ export default function RecipeDetailPage() {
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                             inCollection ? 'bg-green-600 border-green-600' : 'border-gray-300 dark:border-gray-500'
                           }`}>
-                            {inCollection && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                            {inCollection && <Check size={12} strokeWidth={3} aria-hidden="true" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium truncate ${inCollection ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>

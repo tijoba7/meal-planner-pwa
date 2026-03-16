@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { UtensilsCrossed } from 'lucide-react'
 
 interface RecipeImageProps {
   src?: string
@@ -20,7 +21,7 @@ export default function RecipeImage({ src, alt, className = '' }: RecipeImagePro
         className={`bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${className}`}
         aria-hidden="true"
       >
-        <span className="text-3xl select-none">🍽️</span>
+        <UtensilsCrossed size={28} strokeWidth={1.5} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
       </div>
     )
   }

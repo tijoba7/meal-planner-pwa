@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Package, Plus, Trash2, Pencil, X, Check } from 'lucide-react'
+import { Package, Plus, Trash2, Pencil, X, Check, ChevronRight, ChevronDown } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../contexts/ToastContext'
 import type { PantryItem, IngredientCategory } from '../types'
@@ -161,7 +161,7 @@ export default function PantryPage() {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
+          className="flex items-center gap-1.5 bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
         >
           <Plus size={14} aria-hidden="true" />
           Add Item
@@ -239,7 +239,7 @@ export default function PantryPage() {
               <button
                 type="submit"
                 disabled={!form.name.trim() || saving}
-                className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Adding…' : 'Add to Pantry'}
               </button>
@@ -290,9 +290,10 @@ export default function PantryPage() {
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">{catItems.length}</span>
                 </div>
-                <span className="text-gray-400 dark:text-gray-500 text-xs">
-                  {collapsed.has(category) ? '▸' : '▾'}
-                </span>
+                {collapsed.has(category)
+                  ? <ChevronRight size={14} strokeWidth={2} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
+                  : <ChevronDown size={14} strokeWidth={2} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
+                }
               </button>
 
               {!collapsed.has(category) && (
@@ -338,7 +339,7 @@ export default function PantryPage() {
                             <button
                               onClick={() => handleSaveEdit(item.id)}
                               disabled={!editForm.name.trim()}
-                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                             >
                               <Check size={12} aria-hidden="true" />
                               Save

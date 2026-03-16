@@ -996,7 +996,7 @@ export default function RecipeFormPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-green-700 text-white font-semibold py-3 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
+          className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
         >
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Recipe'}
         </button>

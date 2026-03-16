@@ -930,7 +930,7 @@ export default function ShoppingListPage() {
         <button
           onClick={() => setShowCreate(true)}
           aria-label="New shopping list"
-          className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
+          className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
         >
           + New List
         </button>

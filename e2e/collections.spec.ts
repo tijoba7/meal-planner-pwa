@@ -160,11 +160,18 @@ test.describe('Collections — delete', () => {
     await page.getByRole('link', { name: new RegExp(name) }).click()
     await expect(page.getByRole('heading', { name: name })).toBeVisible()
 
+    // Wait for both async data fetches to settle before interacting.
+    // CollectionDetailPage's useEffect has no cleanup, so React 18 StrictMode
+    // double-invokes it — two concurrent Promise.all calls run. Waiting for the
+    // empty-state text confirms collection + allRecipes are fully loaded and no
+    // further re-renders are pending that would detach confirm-dialog DOM nodes.
+    await expect(page.getByText(/no recipes yet/i)).toBeVisible({ timeout: 10000 })
+
     await page.getByRole('button', { name: 'Delete collection' }).click()
     await expect(page.getByText('Delete collection?')).toBeVisible()
-    // React StrictMode double-invokes the data-fetch effect which can briefly
-    // detach elements. Use force:true to click through the transient instability.
-    await page.getByRole('button', { name: 'Delete', exact: true }).click({ force: true })
+    // Scope to the dialog so the locator re-queries inside the correct container
+    // on every retry, rather than holding a stale reference to a detached node.
+    await page.locator('[role="dialog"]').getByRole('button', { name: 'Delete' }).click()
 
     await expect(page).toHaveURL(/\/collections$/, { timeout: 10000 })
   })

@@ -16,8 +16,8 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
 
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Retry twice on CI, once locally for transient server startup failures */
+  retries: process.env.CI ? 2 : 1,
 
   /* Use 1 worker on CI, 2 locally — prevents Vite dev server overload */
   workers: process.env.CI ? 1 : 2,

@@ -40,3 +40,14 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Check bundle size budgets
+        run: pnpm bundle:check
+
+      - name: Upload bundle stats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-stats
+          path: dist/stats.html
+          retention-days: 30

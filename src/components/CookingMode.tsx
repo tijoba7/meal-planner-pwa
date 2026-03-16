@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, ChevronLeft, ChevronRight, UtensilsCrossed, Timer } from 'lucide-react'
 import type { Recipe } from '../types'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 // Detect time phrases like "10 minutes", "1 hour 30 minutes", "45 seconds"
 const TIME_PATTERN =
@@ -193,6 +194,8 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [showIngredients, setShowIngredients] = useState(false)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
 
   const step = steps[stepIndex]
   const isFirst = stepIndex === 0
@@ -230,7 +233,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   if (!step) return null
 
   return (
-    <div className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Cooking mode">
+    <div ref={dialogRef} className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Cooking mode">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">

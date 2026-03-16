@@ -310,9 +310,9 @@ export default function FriendsPage() {
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Friends</h1>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-5 -mx-4 px-4">
-        <button onClick={() => setTab('friends')} className={tabClass('friends')}>
-          <Users size={14} strokeWidth={1.75} />
+      <div role="tablist" className="flex border-b border-gray-200 dark:border-gray-700 mb-5 -mx-4 px-4">
+        <button role="tab" aria-selected={tab === 'friends'} aria-controls="tab-panel-friends" onClick={() => setTab('friends')} className={tabClass('friends')}>
+          <Users size={14} strokeWidth={1.75} aria-hidden="true" />
           Friends
           {friends.length > 0 && (
             <span className="ml-1 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs text-gray-600 dark:text-gray-300">
@@ -320,8 +320,8 @@ export default function FriendsPage() {
             </span>
           )}
         </button>
-        <button onClick={() => setTab('requests')} className={tabClass('requests')}>
-          <Clock size={14} strokeWidth={1.75} />
+        <button role="tab" aria-selected={tab === 'requests'} aria-controls="tab-panel-requests" onClick={() => setTab('requests')} className={tabClass('requests')}>
+          <Clock size={14} strokeWidth={1.75} aria-hidden="true" />
           Requests
           {pending.length > 0 && (
             <span className="ml-1 px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-xs text-green-700 dark:text-green-400">
@@ -329,15 +329,15 @@ export default function FriendsPage() {
             </span>
           )}
         </button>
-        <button onClick={() => setTab('find')} className={tabClass('find')}>
-          <Search size={14} strokeWidth={1.75} />
+        <button role="tab" aria-selected={tab === 'find'} aria-controls="tab-panel-find" onClick={() => setTab('find')} className={tabClass('find')}>
+          <Search size={14} strokeWidth={1.75} aria-hidden="true" />
           Find
         </button>
       </div>
 
       {/* Friends tab */}
       {tab === 'friends' && (
-        <div>
+        <div id="tab-panel-friends" role="tabpanel">
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 size={24} className="animate-spin text-gray-400" />
@@ -369,7 +369,7 @@ export default function FriendsPage() {
 
       {/* Requests tab */}
       {tab === 'requests' && (
-        <div className="space-y-6">
+        <div id="tab-panel-requests" role="tabpanel" className="space-y-6">
           {/* Incoming */}
           <div>
             <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
@@ -426,7 +426,7 @@ export default function FriendsPage() {
 
       {/* Find tab */}
       {tab === 'find' && (
-        <div>
+        <div id="tab-panel-find" role="tabpanel">
           <div className="relative mb-4">
             <Search
               size={15}

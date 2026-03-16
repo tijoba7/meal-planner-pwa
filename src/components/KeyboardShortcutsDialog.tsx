@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface ShortcutRow {
   keys: string[]
@@ -35,12 +37,16 @@ interface Props {
 }
 
 export default function KeyboardShortcutsDialog({ onClose }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
+
   return (
     <div
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

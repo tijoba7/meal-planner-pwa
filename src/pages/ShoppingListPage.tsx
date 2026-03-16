@@ -111,11 +111,13 @@ function ItemRow({
   onToggle,
   onRemove,
   onCategoryChange,
+  isJustChecked = false,
 }: {
   item: ShoppingItem
   onToggle: () => void
   onRemove: () => void
   onCategoryChange: (cat: IngredientCategory) => void
+  isJustChecked?: boolean
 }) {
   const [editingCat, setEditingCat] = useState(false)
   const cat = item.category ?? 'Other'
@@ -128,7 +130,7 @@ function ItemRow({
           item.checked
             ? 'border-green-500 bg-green-500 flex items-center justify-center text-white text-xs'
             : 'border-gray-300 dark:border-gray-600 hover:border-green-500'
-        }`}
+        } ${isJustChecked ? 'animate-check-pop' : ''}`}
         aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
       >
         {item.checked && <>&#10003;</>}
@@ -197,12 +199,14 @@ function CategorySection({
   onToggle,
   onRemove,
   onCategoryChange,
+  justChecked,
 }: {
   category: IngredientCategory
   items: ShoppingItem[]
   onToggle: (id: string) => void
   onRemove: (id: string) => void
   onCategoryChange: (id: string, cat: IngredientCategory) => void
+  justChecked: Set<string>
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const allChecked = items.every((i) => i.checked)
@@ -235,6 +239,7 @@ function CategorySection({
               <ItemRow
                 item={item}
                 onToggle={() => onToggle(item.id)}
+            isJustChecked={justChecked.has(item.id)}
                 onRemove={() => onRemove(item.id)}
                 onCategoryChange={(cat) => onCategoryChange(item.id, cat)}
               />
@@ -265,6 +270,7 @@ export default function ShoppingListPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
 
   const reload = useCallback(async () => {
     const all = await getShoppingLists()
@@ -315,6 +321,19 @@ export default function ShoppingListPage() {
 
   const handleToggle = async (itemId: string) => {
     if (!activeListId) return
+    const isChecking = activeList?.items.find((i) => i.id === itemId)?.checked === false
+    if (isChecking) {
+      setJustChecked((prev) => new Set([...prev, itemId]))
+      setTimeout(
+        () =>
+          setJustChecked((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          }),
+        300
+      )
+    }
     await toggleShoppingItem(activeListId, itemId)
     const updated = await getShoppingList(activeListId)
     setActiveList(updated ?? null)
@@ -409,6 +428,7 @@ export default function ShoppingListPage() {
             onToggle={handleToggle}
             onRemove={handleRemoveItem}
             onCategoryChange={handleCategoryChange}
+            justChecked={justChecked}
           />
         ))}
 
@@ -516,11 +536,11 @@ export default function ShoppingListPage() {
 
       {showCreate && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={() => setShowCreate(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl"
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">

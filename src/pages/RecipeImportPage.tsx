@@ -102,17 +102,22 @@ export default function RecipeImportPage() {
       {/* URL form */}
       {(state.phase === 'idle' || state.phase === 'error') && (
         <form onSubmit={handleExtract} className="space-y-3">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.instagram.com/p/…"
-            className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
-            autoFocus
-          />
+          <div>
+            <label htmlFor="recipe-url" className="sr-only">Recipe URL</label>
+            <input
+              id="recipe-url"
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.instagram.com/p/…"
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+              required
+              autoFocus
+              aria-describedby={state.phase === 'error' ? 'import-error' : undefined}
+            />
+          </div>
           {state.phase === 'error' && (
-            <p className="text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+            <p id="import-error" role="alert" className="text-red-500 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
               {state.message}
             </p>
           )}
@@ -127,9 +132,9 @@ export default function RecipeImportPage() {
 
       {/* Loading */}
       {state.phase === 'loading' && (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Extracting recipe with AI…</p>
+        <div className="text-center py-12" role="status" aria-label="Extracting recipe with AI">
+          <div className="inline-block w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4" aria-hidden="true" />
+          <p className="text-gray-500 dark:text-gray-400 text-sm" aria-hidden="true">Extracting recipe with AI…</p>
         </div>
       )}
 

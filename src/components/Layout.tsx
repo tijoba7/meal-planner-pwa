@@ -64,7 +64,7 @@ export default function Layout() {
     }`
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+    `flex items-center justify-center lg:justify-start gap-3 p-2.5 lg:px-3 lg:py-2.5 rounded-lg text-sm font-medium transition-colors ${
       isActive
         ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100'
@@ -85,15 +85,18 @@ export default function Layout() {
         Skip to content
       </a>
 
-      {/* Desktop sidebar */}
-      <aside className="print:hidden hidden md:flex flex-col w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
-        <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-700">
-          <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Everything in its place.</p>
+      {/* Sidebar — icon-only on tablet (md), full labels on desktop (lg+) */}
+      <aside className="print:hidden hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
+        <div className="flex items-center justify-center lg:block px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+          <span className="text-xl font-bold text-green-700 dark:text-green-400 lg:hidden" aria-hidden="true">M</span>
+          <div className="hidden lg:block">
+            <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Everything in its place.</p>
+          </div>
         </div>
-        <nav className="flex flex-col gap-1 p-3 flex-1">
+        <nav aria-label="Main navigation" className="flex flex-col gap-1 p-2 lg:p-3 flex-1">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass}>
+            <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass} title={item.label}>
               <div className="relative">
                 <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
                 {item.to === '/notifications' && unreadCount > 0 && (
@@ -102,15 +105,23 @@ export default function Layout() {
                   </span>
                 )}
               </div>
-              {item.to === '/notifications' && unreadCount > 0
-                ? <>{item.label}<span className="sr-only"> ({unreadCount} unread)</span></>
-                : item.label}
+              <span className="hidden lg:block">
+                {item.to === '/notifications' && unreadCount > 0
+                  ? <>{item.label}<span className="sr-only"> ({unreadCount} unread)</span></>
+                  : item.label}
+              </span>
+              {/* Always-visible screen reader label on tablet */}
+              <span className="sr-only lg:hidden">
+                {item.to === '/notifications' && unreadCount > 0
+                  ? `${item.label} (${unreadCount} unread)`
+                  : item.label}
+              </span>
             </NavLink>
           ))}
         </nav>
 
-        {/* Keyboard shortcuts hint */}
-        <div className="px-3 pb-2">
+        {/* Keyboard shortcuts hint — desktop only */}
+        <div className="hidden lg:block px-3 pb-2">
           <button
             onClick={() => setShowShortcuts(true)}
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -123,15 +134,19 @@ export default function Layout() {
 
         {/* Auth section at bottom of sidebar */}
         {supIsAvailable && (
-          <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="p-2 lg:p-3 border-t border-gray-100 dark:border-gray-700">
             {user ? (
               <div className="space-y-1">
                 <Link
                   to="/profile"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  aria-label="View profile"
+                  className="flex items-center justify-center lg:justify-start gap-2 p-2 lg:px-3 lg:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  {profile && <Avatar profile={profile} size="sm" />}
-                  <div className="min-w-0">
+                  {profile
+                    ? <Avatar profile={profile} size="sm" />
+                    : <User size={16} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" aria-hidden="true" />
+                  }
+                  <div className="min-w-0 hidden lg:block">
                     {profile && (
                       <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{profile.display_name}</p>
                     )}
@@ -140,19 +155,21 @@ export default function Layout() {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                  aria-label="Sign out"
+                  className="flex items-center justify-center lg:justify-start gap-3 w-full p-2 lg:px-3 lg:py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
                 >
                   <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
-                  Sign out
+                  <span className="hidden lg:block">Sign out</span>
                 </button>
               </div>
             ) : (
               <Link
                 to="/auth/login"
-                className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                aria-label="Sign in"
+                className="flex items-center justify-center lg:justify-start gap-3 w-full p-2 lg:px-3 lg:py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
               >
                 <LogIn size={16} strokeWidth={1.75} aria-hidden="true" />
-                Sign in
+                <span className="hidden lg:block">Sign in</span>
               </Link>
             )}
           </div>
@@ -194,7 +211,7 @@ export default function Layout() {
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
+      <nav aria-label="Mobile navigation" className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
             <div className="relative">

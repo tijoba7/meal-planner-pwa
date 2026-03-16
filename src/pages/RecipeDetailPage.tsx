@@ -442,8 +442,8 @@ export default function RecipeDetailPage() {
         <span>Total {totalTime} min</span>
       </div>
 
-      {/* Keywords */}
-      {recipe.keywords.length > 0 && (
+      {/* Keywords & Dietary tags */}
+      {(recipe.keywords.length > 0 || (recipe.suitableForDiet?.length ?? 0) > 0) && (
         <div className="flex flex-wrap gap-1 mb-4">
           {recipe.keywords.map((tag) => (
             <span
@@ -453,6 +453,19 @@ export default function RecipeDetailPage() {
               {tag}
             </span>
           ))}
+          {recipe.suitableForDiet?.map((dietId) => {
+            const pref = DIETARY_PREFERENCES.find((p) => p.id === dietId)
+            if (!pref) return null
+            return (
+              <span
+                key={dietId}
+                title={pref.description}
+                className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full"
+              >
+                {pref.label}
+              </span>
+            )
+          })}
         </div>
       )}
 
@@ -483,14 +496,27 @@ export default function RecipeDetailPage() {
             </button>
           )}
         </div>
+        {allergenIngredientIndices.size > 0 && (
+          <div className="print:hidden flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-3 text-sm text-amber-800 dark:text-amber-200">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+            <p>
+              Contains ingredients that may not suit your dietary preferences
+              {flaggedDietLabels.length > 0 && (
+                <span className="font-medium"> ({flaggedDietLabels.join(', ')})</span>
+              )}.
+              {' '}Flagged ingredients are highlighted below.
+            </p>
+          </div>
+        )}
         <ul className="space-y-2 print:columns-2 print:[column-gap:1.5rem]">
           {recipe.recipeIngredient.map((ing, i) => {
             const scaledAmount = ing.amount * scale
             const { amount: displayAmount, unit: displayUnit } = convertUnit(scaledAmount, ing.unit, unitSystem)
             const showOriginal = isScaled && ing.amount > 0
+            const isFlagged = allergenIngredientIndices.has(i)
             return (
               <li key={i} className="flex items-baseline gap-2 text-sm">
-                <span className="text-gray-400 dark:text-gray-500">·</span>
+                <span className={isFlagged ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'}>·</span>
                 <span className="font-medium text-gray-700 dark:text-gray-200">
                   {formatAmount(displayAmount)} {displayUnit}
                   {showOriginal && (
@@ -499,7 +525,12 @@ export default function RecipeDetailPage() {
                     </span>
                   )}
                 </span>
-                <span className="text-gray-600 dark:text-gray-300">{ing.name}</span>
+                <span className={isFlagged ? 'text-amber-700 dark:text-amber-300 font-medium' : 'text-gray-600 dark:text-gray-300'}>
+                  {ing.name}
+                  {isFlagged && (
+                    <AlertTriangle size={12} className="inline ml-1 mb-0.5 text-amber-500" aria-label="allergen warning" />
+                  )}
+                </span>
               </li>
             )
           })}

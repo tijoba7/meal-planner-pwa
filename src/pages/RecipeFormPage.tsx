@@ -13,6 +13,7 @@ import { isSupabaseAvailable } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import type { Ingredient } from '../types'
+import { DIETARY_PREFERENCES } from '../lib/dietary'
 
 interface FormState {
   name: string
@@ -23,6 +24,7 @@ interface FormState {
   ingredients: Ingredient[]
   instructions: string[]
   keywords: string[]
+  suitableForDiet: string[]
   recipeCategory: string
   recipeCuisine: string
   nutritionCalories: string
@@ -41,6 +43,7 @@ const emptyForm: FormState = {
   ingredients: [{ name: '', amount: 1, unit: '' }],
   instructions: [''],
   keywords: [],
+  suitableForDiet: [],
   recipeCategory: '',
   recipeCuisine: '',
   nutritionCalories: '',
@@ -397,6 +400,7 @@ export default function RecipeFormPage() {
         ingredients: recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [{ name: '', amount: 1, unit: '' }],
         instructions: recipe.recipeInstructions.length > 0 ? recipe.recipeInstructions.map((s) => s.text) : [''],
         keywords: recipe.keywords,
+        suitableForDiet: recipe.suitableForDiet ?? [],
         recipeCategory: recipe.recipeCategory ?? '',
         recipeCuisine: recipe.recipeCuisine ?? '',
         nutritionCalories: parseNutritionFormValue(recipe.nutrition?.calories),
@@ -555,6 +559,7 @@ export default function RecipeFormPage() {
         .filter((s) => s.trim())
         .map((text) => ({ '@type': 'HowToStep' as const, text })),
       keywords: form.keywords,
+      suitableForDiet: form.suitableForDiet.length > 0 ? form.suitableForDiet : undefined,
       recipeCategory: form.recipeCategory.trim() || undefined,
       recipeCuisine: form.recipeCuisine.trim() || undefined,
       nutrition,
@@ -783,6 +788,41 @@ export default function RecipeFormPage() {
             placeholder="Add tags… (e.g. italian, pasta)"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Press Enter or comma to add · Backspace to remove last</p>
+        </div>
+
+        {/* Dietary */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            Dietary <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(optional)</span>
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {DIETARY_PREFERENCES.map((pref) => {
+              const selected = form.suitableForDiet.includes(pref.id)
+              return (
+                <button
+                  key={pref.id}
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      suitableForDiet: selected
+                        ? f.suitableForDiet.filter((d) => d !== pref.id)
+                        : [...f.suitableForDiet, pref.id],
+                    }))
+                  }
+                  aria-pressed={selected}
+                  title={pref.description}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    selected
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {pref.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Category & Cuisine */}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2, GripVertical, History } from 'lucide-react'
+import { AlertTriangle, X, BookOpen, Plus, Copy, LayoutTemplate, Trash2, GripVertical, History } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -17,6 +17,7 @@ import {
   createMealPlanTemplate,
   deleteMealPlanTemplate,
 } from '../lib/db'
+import { getDietaryPrefs, detectAllergenIngredients } from '../lib/dietary'
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -602,6 +603,33 @@ export default function PlannerPage() {
   const sourceHasMeals =
     mealPlan != null && Object.values(mealPlan.days).some(d => Object.keys(d).length > 0)
 
+  // Dietary conflict detection for current week
+  const userDietaryPrefs = getDietaryPrefs()
+  const dietaryConflictRecipes = useMemo(() => {
+    if (!mealPlan || userDietaryPrefs.length === 0) return []
+    const recipeMap = new Map(recipes.map(r => [r.id, r]))
+    const conflicting: string[] = []
+    for (const dayPlan of Object.values(mealPlan.days)) {
+      for (const rawSlot of Object.values(dayPlan)) {
+        if (!rawSlot) continue
+        const slot = normalizeMealSlot(rawSlot)
+        for (const { recipeId } of slot.recipes) {
+          const recipe = recipeMap.get(recipeId)
+          if (!recipe) continue
+          const flagged = detectAllergenIngredients(
+            recipe.recipeIngredient.map(i => i.name),
+            userDietaryPrefs,
+          )
+          if (flagged.size > 0 && !conflicting.includes(recipe.name)) {
+            conflicting.push(recipe.name)
+          }
+        }
+      }
+    }
+    return conflicting
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mealPlan, recipes])
+
   if (mealPlan === null) {
     return (
       <div className="p-4 max-w-4xl mx-auto" aria-busy="true" aria-label="Loading meal plan">
@@ -682,6 +710,21 @@ export default function PlannerPage() {
           Templates{templates.length > 0 && ` (${templates.length})`}
         </button>
       </div>
+
+      {/* Dietary conflict warning */}
+      {dietaryConflictRecipes.length > 0 && (
+        <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
+          <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+          <div>
+            <p className="font-medium">Dietary conflict this week</p>
+            <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">
+              {dietaryConflictRecipes.length === 1
+                ? `"${dietaryConflictRecipes[0]}" contains ingredients that don't match your dietary preferences.`
+                : `${dietaryConflictRecipes.length} recipes contain ingredients that don't match your dietary preferences: ${dietaryConflictRecipes.join(', ')}.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Empty state for weeks with no meals */}
       {!sourceHasMeals && (

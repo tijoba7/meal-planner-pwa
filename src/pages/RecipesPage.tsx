@@ -4,6 +4,7 @@ import { Heart, SlidersHorizontal, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { getRecipes, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
+import { DIETARY_PREFERENCES, getDietaryPrefs } from '../lib/dietary'
 import EmptyState from '../components/EmptyState'
 import {
   RecipeBookIllustration,
@@ -86,6 +87,7 @@ export default function RecipesPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedDiets, setSelectedDiets] = useState<string[]>(() => getDietaryPrefs())
   const [showFilters, setShowFilters] = useState(false)
   const [ingredientQuery, setIngredientQuery] = useState('')
   const [maxCookTime, setMaxCookTime] = useState(MAX_COOK_TIME)
@@ -149,6 +151,7 @@ export default function RecipesPage() {
     setSelectedCategories([])
     setSelectedCuisines([])
     setSelectedTags([])
+    setSelectedDiets([])
     setIngredientQuery('')
     setMaxCookTime(MAX_COOK_TIME)
   }
@@ -163,6 +166,7 @@ export default function RecipesPage() {
     selectedCategories.length +
     selectedCuisines.length +
     selectedTags.length +
+    selectedDiets.length +
     (ingredientQuery.trim() ? 1 : 0) +
     (maxCookTime < MAX_COOK_TIME ? 1 : 0)
 
@@ -176,6 +180,10 @@ export default function RecipesPage() {
       if (selectedTags.length > 0) {
         const recipeTags = r.keywords.map((k) => k.toLowerCase())
         if (!selectedTags.every((tag) => recipeTags.includes(tag))) return false
+      }
+      if (selectedDiets.length > 0) {
+        const recipeDiets = r.suitableForDiet ?? []
+        if (!selectedDiets.every((diet) => recipeDiets.includes(diet))) return false
       }
       if (maxCookTime < MAX_COOK_TIME && durationToMinutes(r.cookTime) > maxCookTime) return false
       if (ingredientQuery.trim()) {
@@ -400,6 +408,35 @@ export default function RecipesPage() {
               </div>
             </div>
           )}
+
+          {/* Dietary chips */}
+          <div>
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Dietary</p>
+            <div className="flex flex-wrap gap-1.5">
+              {DIETARY_PREFERENCES.map((pref) => (
+                <button
+                  key={pref.id}
+                  onClick={() => setSelectedDiets((prev) =>
+                    prev.includes(pref.id) ? prev.filter((d) => d !== pref.id) : [...prev, pref.id]
+                  )}
+                  aria-pressed={selectedDiets.includes(pref.id)}
+                  title={pref.description}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    selectedDiets.includes(pref.id)
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {pref.label}
+                </button>
+              ))}
+            </div>
+            {selectedDiets.length > 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+                Shows only recipes tagged with these diets
+              </p>
+            )}
+          </div>
 
           {activeFilterCount > 0 && (
             <button

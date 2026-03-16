@@ -474,7 +474,7 @@ export default function PlannerPage() {
           <Skeleton className="h-9 w-9" />
         </div>
         {/* Day skeletons */}
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
@@ -549,7 +549,7 @@ export default function PlannerPage() {
       )}
 
       {/* Days */}
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {weekDays.map(({ date, label }) => {
           const dayPlan = mealPlan?.days[date] ?? {}
           return (

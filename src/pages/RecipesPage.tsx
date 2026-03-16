@@ -365,7 +365,7 @@ export default function RecipesPage() {
                     aria-pressed={selectedCuisines.includes(cui)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedCuisines.includes(cui)
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-green-600 text-white'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -390,7 +390,7 @@ export default function RecipesPage() {
                     aria-pressed={selectedTags.includes(tag)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedTags.includes(tag)
-                        ? 'bg-amber-500 text-white'
+                        ? 'bg-green-600 text-white'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -436,7 +436,7 @@ export default function RecipesPage() {
       </div>
 
       {loading ? (
-        <ul className="grid gap-3 md:grid-cols-2" aria-busy="true" aria-label="Loading recipes">
+        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading recipes">
           {Array.from({ length: 4 }).map((_, i) => (
             <RecipeCardSkeleton key={i} />
           ))}
@@ -465,7 +465,7 @@ export default function RecipesPage() {
           />
         )
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2" aria-live="polite">
+        <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" aria-live="polite">
           {filtered.map((recipe, index) => {
             const prepMins = durationToMinutes(recipe.prepTime)
             const cookMins = durationToMinutes(recipe.cookTime)

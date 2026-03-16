@@ -26,3 +26,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Test artifacts
+test-results/
+playwright-report/

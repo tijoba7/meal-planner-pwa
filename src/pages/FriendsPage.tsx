@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { UserPlus, Users, Clock, Search, Check, X, UserMinus, Loader2 } from 'lucide-react'
+import { UserPlus, Users, Clock, Search, Check, X, UserMinus, Loader2, Globe } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { isSupabaseAvailable } from '../lib/supabase'
 import { Avatar } from '../components/ProfileCard'
 import {
   getFriends,
@@ -250,6 +251,7 @@ function SearchResultCard({
 
 export default function FriendsPage() {
   const { user } = useAuth()
+  const supAvailable = isSupabaseAvailable()
   const [tab, setTab] = useState<Tab>('friends')
 
   const [friends, setFriends] = useState<FriendshipWithProfile[]>([])
@@ -295,6 +297,17 @@ export default function FriendsPage() {
     }, 300)
     return () => clearTimeout(id)
   }, [searchQuery, user])
+
+  if (!supAvailable) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <Globe size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Connect to Supabase to use friends.
+        </p>
+      </div>
+    )
+  }
 
   if (!user) {
     return (

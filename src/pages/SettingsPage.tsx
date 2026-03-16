@@ -305,7 +305,7 @@ export default function SettingsPage() {
           db.pantryItems.toArray(),
         ])
       const payload = {
-        appVersion: '0.1.0',
+        appVersion: '1.0.0',
         exportedAt: new Date().toISOString(),
         recipes,
         mealPlans,

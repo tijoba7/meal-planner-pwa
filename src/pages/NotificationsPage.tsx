@@ -143,8 +143,10 @@ function NotificationRow({
     <li>
       <div
         onClick={handleClick}
+        onKeyDown={isUnread ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick() } } : undefined}
         className={isUnread ? 'cursor-pointer' : undefined}
         role={isUnread ? 'button' : undefined}
+        tabIndex={isUnread ? 0 : undefined}
       >
         {inner}
       </div>
@@ -290,6 +292,7 @@ export default function NotificationsPage() {
                     onClick={() => handleToggleMute(type)}
                     role="switch"
                     aria-checked={!muted}
+                    aria-label={label}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${
                       muted ? 'bg-gray-200 dark:bg-gray-600' : 'bg-green-500'
                     }`}

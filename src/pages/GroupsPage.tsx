@@ -193,7 +193,10 @@ export default function GroupsPage() {
             strokeWidth={1.25}
             className="mx-auto text-gray-300 dark:text-gray-600 mb-3"
           />
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No groups yet.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">No groups yet.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-3">
+            Groups let you share recipes and meal plans with family or friends.
+          </p>
           <button
             onClick={() => setShowCreate(true)}
             className="text-sm text-green-600 dark:text-green-400 hover:underline"

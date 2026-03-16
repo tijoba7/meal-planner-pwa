@@ -114,7 +114,7 @@ describe('Layout', () => {
       { label: 'Discover', href: '/discover' },
       { label: 'Friends', href: '/friends' },
       { label: 'Groups', href: '/groups' },
-      { label: 'Alerts', href: '/notifications' },
+      { label: 'Notifications', href: '/notifications' },
       { label: 'Settings', href: '/settings' },
     ]
 

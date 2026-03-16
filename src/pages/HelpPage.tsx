@@ -162,7 +162,7 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: 'How do expiry alerts work?',
         answer:
-          "Items expiring within 3 days are highlighted in amber. Items that have expired are shown in red. You'll also see a count in the Pantry nav link when items need attention.",
+          "Items expiring within 7 days are highlighted in amber. Items that have expired are shown in red. You'll also see a count in the Pantry nav link when items need attention.",
       },
     ],
   },
@@ -175,6 +175,8 @@ const HELP_SECTIONS: HelpSection[] = [
         question: 'Global shortcuts',
         answer: [
           'N — New recipe',
+          '/ — Open search',
+          'Cmd+K / Ctrl+K — Open search',
           '? — Open/close this shortcuts dialog',
           'Esc — Close modal or dialog',
         ].join('\n'),

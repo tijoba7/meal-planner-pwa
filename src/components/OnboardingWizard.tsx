@@ -297,7 +297,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
               onClick={dismiss}
               className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              Maybe later
+              Skip for now
             </button>
           )}
         </div>

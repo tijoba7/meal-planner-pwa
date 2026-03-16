@@ -2,8 +2,8 @@
 
 **Everything in its place.** A local-first meal planner and recipe PWA.
 
-[![CI](https://github.com/YOUR_ORG/meal-planner-pwa/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/meal-planner-pwa/actions/workflows/ci.yml)
-[![Deploy](https://github.com/YOUR_ORG/meal-planner-pwa/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_ORG/meal-planner-pwa/actions/workflows/deploy.yml)
+[![CI](https://github.com/tijoba7/meal-planner-pwa/actions/workflows/ci.yml/badge.svg)](https://github.com/tijoba7/meal-planner-pwa/actions/workflows/ci.yml)
+[![Deploy](https://github.com/tijoba7/meal-planner-pwa/actions/workflows/deploy.yml/badge.svg)](https://github.com/tijoba7/meal-planner-pwa/actions/workflows/deploy.yml)
 
 ## Overview
 

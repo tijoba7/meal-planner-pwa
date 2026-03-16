@@ -66,7 +66,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
   { to: '/friends', label: 'Friends', icon: Users, end: false },
   { to: '/groups', label: 'Groups', icon: UsersRound, end: false },
-  { to: '/notifications', label: 'Alerts', icon: Bell, end: false },
+  { to: '/notifications', label: 'Notifications', icon: Bell, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 

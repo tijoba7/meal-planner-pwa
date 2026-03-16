@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Camera, X } from 'lucide-react'
-import { getRecipe, createRecipe, updateRecipe, minutesToDuration, durationToMinutes } from '../lib/db'
+import { getRecipe, createRecipe, updateRecipe, minutesToDuration, durationToMinutes, getRecipes } from '../lib/db'
 import {
   uploadRecipeImage,
   resizeToDataUrl,
@@ -67,6 +67,140 @@ const CHAR_LIMITS = {
   description: 1000,
 } as const
 
+// ── Ingredient autocomplete ───────────────────────────────────────────────────
+
+interface IngredientSuggestion {
+  name: string
+  unit: string
+}
+
+function useIngredientSuggestions(): IngredientSuggestion[] {
+  const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([])
+  useEffect(() => {
+    getRecipes().then((recipes) => {
+      const acc = new Map<string, { forms: Map<string, number>; units: Map<string, number> }>()
+      for (const recipe of recipes) {
+        for (const ing of recipe.recipeIngredient) {
+          const key = ing.name.trim().toLowerCase()
+          if (!key) continue
+          if (!acc.has(key)) acc.set(key, { forms: new Map(), units: new Map() })
+          const entry = acc.get(key)!
+          const display = ing.name.trim()
+          entry.forms.set(display, (entry.forms.get(display) ?? 0) + 1)
+          if (ing.unit.trim()) {
+            const u = ing.unit.trim()
+            entry.units.set(u, (entry.units.get(u) ?? 0) + 1)
+          }
+        }
+      }
+      const list: IngredientSuggestion[] = Array.from(acc.entries()).map(([, entry]) => {
+        const name = [...entry.forms.entries()].sort((a, b) => b[1] - a[1])[0][0]
+        const unit = [...entry.units.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+        return { name, unit }
+      })
+      setSuggestions(list)
+    })
+  }, [])
+  return suggestions
+}
+
+interface IngredientNameInputProps {
+  value: string
+  onChange: (name: string) => void
+  onSelectSuggestion: (name: string, unit: string) => void
+  allSuggestions: IngredientSuggestion[]
+  placeholder?: string
+  className?: string
+}
+
+function IngredientNameInput({
+  value,
+  onChange,
+  onSelectSuggestion,
+  allSuggestions,
+  placeholder,
+  className,
+}: IngredientNameInputProps) {
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const listId = useId()
+
+  const filtered = useMemo(() => {
+    if (!value.trim()) return []
+    const q = value.toLowerCase()
+    return allSuggestions.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6)
+  }, [value, allSuggestions])
+
+  const showDropdown = open && filtered.length > 0
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (!showDropdown) { setOpen(true); return }
+      setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && showDropdown && activeIdx >= 0) {
+      e.preventDefault()
+      const s = filtered[activeIdx]
+      onSelectSuggestion(s.name, s.unit)
+      setOpen(false)
+      setActiveIdx(-1)
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setActiveIdx(-1)
+    }
+  }
+
+  return (
+    <div className="relative flex-1">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); setActiveIdx(-1) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => { setOpen(false); setActiveIdx(-1) }}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className={className}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        aria-controls={showDropdown ? listId : undefined}
+      />
+      {showDropdown && (
+        <ul
+          id={listId}
+          role="listbox"
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-md max-h-48 overflow-y-auto"
+        >
+          {filtered.map((s, idx) => (
+            <li
+              key={s.name}
+              role="option"
+              aria-selected={idx === activeIdx}
+              onClick={() => { onSelectSuggestion(s.name, s.unit); setOpen(false); setActiveIdx(-1) }}
+              onMouseEnter={() => setActiveIdx(idx)}
+              className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
+                idx === activeIdx
+                  ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <span>{s.name}</span>
+              {s.unit && <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">{s.unit}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function RecipeFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -78,6 +212,7 @@ export default function RecipeFormPage() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const ingredientSuggestions = useIngredientSuggestions()
 
   // ── Image state ─────────────────────────────────────────────────────────────
   // `pendingFile`    – file selected by the user, not yet uploaded
@@ -301,6 +436,15 @@ export default function RecipeFormPage() {
       )
       return { ...f, ingredients }
     })
+  }
+
+  function handleSelectIngredientSuggestion(index: number, name: string, unit: string) {
+    setForm((f) => ({
+      ...f,
+      ingredients: f.ingredients.map((ing, i) =>
+        i === index ? { ...ing, name, unit: ing.unit.trim() ? ing.unit : unit } : ing
+      ),
+    }))
   }
 
   function addIngredient() {
@@ -540,13 +684,13 @@ export default function RecipeFormPage() {
                   placeholder="unit"
                   className="w-20 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
-                <input
-                  type="text"
+                <IngredientNameInput
                   value={ing.name}
-                  onChange={(e) => { updateIngredient(i, 'name', e.target.value); clearFieldError('ingredients') }}
-                  onBlur={() => handleBlur('ingredients')}
+                  onChange={(name) => { updateIngredient(i, 'name', name); clearFieldError('ingredients') }}
+                  onSelectSuggestion={(name, unit) => handleSelectIngredientSuggestion(i, name, unit)}
+                  allSuggestions={ingredientSuggestions}
                   placeholder="ingredient name"
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 {form.ingredients.length > 1 && (
                   <button

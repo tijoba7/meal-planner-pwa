@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Heart, Search } from 'lucide-react'
+import { Heart } from 'lucide-react'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { getRecipes, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import EmptyState from '../components/EmptyState'
+import {
+  RecipeBookIllustration,
+  SearchNoResultsIllustration,
+  HeartIllustration,
+} from '../components/EmptyStateIllustrations'
 import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
 
@@ -76,6 +82,12 @@ export default function RecipesPage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>(getSavedSort)
   const [loading, setLoading] = useState(true)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  const shortcuts = useMemo(() => ({
+    '/': () => { searchRef.current?.focus(); searchRef.current?.select() },
+  }), [])
+  useKeyboardShortcuts(shortcuts)
 
   useEffect(() => {
     getRecipes().then((r) => {
@@ -190,21 +202,21 @@ export default function RecipesPage() {
       ) : filtered.length === 0 ? (
         showFavoritesOnly ? (
           <EmptyState
-            icon={Heart}
+            illustration={<HeartIllustration />}
             title="No favorites yet"
             description="Tap the heart on any recipe to save it here."
             action={{ label: 'Browse all recipes', onClick: () => setShowFavoritesOnly(false) }}
           />
         ) : query ? (
           <EmptyState
-            icon={Search}
+            illustration={<SearchNoResultsIllustration />}
             title="No recipes found"
             description={`No recipes match "${query}". Try a different search term.`}
             action={{ label: 'Clear search', onClick: () => setQuery('') }}
           />
         ) : (
           <EmptyState
-            icon={BookOpen}
+            illustration={<RecipeBookIllustration />}
             title="No recipes yet"
             description="Add your first recipe to get started planning meals."
             action={{ label: 'Add your first recipe', href: '/recipes/new' }}

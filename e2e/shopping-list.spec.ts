@@ -54,9 +54,13 @@ async function addRecipeToPlanner(
   const recipeButton = page.getByRole('button', { name: new RegExp(recipeName) })
   await expect(recipeButton).toBeVisible()
   await recipeButton.dispatchEvent('click')
-  // Wait for the picker to close before continuing (ensures the DB write for
-  // the meal plan entry completes before we navigate to the shopping page).
-  await expect(recipeButton).not.toBeVisible()
+  // Wait for the picker to close. The picker contains a `type="search"` input
+  // that only exists while the picker is open; its disappearance confirms the
+  // picker has closed and the DB write (inside addRecipeToSlot) has completed.
+  // We cannot wait on recipeButton itself because after the picker closes the
+  // planner slot renders an aria-label="Remove {recipeName}" button that still
+  // matches the same locator.
+  await expect(page.locator('input[type="search"]')).not.toBeVisible()
 }
 
 /** Manually add an item to the currently open list detail view.
@@ -276,7 +280,7 @@ test.describe('Shopping List — category grouping', () => {
     await addItemToList(page, 'apples')
 
     // "Produce" section header should be visible
-    await expect(page.getByRole('button', { name: /Produce/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Produce:/i })).toBeVisible()
     await expect(page.getByText('apples', { exact: true })).toBeVisible()
   })
 
@@ -289,7 +293,7 @@ test.describe('Shopping List — category grouping', () => {
     await addItemToList(page, itemName)
 
     // "Other" section header should appear for unrecognized ingredients
-    await expect(page.getByRole('button', { name: /Other/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Other:/i })).toBeVisible()
     await expect(page.getByText(itemName, { exact: true })).toBeVisible()
   })
 
@@ -300,7 +304,7 @@ test.describe('Shopping List — category grouping', () => {
     await shoppingPage.createList(listName)
     await addItemToList(page, 'apples')
 
-    const sectionHeader = page.getByRole('button', { name: /Produce/i })
+    const sectionHeader = page.getByRole('button', { name: /^Produce:/i })
     await expect(sectionHeader).toBeVisible()
 
     // Collapse the section
@@ -326,7 +330,7 @@ test.describe('Shopping List — category grouping', () => {
     await page.getByRole('combobox').selectOption('Pantry')
 
     // Item should now appear under Pantry
-    await expect(page.getByRole('button', { name: /Pantry/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Pantry:/i })).toBeVisible()
     await expect(page.getByText('apples', { exact: true })).toBeVisible()
   })
 })

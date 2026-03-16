@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChefHat, Copy, Heart, Printer, Share2, Globe, Users, Lock, X } from 'lucide-react'
+import { ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
-import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
-import type { Recipe } from '../types'
+import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes, getCollections, addRecipeToCollection, removeRecipeFromCollection } from '../lib/db'
+import type { Recipe, Collection } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
@@ -101,6 +101,14 @@ export default function RecipeDetailPage() {
   const [scaledServings, setScaledServings] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
 
+  // Mobile "more options" sheet
+  const [showMoreSheet, setShowMoreSheet] = useState(false)
+
+  // Collection panel state
+  const [showCollectionPanel, setShowCollectionPanel] = useState(false)
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [collectionTogglingId, setCollectionTogglingId] = useState<string | null>(null)
+
   // Share panel state
   const [showSharePanel, setShowSharePanel] = useState(false)
   const [cloudMeta, setCloudMeta] = useState<RecipeCloudMeta | null>(null)
@@ -114,7 +122,8 @@ export default function RecipeDetailPage() {
   useKeyboardShortcuts({
     Escape: () => {
       if (cookingMode) return // CookingMode handles its own Escape
-      if (showDeleteConfirm) setShowDeleteConfirm(false)
+      if (showMoreSheet) setShowMoreSheet(false)
+      else if (showDeleteConfirm) setShowDeleteConfirm(false)
       else if (showSharePanel) setShowSharePanel(false)
       else navigate(-1)
     },
@@ -139,6 +148,30 @@ export default function RecipeDetailPage() {
       }
     })
   }, [id, user])
+
+  useEffect(() => {
+    if (!showCollectionPanel) return
+    getCollections().then(setCollections)
+  }, [showCollectionPanel])
+
+  async function handleCollectionToggle(collectionId: string) {
+    if (!id) return
+    const col = collections.find((c) => c.id === collectionId)
+    if (!col) return
+    setCollectionTogglingId(collectionId)
+    if (col.recipeIds.includes(id)) {
+      await removeRecipeFromCollection(collectionId, id)
+      setCollections((prev) =>
+        prev.map((c) => c.id === collectionId ? { ...c, recipeIds: c.recipeIds.filter((rid) => rid !== id) } : c)
+      )
+    } else {
+      await addRecipeToCollection(collectionId, id)
+      setCollections((prev) =>
+        prev.map((c) => c.id === collectionId ? { ...c, recipeIds: [...c.recipeIds, id] } : c)
+      )
+    }
+    setCollectionTogglingId(null)
+  }
 
   useEffect(() => {
     if (!user || !isSupabaseAvailable() || !showSharePanel) return
@@ -265,17 +298,42 @@ export default function RecipeDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{recipe.name}</h2>
-        <div className="print:hidden flex gap-2 shrink-0">
+
+        {/* Mobile: favorite + cook + "more" overflow button */}
+        <div className="print:hidden flex items-center gap-2 shrink-0 md:hidden">
+          <button
+            onClick={handleToggleFavorite}
+            aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Heart size={16} aria-hidden="true" className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'} />
+          </button>
+          {recipe.recipeInstructions.length > 0 && (
+            <button
+              onClick={() => setCookingMode(true)}
+              className="min-h-[44px] flex items-center gap-1.5 text-sm font-medium bg-green-600 text-white px-3 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ChefHat size={14} strokeWidth={2} aria-hidden="true" />
+              Cook
+            </button>
+          )}
+          <button
+            onClick={() => setShowMoreSheet(true)}
+            aria-label="More options"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <MoreHorizontal size={16} aria-hidden="true" className="text-gray-500 dark:text-gray-400" />
+          </button>
+        </div>
+
+        {/* Desktop: all action buttons inline */}
+        <div className="print:hidden hidden md:flex items-center gap-2 shrink-0">
           <button
             onClick={handleToggleFavorite}
             aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <Heart
-              size={16}
-              aria-hidden="true"
-              className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'}
-            />
+            <Heart size={16} aria-hidden="true" className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'} />
           </button>
           {recipe.recipeInstructions.length > 0 && (
             <button
@@ -296,6 +354,14 @@ export default function RecipeDetailPage() {
               {cloudMeta && cloudMeta.visibility !== 'private' ? 'Shared' : 'Share'}
             </button>
           )}
+          <button
+            onClick={() => setShowCollectionPanel(true)}
+            aria-label="Add to collection"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Library size={14} strokeWidth={2} aria-hidden="true" />
+            Collect
+          </button>
           <button
             onClick={() => window.print()}
             aria-label="Print recipe"
@@ -335,7 +401,7 @@ export default function RecipeDetailPage() {
             onClick={() => setScaledServings((s) => Math.max(1, s - 1))}
             disabled={scaledServings <= 1}
             aria-label="Decrease servings"
-            className="print:hidden w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors leading-none select-none"
+            className="print:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors leading-none select-none"
           >
             −
           </button>
@@ -346,7 +412,7 @@ export default function RecipeDetailPage() {
           <button
             onClick={() => setScaledServings((s) => s + 1)}
             aria-label="Increase servings"
-            className="print:hidden w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors leading-none select-none"
+            className="print:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors leading-none select-none"
           >
             +
           </button>
@@ -576,6 +642,158 @@ export default function RecipeDetailPage() {
                 {sharing ? 'Saving…' : 'Save'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collections panel */}
+      {showCollectionPanel && (
+        <div className="print:hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in">
+          <div
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="collections-panel-title"
+          >
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h4 id="collections-panel-title" className="font-bold text-gray-800 dark:text-gray-100">Add to Collection</h4>
+              <button
+                onClick={() => setShowCollectionPanel(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4">
+              {collections.length === 0 ? (
+                <div className="text-center py-6">
+                  <Library size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">No collections yet</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Create a collection to organize your recipes.</p>
+                  <Link
+                    to="/collections"
+                    onClick={() => setShowCollectionPanel(false)}
+                    className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 font-medium"
+                  >
+                    Go to Collections →
+                  </Link>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {collections.map((col) => {
+                    const inCollection = id ? col.recipeIds.includes(id) : false
+                    const busy = collectionTogglingId === col.id
+                    return (
+                      <li key={col.id}>
+                        <button
+                          onClick={() => handleCollectionToggle(col.id)}
+                          disabled={busy}
+                          aria-pressed={inCollection}
+                          className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors disabled:opacity-50 ${
+                            inCollection
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                              : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            inCollection ? 'bg-green-600 border-green-600' : 'border-gray-300 dark:border-gray-500'
+                          }`}>
+                            {inCollection && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${inCollection ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                              {col.name}
+                            </p>
+                            {col.description && (
+                              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{col.description}</p>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                            {col.recipeIds.length} recipe{col.recipeIds.length !== 1 ? 's' : ''}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+              <button
+                onClick={() => setShowCollectionPanel(false)}
+                className="w-full border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile "more options" bottom sheet */}
+      {showMoreSheet && (
+        <div
+          className="print:hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-fade-in md:hidden"
+          onClick={() => setShowMoreSheet(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-xl animate-slide-up"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Recipe options"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 space-y-1">
+              <Link
+                to={`/recipes/${recipe.id}/edit`}
+                onClick={() => setShowMoreSheet(false)}
+                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Pencil size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                Edit recipe
+              </Link>
+              {user && isSupabaseAvailable() && (
+                <button
+                  onClick={() => { setShowMoreSheet(false); setShowSharePanel(true) }}
+                  className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Share2 size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                  {cloudMeta && cloudMeta.visibility !== 'private' ? 'Sharing settings' : 'Share recipe'}
+                </button>
+              )}
+              <button
+                onClick={() => { setShowMoreSheet(false); setShowCollectionPanel(true) }}
+                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Library size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                Add to collection
+              </button>
+              <button
+                onClick={() => { setShowMoreSheet(false); window.print() }}
+                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Printer size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                Print recipe
+              </button>
+              <button
+                onClick={() => { setShowMoreSheet(false); handleDuplicate() }}
+                disabled={duplicating}
+                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                <Copy size={18} strokeWidth={2} className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
+                {duplicating ? 'Duplicating…' : 'Duplicate recipe'}
+              </button>
+              <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+              <button
+                onClick={() => { setShowMoreSheet(false); setShowDeleteConfirm(true) }}
+                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <Trash2 size={18} strokeWidth={2} className="shrink-0" aria-hidden="true" />
+                Delete recipe
+              </button>
+            </div>
+            <div className="pb-[env(safe-area-inset-bottom)]" />
           </div>
         </div>
       )}

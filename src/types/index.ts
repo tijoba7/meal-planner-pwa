@@ -101,3 +101,12 @@ export interface MealPlanTemplate {
   createdAt: string
   updatedAt: string
 }
+
+export interface Collection {
+  id: string
+  name: string
+  description?: string
+  recipeIds: string[]
+  createdAt: string
+  updatedAt: string
+}

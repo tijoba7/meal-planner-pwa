@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Recipe, MealPlan, ShoppingList, ShoppingItem, MealPlanTemplate } from '../types'
+import type { Recipe, MealPlan, ShoppingList, ShoppingItem, MealPlanTemplate, Collection } from '../types'
 
 // ─── Database ────────────────────────────────────────────────────────────────
 
@@ -8,6 +8,7 @@ class MealPlannerDB extends Dexie {
   mealPlans!: Table<MealPlan>
   shoppingLists!: Table<ShoppingList>
   mealPlanTemplates!: Table<MealPlanTemplate>
+  collections!: Table<Collection>
 
   constructor() {
     super('meal-planner')
@@ -65,6 +66,13 @@ class MealPlannerDB extends Dexie {
       mealPlans: '&id, weekStartDate, createdAt',
       shoppingLists: '&id, name, mealPlanId, createdAt',
       mealPlanTemplates: '&id, name, createdAt',
+    })
+    this.version(5).stores({
+      recipes: '&id, name, *keywords, dateCreated, isFavorite',
+      mealPlans: '&id, weekStartDate, createdAt',
+      shoppingLists: '&id, name, mealPlanId, createdAt',
+      mealPlanTemplates: '&id, name, createdAt',
+      collections: '&id, name, createdAt',
     })
   }
 }
@@ -238,6 +246,55 @@ export async function createMealPlanTemplate(
 
 export async function deleteMealPlanTemplate(templateId: string): Promise<void> {
   await db.mealPlanTemplates.delete(templateId)
+}
+
+// ─── Collection CRUD ──────────────────────────────────────────────────────────
+
+export async function getCollections(): Promise<Collection[]> {
+  return db.collections.orderBy('createdAt').reverse().toArray()
+}
+
+export async function getCollection(collectionId: string): Promise<Collection | undefined> {
+  return db.collections.get(collectionId)
+}
+
+export async function createCollection(
+  data: Omit<Collection, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Collection> {
+  const collection: Collection = { ...data, id: id(), createdAt: now(), updatedAt: now() }
+  await db.collections.add(collection)
+  return collection
+}
+
+export async function updateCollection(
+  collectionId: string,
+  data: Partial<Omit<Collection, 'id' | 'createdAt'>>
+): Promise<Collection> {
+  await db.collections.update(collectionId, { ...data, updatedAt: now() })
+  return (await db.collections.get(collectionId))!
+}
+
+export async function deleteCollection(collectionId: string): Promise<void> {
+  await db.collections.delete(collectionId)
+}
+
+export async function addRecipeToCollection(collectionId: string, recipeId: string): Promise<void> {
+  const collection = await db.collections.get(collectionId)
+  if (!collection) throw new Error('Collection not found')
+  if (collection.recipeIds.includes(recipeId)) return
+  await db.collections.update(collectionId, {
+    recipeIds: [...collection.recipeIds, recipeId],
+    updatedAt: now(),
+  })
+}
+
+export async function removeRecipeFromCollection(collectionId: string, recipeId: string): Promise<void> {
+  const collection = await db.collections.get(collectionId)
+  if (!collection) throw new Error('Collection not found')
+  await db.collections.update(collectionId, {
+    recipeIds: collection.recipeIds.filter((id) => id !== recipeId),
+    updatedAt: now(),
+  })
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, ChevronDown, ChevronRight, ChevronLeft, Share2, Copy, Download, Plus } from 'lucide-react'
+import { X, ChevronDown, ChevronRight, ChevronLeft, Share2, Copy, Download, Plus, Trash2 } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
@@ -123,17 +123,23 @@ function ItemRow({
   const cat = item.category ?? 'Other'
 
   return (
-    <div className="flex items-center px-4 py-3 gap-3">
+    <div className="flex items-center px-2 min-h-[44px] gap-1">
+      {/* Checkbox — expanded to 44px touch target */}
       <button
         onClick={onToggle}
-        className={`w-5 h-5 rounded border-2 shrink-0 transition-colors ${
-          item.checked
-            ? 'border-green-500 bg-green-500 flex items-center justify-center text-white text-xs'
-            : 'border-gray-300 dark:border-gray-600 hover:border-green-500'
-        } ${isJustChecked ? 'animate-check-pop' : ''}`}
+        className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
       >
-        {item.checked && <>&#10003;</>}
+        <span
+          className={`w-5 h-5 rounded border-2 shrink-0 transition-colors flex items-center justify-center ${
+            item.checked
+              ? 'border-green-500 bg-green-500 text-white text-xs'
+              : 'border-gray-300 dark:border-gray-600'
+          } ${isJustChecked ? 'animate-check-pop' : ''}`}
+          aria-hidden="true"
+        >
+          {item.checked && <>&#10003;</>}
+        </span>
       </button>
 
       <div className="flex-1 min-w-0">
@@ -183,7 +189,7 @@ function ItemRow({
       {!item.checked && (
         <button
           onClick={onRemove}
-          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
           aria-label={`Remove ${item.name}`}
         >
           <X size={14} strokeWidth={2} aria-hidden="true" />
@@ -218,7 +224,7 @@ function CategorySection({
         onClick={() => setCollapsed((c) => !c)}
         aria-expanded={!collapsed}
         aria-label={`${category}: ${uncheckedCount} of ${items.length} items remaining`}
-        className="w-full flex items-center gap-1.5 mb-1.5"
+        className="w-full flex items-center gap-1.5 mb-1.5 min-h-[44px]"
       >
         {collapsed ? (
           <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />

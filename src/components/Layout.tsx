@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, CalendarDays, Library, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -24,6 +24,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Recipes', icon: BookOpen, end: true },
+  { to: '/collections', label: 'Collections', icon: Library, end: false },
   { to: '/meal-plan', label: 'Meal Plan', icon: CalendarDays, end: false },
   { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
@@ -184,7 +185,7 @@ export default function Layout() {
             <Link
               to="/profile"
               aria-label="View profile"
-              className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               {profile
                 ? <Avatar profile={profile} size="sm" />
@@ -195,7 +196,7 @@ export default function Layout() {
             <Link
               to="/auth/login"
               aria-label="Sign in"
-              className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <LogIn size={18} strokeWidth={1.75} />
             </Link>
@@ -203,15 +204,15 @@ export default function Layout() {
         )}
       </header>
 
-      {/* Main content */}
-      <main id="main-content" className="flex-1 overflow-auto pb-20 md:pb-0 print:pb-0 print:overflow-visible">
+      {/* Main content — pb accounts for bottom tab bar + iOS safe area inset */}
+      <main id="main-content" className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 print:pb-0 print:overflow-visible">
         <div key={location.pathname} className="animate-fade-in">
           <Outlet />
         </div>
       </main>
 
-      {/* Mobile bottom tab bar */}
-      <nav aria-label="Mobile navigation" className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
+      {/* Mobile bottom tab bar — pb handles iOS home indicator safe area */}
+      <nav aria-label="Mobile navigation" className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10 pb-[env(safe-area-inset-bottom)]">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
             <div className="relative">

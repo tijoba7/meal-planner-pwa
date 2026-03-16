@@ -187,13 +187,27 @@ export default function DiscoverPage() {
       <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Discover</h2>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-        <button className={tabClass('explore')} onClick={() => setActiveTab('explore')}>
+      <div role="tablist" aria-label="Discover sections" className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+        <button
+          role="tab"
+          aria-selected={activeTab === 'explore'}
+          aria-controls="discover-tab-explore"
+          id="discover-tab-btn-explore"
+          className={tabClass('explore')}
+          onClick={() => setActiveTab('explore')}
+        >
           <Compass size={15} aria-hidden="true" />
           Explore
         </button>
         {user && (
-          <button className={tabClass('feed')} onClick={() => setActiveTab('feed')}>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'feed'}
+            aria-controls="discover-tab-feed"
+            id="discover-tab-btn-feed"
+            className={tabClass('feed')}
+            onClick={() => setActiveTab('feed')}
+          >
             <Rss size={15} aria-hidden="true" />
             Friends
           </button>
@@ -202,12 +216,13 @@ export default function DiscoverPage() {
 
       {/* Explore tab */}
       {activeTab === 'explore' && (
-        <>
+        <div id="discover-tab-explore" role="tabpanel" aria-labelledby="discover-tab-btn-explore">
           <div className="relative mb-4">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true" />
             <input
               type="search"
               placeholder="Search public recipes..."
+              aria-label="Search public recipes"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -234,12 +249,12 @@ export default function DiscoverPage() {
               ))}
             </ul>
           )}
-        </>
+        </div>
       )}
 
       {/* Friends feed tab */}
       {activeTab === 'feed' && user && (
-        <>
+        <div id="discover-tab-feed" role="tabpanel" aria-labelledby="discover-tab-btn-feed">
           {feedError ? (
             <p className="text-sm text-red-500 text-center py-8">{feedError}</p>
           ) : feedLoading ? (
@@ -260,7 +275,7 @@ export default function DiscoverPage() {
               ))}
             </ul>
           )}
-        </>
+        </div>
       )}
     </div>
   )

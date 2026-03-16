@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, CalendarDays, ShoppingCart, Utensils, X } from 'lucide-react'
+import { createRecipe } from '../lib/db'
 
 const STORAGE_KEY = 'mise_onboarding_done'
 
@@ -10,6 +11,31 @@ export function isOnboardingDone(): boolean {
 
 function markOnboardingDone() {
   localStorage.setItem(STORAGE_KEY, '1')
+}
+
+const SAMPLE_RECIPE = {
+  name: 'Classic Tomato Pasta',
+  description: 'A simple weeknight pasta with a rich tomato sauce. Ready in under 30 minutes.',
+  recipeYield: '4',
+  prepTime: 'PT5M',
+  cookTime: 'PT20M',
+  recipeIngredient: [
+    { name: 'spaghetti', amount: 400, unit: 'g' },
+    { name: 'canned crushed tomatoes', amount: 400, unit: 'g' },
+    { name: 'garlic cloves', amount: 3, unit: '' },
+    { name: 'olive oil', amount: 2, unit: 'tbsp' },
+    { name: 'salt', amount: 1, unit: 'tsp' },
+    { name: 'black pepper', amount: 0.5, unit: 'tsp' },
+    { name: 'fresh basil', amount: 1, unit: 'handful' },
+  ],
+  recipeInstructions: [
+    { '@type': 'HowToStep' as const, text: 'Boil a large pot of salted water. Cook spaghetti according to package directions until al dente.' },
+    { '@type': 'HowToStep' as const, text: 'Heat olive oil in a skillet over medium heat. Add minced garlic and cook 1 minute until fragrant.' },
+    { '@type': 'HowToStep' as const, text: 'Add crushed tomatoes, salt, and pepper. Simmer 15 minutes, stirring occasionally.' },
+    { '@type': 'HowToStep' as const, text: 'Drain pasta, toss with sauce. Tear fresh basil on top and serve.' },
+  ],
+  keywords: ['pasta', 'italian', 'vegetarian', 'quick'],
+  isFavorite: false,
 }
 
 const STEPS = [
@@ -60,6 +86,7 @@ interface OnboardingWizardProps {
 
 export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
   const [step, setStep] = useState(0)
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
 
   function dismiss() {
@@ -83,6 +110,18 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
   function goImport() {
     dismiss()
     navigate('/recipes/import')
+  }
+
+  async function goSampleRecipe() {
+    if (saving) return
+    setSaving(true)
+    try {
+      const recipe = await createRecipe(SAMPLE_RECIPE)
+      dismiss()
+      navigate(`/recipes/${recipe.id}`)
+    } catch {
+      setSaving(false)
+    }
   }
 
   const current = STEPS[step]
@@ -178,14 +217,21 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
               </p>
               <div className="flex flex-col gap-2">
                 <button
+                  onClick={goSampleRecipe}
+                  disabled={saving}
+                  className="w-full bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60 transition-colors"
+                >
+                  {saving ? 'Adding…' : 'Try a sample recipe'}
+                </button>
+                <button
                   onClick={goAddRecipe}
-                  className="w-full bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-700 transition-colors"
+                  className="w-full border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Add a recipe manually
                 </button>
                 <button
                   onClick={goImport}
-                  className="w-full border border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 text-sm font-semibold py-2.5 rounded-xl hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                  className="w-full border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Import from URL
                 </button>

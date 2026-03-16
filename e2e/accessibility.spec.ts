@@ -113,7 +113,9 @@ test.describe('Accessibility — Recipe Form page', () => {
 test.describe('Accessibility — Discover page', () => {
   test('discover page has no violations', async ({ page }) => {
     await page.goto('/discover')
-    await page.waitForSelector('h2, [role="tablist"]', { timeout: 5000 })
+    // When Supabase is not configured the page shows a "Connect to Supabase" message
+    // instead of the h2/tablist; wait for either state to be ready.
+    await page.waitForSelector('h2, [role="tablist"], p', { timeout: 5000 })
     await assertNoViolations(page, 'Discover page')
   })
 })

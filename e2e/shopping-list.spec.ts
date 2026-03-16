@@ -21,7 +21,7 @@ async function createRecipe(
   await page.goto('/recipes/new')
   await page.getByPlaceholder('e.g. Spaghetti Bolognese').fill(opts.name)
   await page.getByPlaceholder('ingredient name').fill(opts.ingredient)
-  await page.getByPlaceholder('Step 1…').fill('Cook everything.')
+  await page.getByPlaceholder('Step 1\u2026').fill('Cook everything.')
   await page.getByRole('button', { name: 'Add Recipe' }).click()
   await expect(page).toHaveURL(/recipes\/[^/]+$/)
 }
@@ -47,10 +47,31 @@ async function addRecipeToPlanner(
   const addButton = breakfastSpan.locator('..').locator('..').getByText('Add recipe')
   await addButton.click()
 
-  // Wait for recipes to load from IndexedDB before clicking
+  // Wait for recipes to load from IndexedDB before clicking.
+  // Use force:true — a success toast from recipe creation may still be
+  // visible and intercept the click.
   const recipeButton = page.getByRole('button', { name: new RegExp(recipeName) })
   await expect(recipeButton).toBeVisible()
-  await recipeButton.click()
+  // eslint-disable-next-line playwright/no-force-option
+  await recipeButton.click({ force: true })
+}
+
+/** Manually add an item to the currently open list detail view.
+ *
+ * This bypasses the planner entirely, which avoids slot-pollution across tests
+ * that run in the same Playwright worker (they share IndexedDB state).
+ */
+async function addItemToList(
+  page: import('@playwright/test').Page,
+  itemName: string,
+) {
+  const addItemBtn = page.getByRole('button', { name: 'Add item' })
+  await expect(addItemBtn).toBeVisible()
+  await addItemBtn.click()
+  await page.getByRole('textbox', { name: 'Item name' }).fill(itemName)
+  // exact:true prevents matching "Add item" or any other "Add ..." button
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByText(itemName, { exact: true })).toBeVisible()
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +112,7 @@ test.describe('Shopping List — create and view', () => {
     await expect(page.getByRole('heading', { name })).toBeVisible()
     await page.getByText('All lists').click()
 
-    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible()
+    await expect(page.getByRole('button', { name: new RegExp(`Open ${name}`) })).toBeVisible()
   })
 
   test('list card shows item count and progress bar', async ({ page, shoppingPage }) => {
@@ -154,25 +175,25 @@ test.describe('Shopping List — generate from meal plan', () => {
 
 // ---------------------------------------------------------------------------
 // Item interactions
+//
+// These tests add an item manually via the "Add item" button rather than
+// going through the planner. This avoids both the planner slot-pollution
+// problem (workers share IndexedDB) and the timezone UTC-midnight edge case.
 // ---------------------------------------------------------------------------
 
 test.describe('Shopping List — item interactions', () => {
   test('checking an item moves it to the Checked off section', async ({
     page,
     shoppingPage,
-    plannerPage,
   }) => {
-    const recipeName = `E2E Check Recipe ${RUN_ID}`
-    const ingredient = `CheckIngredient${RUN_ID}`
     const listName = `Check List ${RUN_ID}`
-
-    await createRecipe(page, { name: recipeName, ingredient })
-    await addRecipeToPlanner(page, plannerPage, recipeName)
+    const itemName = `CheckItem${RUN_ID}`
 
     await shoppingPage.goto()
     await shoppingPage.createList(listName)
+    await addItemToList(page, itemName)
 
-    await shoppingPage.checkItem(ingredient)
+    await shoppingPage.checkItem(itemName)
 
     // "Checked off" section header should appear
     await expect(page.getByText('Checked off')).toBeVisible()
@@ -181,22 +202,18 @@ test.describe('Shopping List — item interactions', () => {
   test('unchecking an item removes it from Checked off section', async ({
     page,
     shoppingPage,
-    plannerPage,
   }) => {
-    const recipeName = `E2E Uncheck Recipe ${RUN_ID}`
-    const ingredient = `UncheckIngredient${RUN_ID}`
     const listName = `Uncheck List ${RUN_ID}`
-
-    await createRecipe(page, { name: recipeName, ingredient })
-    await addRecipeToPlanner(page, plannerPage, recipeName)
+    const itemName = `UncheckItem${RUN_ID}`
 
     await shoppingPage.goto()
     await shoppingPage.createList(listName)
+    await addItemToList(page, itemName)
 
-    await shoppingPage.checkItem(ingredient)
+    await shoppingPage.checkItem(itemName)
     await expect(page.getByText('Checked off')).toBeVisible()
 
-    await shoppingPage.uncheckItem(ingredient)
+    await shoppingPage.uncheckItem(itemName)
 
     // No checked items — "Checked off" header should disappear
     await expect(page.getByText('Checked off')).not.toBeVisible()
@@ -205,43 +222,36 @@ test.describe('Shopping List — item interactions', () => {
   test('progress counter increments when an item is checked', async ({
     page,
     shoppingPage,
-    plannerPage,
   }) => {
-    const recipeName = `E2E Progress Recipe ${RUN_ID}`
-    const ingredient = `ProgressIngredient${RUN_ID}`
     const listName = `Progress List ${RUN_ID}`
-
-    await createRecipe(page, { name: recipeName, ingredient })
-    await addRecipeToPlanner(page, plannerPage, recipeName)
+    const itemName = `ProgressItem${RUN_ID}`
 
     await shoppingPage.goto()
     await shoppingPage.createList(listName)
+    await addItemToList(page, itemName)
 
     // Before: 0 items done
     await expect(page.getByText(/0 of \d+ items checked/)).toBeVisible()
 
-    await shoppingPage.checkItem(ingredient)
+    await shoppingPage.checkItem(itemName)
 
     // After: at least 1 item done
     await expect(page.getByText(/^[1-9]\d* of \d+ items checked$/)).toBeVisible()
   })
 
-  test('can remove an item from the list', async ({ page, shoppingPage, plannerPage }) => {
-    const recipeName = `E2E Remove Recipe ${RUN_ID}`
-    const ingredient = `RemoveIngredient${RUN_ID}`
+  test('can remove an item from the list', async ({ page, shoppingPage }) => {
     const listName = `Remove List ${RUN_ID}`
-
-    await createRecipe(page, { name: recipeName, ingredient })
-    await addRecipeToPlanner(page, plannerPage, recipeName)
+    const itemName = `RemoveItem${RUN_ID}`
 
     await shoppingPage.goto()
     await shoppingPage.createList(listName)
+    await addItemToList(page, itemName)
 
-    await expect(page.getByText(ingredient, { exact: true })).toBeVisible()
+    await expect(page.getByText(itemName, { exact: true })).toBeVisible()
 
-    await page.getByRole('button', { name: `Remove ${ingredient}` }).click()
+    await page.getByRole('button', { name: `Remove ${itemName}` }).click()
 
-    await expect(page.getByText(ingredient, { exact: true })).not.toBeVisible()
+    await expect(page.getByText(itemName, { exact: true })).not.toBeVisible()
   })
 })
 
@@ -260,10 +270,10 @@ test.describe('Shopping List — delete', () => {
     await expect(page.getByRole('heading', { name })).toBeVisible()
     await page.getByText('All lists').click()
 
-    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible()
+    await expect(page.getByRole('button', { name: new RegExp(`Open ${name}`) })).toBeVisible()
 
     await shoppingPage.deleteList(name)
 
-    await expect(page.getByRole('button', { name: new RegExp(name) })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: new RegExp(`Open ${name}`) })).not.toBeVisible()
   })
 })

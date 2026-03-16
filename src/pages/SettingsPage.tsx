@@ -3,7 +3,7 @@ import { Check, X } from 'lucide-react'
 import { getStoredApiKey, setStoredApiKey } from '../lib/scraper'
 import { useTheme } from '../contexts/ThemeContext'
 import { db } from '../lib/db'
-import type { Recipe, MealPlan, ShoppingList, MealPlanTemplate } from '../types'
+import type { Recipe, MealPlan, ShoppingList, MealPlanTemplate, Collection, PantryItem } from '../types'
 
 // ─── Import types ─────────────────────────────────────────────────────────────
 
@@ -14,6 +14,8 @@ interface BackupPayload {
   mealPlans?: unknown[]
   shoppingLists?: unknown[]
   mealPlanTemplates?: unknown[]
+  collections?: unknown[]
+  pantryItems?: unknown[]
 }
 
 interface ImportPreview {
@@ -23,7 +25,22 @@ interface ImportPreview {
   mealPlans: MealPlan[]
   shoppingLists: ShoppingList[]
   mealPlanTemplates: MealPlanTemplate[]
-  versionMismatch: boolean
+  collections: Collection[]
+  pantryItems: PantryItem[]
+}
+
+interface ImportProgress {
+  label: string
+  pct: number
+}
+
+function requireId(items: unknown[], label: string) {
+  const bad = (items as Record<string, unknown>[]).find(
+    (r) => typeof r !== 'object' || r === null || typeof r['id'] !== 'string',
+  )
+  if (bad !== undefined) {
+    throw new Error(`Invalid backup: some ${label} are missing a required "id" field.`)
+  }
 }
 
 function parseBackup(raw: unknown): ImportPreview {
@@ -33,27 +50,37 @@ function parseBackup(raw: unknown): ImportPreview {
   const data = raw as BackupPayload
 
   // At least one collection must be present
-  const hasCollections =
+  const hasData =
     Array.isArray(data.recipes) ||
     Array.isArray(data.mealPlans) ||
     Array.isArray(data.shoppingLists) ||
-    Array.isArray(data.mealPlanTemplates)
-  if (!hasCollections) {
+    Array.isArray(data.mealPlanTemplates) ||
+    Array.isArray(data.collections) ||
+    Array.isArray(data.pantryItems)
+  if (!hasData) {
     throw new Error('Invalid backup: no recognisable data collections found.')
   }
 
-  // Basic per-item validation for recipes
   const recipes = (Array.isArray(data.recipes) ? data.recipes : []) as Recipe[]
-  const invalidRecipe = recipes.find((r) => typeof r !== 'object' || r === null || !('id' in r))
-  if (invalidRecipe !== undefined) {
-    throw new Error('Invalid backup: some recipes are missing required fields.')
-  }
+  const mealPlans = (Array.isArray(data.mealPlans) ? data.mealPlans : []) as MealPlan[]
+  const shoppingLists = (Array.isArray(data.shoppingLists) ? data.shoppingLists : []) as ShoppingList[]
+  const mealPlanTemplates = (Array.isArray(data.mealPlanTemplates) ? data.mealPlanTemplates : []) as MealPlanTemplate[]
+  const collections = (Array.isArray(data.collections) ? data.collections : []) as Collection[]
+  const pantryItems = (Array.isArray(data.pantryItems) ? data.pantryItems : []) as PantryItem[]
+
+  // Validate required fields per type
+  requireId(recipes, 'recipes')
+  requireId(mealPlans, 'meal plans')
+  requireId(shoppingLists, 'shopping lists')
+  requireId(mealPlanTemplates, 'templates')
+  requireId(collections, 'collections')
+  requireId(pantryItems, 'pantry items')
 
   // Detect schema mismatch (v1 recipes used `title` instead of `name`)
-  const versionMismatch = recipes.some(
+  const hasV1Recipe = recipes.some(
     (r) => !('name' in r) && 'title' in (r as Record<string, unknown>),
   )
-  if (versionMismatch) {
+  if (hasV1Recipe) {
     throw new Error(
       'This backup was created with an older version of Mise and cannot be imported directly. Please export from the latest version first.',
     )
@@ -63,12 +90,26 @@ function parseBackup(raw: unknown): ImportPreview {
     appVersion: data.appVersion ?? 'unknown',
     exportedAt: data.exportedAt ?? '',
     recipes,
-    mealPlans: (Array.isArray(data.mealPlans) ? data.mealPlans : []) as MealPlan[],
-    shoppingLists: (Array.isArray(data.shoppingLists) ? data.shoppingLists : []) as ShoppingList[],
-    mealPlanTemplates: (
-      Array.isArray(data.mealPlanTemplates) ? data.mealPlanTemplates : []
-    ) as MealPlanTemplate[],
-    versionMismatch: false,
+    mealPlans,
+    shoppingLists,
+    mealPlanTemplates,
+    collections,
+    pantryItems,
+  }
+}
+
+const BATCH = 50
+
+async function importBatched<T>(
+  table: { bulkPut(items: T[]): Promise<unknown> },
+  items: T[],
+  onProgress: (done: number) => void,
+) {
+  for (let i = 0; i < items.length; i += BATCH) {
+    await table.bulkPut(items.slice(i, i + BATCH))
+    onProgress(Math.min(i + BATCH, items.length))
+    // Yield to the event loop so the progress bar can paint
+    await new Promise<void>((res) => setTimeout(res, 0))
   }
 }
 
@@ -120,16 +161,20 @@ export default function SettingsPage() {
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
   const [importStep, setImportStep] = useState<'idle' | 'preview' | 'importing' | 'success' | 'error'>('idle')
   const [importError, setImportError] = useState<string | null>(null)
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
 
   async function handleExport() {
     setExporting(true)
     try {
-      const [recipes, mealPlans, shoppingLists, mealPlanTemplates] = await Promise.all([
-        db.recipes.toArray(),
-        db.mealPlans.toArray(),
-        db.shoppingLists.toArray(),
-        db.mealPlanTemplates.toArray(),
-      ])
+      const [recipes, mealPlans, shoppingLists, mealPlanTemplates, collections, pantryItems] =
+        await Promise.all([
+          db.recipes.toArray(),
+          db.mealPlans.toArray(),
+          db.shoppingLists.toArray(),
+          db.mealPlanTemplates.toArray(),
+          db.collections.toArray(),
+          db.pantryItems.toArray(),
+        ])
       const payload = {
         appVersion: '0.1.0',
         exportedAt: new Date().toISOString(),
@@ -137,6 +182,8 @@ export default function SettingsPage() {
         mealPlans,
         shoppingLists,
         mealPlanTemplates,
+        collections,
+        pantryItems,
       }
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -176,21 +223,56 @@ export default function SettingsPage() {
   async function handleImportConfirm() {
     if (!importPreview) return
     setImportStep('importing')
+    setImportProgress({ label: 'Preparing…', pct: 0 })
     try {
+      const {
+        recipes, mealPlans, shoppingLists, mealPlanTemplates, collections, pantryItems,
+      } = importPreview
+
       if (importMode === 'replace') {
+        setImportProgress({ label: 'Clearing existing data…', pct: 5 })
         await Promise.all([
           db.recipes.clear(),
           db.mealPlans.clear(),
           db.shoppingLists.clear(),
           db.mealPlanTemplates.clear(),
+          db.collections.clear(),
+          db.pantryItems.clear(),
         ])
       }
-      await db.transaction('rw', [db.recipes, db.mealPlans, db.shoppingLists, db.mealPlanTemplates], async () => {
-        if (importPreview.recipes.length > 0) await db.recipes.bulkPut(importPreview.recipes)
-        if (importPreview.mealPlans.length > 0) await db.mealPlans.bulkPut(importPreview.mealPlans)
-        if (importPreview.shoppingLists.length > 0) await db.shoppingLists.bulkPut(importPreview.shoppingLists)
-        if (importPreview.mealPlanTemplates.length > 0) await db.mealPlanTemplates.bulkPut(importPreview.mealPlanTemplates)
-      })
+
+      const progress = (label: string, base: number, range: number, items: unknown[]) =>
+        (done: number) => {
+          const pct = base + Math.round((done / items.length) * range)
+          setImportProgress({ label: `${label} (${done}/${items.length})…`, pct })
+        }
+
+      if (recipes.length > 0) {
+        setImportProgress({ label: `Importing recipes (${recipes.length})…`, pct: 10 })
+        await importBatched(db.recipes, recipes, progress('Importing recipes', 10, 30, recipes))
+      }
+      if (mealPlans.length > 0) {
+        setImportProgress({ label: `Importing meal plans (${mealPlans.length})…`, pct: 40 })
+        await importBatched(db.mealPlans, mealPlans, progress('Importing meal plans', 40, 15, mealPlans))
+      }
+      if (shoppingLists.length > 0) {
+        setImportProgress({ label: `Importing shopping lists (${shoppingLists.length})…`, pct: 55 })
+        await importBatched(db.shoppingLists, shoppingLists, progress('Importing shopping lists', 55, 15, shoppingLists))
+      }
+      if (mealPlanTemplates.length > 0) {
+        setImportProgress({ label: `Importing templates (${mealPlanTemplates.length})…`, pct: 70 })
+        await importBatched(db.mealPlanTemplates, mealPlanTemplates, progress('Importing templates', 70, 10, mealPlanTemplates))
+      }
+      if (collections.length > 0) {
+        setImportProgress({ label: `Importing collections (${collections.length})…`, pct: 80 })
+        await importBatched(db.collections, collections, progress('Importing collections', 80, 10, collections))
+      }
+      if (pantryItems.length > 0) {
+        setImportProgress({ label: `Importing pantry items (${pantryItems.length})…`, pct: 90 })
+        await importBatched(db.pantryItems, pantryItems, progress('Importing pantry items', 90, 8, pantryItems))
+      }
+
+      setImportProgress({ label: 'Done', pct: 100 })
       setImportStep('success')
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed. The file may be corrupted.')
@@ -202,6 +284,7 @@ export default function SettingsPage() {
     setImportStep('idle')
     setImportPreview(null)
     setImportError(null)
+    setImportProgress(null)
   }
 
   function handleSaveKey(e: React.FormEvent) {
@@ -223,10 +306,14 @@ export default function SettingsPage() {
     // Step 2 — execute
     setClearing(true)
     try {
-      await db.recipes.clear()
-      await db.mealPlans.clear()
-      await db.shoppingLists.clear()
-      await db.mealPlanTemplates.clear()
+      await Promise.all([
+        db.recipes.clear(),
+        db.mealPlans.clear(),
+        db.shoppingLists.clear(),
+        db.mealPlanTemplates.clear(),
+        db.collections.clear(),
+        db.pantryItems.clear(),
+      ])
       setClearStep(0)
     } finally {
       setClearing(false)
@@ -454,12 +541,16 @@ export default function SettingsPage() {
                       { label: 'Meal plans', count: importPreview.mealPlans.length },
                       { label: 'Shopping lists', count: importPreview.shoppingLists.length },
                       { label: 'Templates', count: importPreview.mealPlanTemplates.length },
-                    ].map(({ label, count }) => (
-                      <div key={label} className="flex justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-300">{label}</span>
-                        <span className="font-medium text-gray-800 dark:text-gray-100">{count}</span>
-                      </div>
-                    ))}
+                      { label: 'Collections', count: importPreview.collections.length },
+                      { label: 'Pantry items', count: importPreview.pantryItems.length },
+                    ]
+                      .filter(({ count }) => count > 0)
+                      .map(({ label, count }) => (
+                        <div key={label} className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-300">{label}</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-100">{count}</span>
+                        </div>
+                      ))}
                   </div>
 
                   <div className="space-y-2">
@@ -527,9 +618,24 @@ export default function SettingsPage() {
             )}
 
             {importStep === 'importing' && (
-              <div className="p-8 flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">Importing…</p>
+              <div className="p-8 flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Importing…</p>
+                    <span className="text-sm text-gray-400 dark:text-gray-500">
+                      {importProgress?.pct ?? 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-green-500 h-2 rounded-full transition-all duration-200"
+                      style={{ width: `${importProgress?.pct ?? 0}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                    {importProgress?.label ?? ''}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -542,9 +648,16 @@ export default function SettingsPage() {
                   <p className="text-base font-semibold text-gray-800 dark:text-gray-100">Import complete</p>
                   {importPreview && (
                     <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
-                      {importPreview.recipes.length} recipes,{' '}
-                      {importPreview.mealPlans.length} meal plans, and{' '}
-                      {importPreview.shoppingLists.length} shopping lists restored.
+                      {[
+                        importPreview.recipes.length > 0 && `${importPreview.recipes.length} recipes`,
+                        importPreview.mealPlans.length > 0 && `${importPreview.mealPlans.length} meal plans`,
+                        importPreview.shoppingLists.length > 0 && `${importPreview.shoppingLists.length} shopping lists`,
+                        importPreview.collections.length > 0 && `${importPreview.collections.length} collections`,
+                        importPreview.pantryItems.length > 0 && `${importPreview.pantryItems.length} pantry items`,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}{' '}
+                      restored.
                     </p>
                   )}
                 </div>

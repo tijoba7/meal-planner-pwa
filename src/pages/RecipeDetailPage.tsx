@@ -413,7 +413,7 @@ export default function RecipeDetailPage() {
             </button>
           )}
         </div>
-        <ul className="space-y-2">
+        <ul className="space-y-2 print:columns-2 print:[column-gap:1.5rem]">
           {recipe.recipeIngredient.map((ing, i) => {
             const scaledAmount = ing.amount * scale
             const showOriginal = isScaled && ing.amount > 0
@@ -440,7 +440,7 @@ export default function RecipeDetailPage() {
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">Instructions</h3>
         <ol className="space-y-3">
           {recipe.recipeInstructions.map((step, i) => (
-            <li key={i} className="flex gap-3 text-sm">
+            <li key={i} className="flex gap-3 text-sm print:[break-inside:avoid]">
               <span className="shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {i + 1}
               </span>

@@ -142,7 +142,7 @@ describe('Layout', () => {
       expect(links).toHaveLength(10)
     })
 
-    it('renders exactly 9 navigation items in the desktop sidebar', () => {
+    it('renders exactly 11 navigation items in the desktop sidebar', () => {
       const { container } = renderLayout()
       const sidebar = container.querySelector('aside')
       expect(sidebar).toBeInTheDocument()
@@ -150,7 +150,7 @@ describe('Layout', () => {
       const sidebarNav = sidebar!.querySelector('nav')
       expect(sidebarNav).toBeInTheDocument()
       const navLinks = sidebarNav!.querySelectorAll('a')
-      expect(navLinks).toHaveLength(10)
+      expect(navLinks).toHaveLength(11)
     })
   })
 

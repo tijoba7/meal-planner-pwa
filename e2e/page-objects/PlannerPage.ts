@@ -20,7 +20,11 @@ export class PlannerPageObject {
     this.heading = page.getByRole('heading', { name: 'Weekly Planner' })
     this.prevWeekButton = page.getByRole('button', { name: 'Previous week' })
     this.nextWeekButton = page.getByRole('button', { name: 'Next week' })
-    this.weekRangeText = page.locator('p.text-sm.text-gray-500').first()
+    // Scoped to the heading's parent div so we don't accidentally match other p elements
+    this.weekRangeText = page
+      .getByRole('heading', { name: 'Weekly Planner' })
+      .locator('..')
+      .locator('p')
     this.templatesButton = page.getByRole('button', { name: /Templates/ })
     this.copyWeekButton = page.getByRole('button', {
       name: "Copy this week's meal plan to another week",

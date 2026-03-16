@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, X, ClipboardList } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
+import { useToast } from '../contexts/ToastContext'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
@@ -81,6 +82,7 @@ function aggregateIngredients(
 }
 
 export default function ShoppingListPage() {
+  const toast = useToast()
   const [lists, setLists] = useState<ShoppingList[]>([])
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [activeList, setActiveList] = useState<ShoppingList | null>(null)
@@ -137,6 +139,7 @@ export default function ShoppingListPage() {
     await reload()
     setActiveListId(list.id)
     setCreating(false)
+    toast.success('Shopping list created.')
   }
 
   const handleDelete = async (id: string) => {

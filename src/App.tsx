@@ -4,6 +4,7 @@ import { MigrationProvider } from './contexts/MigrationContext'
 import { ProfileProvider } from './contexts/ProfileContext'
 import { SyncProvider } from './contexts/SyncContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { ToastProvider } from './contexts/ToastContext'
 import Layout from './components/Layout'
 import RecipesPage from './pages/RecipesPage'
 import RecipeDetailPage from './pages/RecipeDetailPage'
@@ -21,6 +22,7 @@ import PublicProfilePage from './pages/PublicProfilePage'
 export default function App() {
   return (
     <ThemeProvider>
+    <ToastProvider>
     <AuthProvider>
       <SyncProvider>
       <MigrationProvider>
@@ -49,6 +51,7 @@ export default function App() {
       </MigrationProvider>
       </SyncProvider>
     </AuthProvider>
+    </ToastProvider>
     </ThemeProvider>
   )
 }

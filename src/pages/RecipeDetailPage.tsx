@@ -138,6 +138,19 @@ export default function RecipeDetailPage() {
         ← Recipes
       </Link>
 
+      {/* Hero image */}
+      {recipe.image && (
+        <div className="w-full aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-4">
+          <img
+            src={recipe.image}
+            alt={recipe.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{recipe.name}</h2>

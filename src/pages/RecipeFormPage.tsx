@@ -1,7 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { Camera, X } from 'lucide-react'
 import { getRecipe, createRecipe, updateRecipe, minutesToDuration, durationToMinutes } from '../lib/db'
+import {
+  uploadRecipeImage,
+  resizeToDataUrl,
+  deleteRecipeImages,
+  isStorageUrl,
+  MAX_INPUT_BYTES,
+} from '../lib/imageService'
+import { isSupabaseAvailable } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
 import type { Ingredient } from '../types'
 
 interface FormState {
@@ -52,12 +62,27 @@ interface FormErrors {
 export default function RecipeFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const toast = useToast()
+  const { user } = useAuth()
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
   const [notFound, setNotFound] = useState(false)
+
+  // ── Image state ─────────────────────────────────────────────────────────────
+  // `pendingFile`    – file selected by the user, not yet uploaded
+  // `previewUrl`     – object URL for preview (or existing recipe.image)
+  // `existingImage`  – saved image URL from the recipe (edit mode)
+  // `existingThumb`  – saved thumbnail URL from the recipe (edit mode)
+  // `imageCleared`   – user explicitly removed the image
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [existingImage, setExistingImage] = useState<string | null>(null)
+  const [existingThumb, setExistingThumb] = useState<string | null>(null)
+  const [imageCleared, setImageCleared] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -81,8 +106,58 @@ export default function RecipeFormPage() {
         nutritionCarbs: parseNutritionFormValue(recipe.nutrition?.carbohydrateContent),
         nutritionFiber: parseNutritionFormValue(recipe.nutrition?.fiberContent),
       })
+      if (recipe.image) {
+        setExistingImage(recipe.image)
+        setPreviewUrl(recipe.image)
+      }
+      if (recipe.imageThumbnailUrl) {
+        setExistingThumb(recipe.imageThumbnailUrl)
+      }
     })
   }, [id])
+
+  // Revoke object URLs on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
+  // ── Image handlers ──────────────────────────────────────────────────────────
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > MAX_INPUT_BYTES) {
+      toast.error('Image is too large. Please choose a file under 20 MB.')
+      e.target.value = ''
+      return
+    }
+
+    // Revoke previous blob URL if any
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl)
+    }
+
+    setPendingFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+    setImageCleared(false)
+    e.target.value = ''
+  }
+
+  function handleClearImage() {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setPendingFile(null)
+    setPreviewUrl(null)
+    setImageCleared(true)
+  }
+
+  // ── Form helpers ────────────────────────────────────────────────────────────
 
   function validate(): FormErrors {
     const e: FormErrors = {}
@@ -116,6 +191,36 @@ export default function RecipeFormPage() {
     const nutrition: Record<string, number> | undefined =
       nutritionEntries.length > 0 ? Object.fromEntries(nutritionEntries) : undefined
 
+    // ── Resolve image URL ────────────────────────────────────────────────────
+    let imageUrl: string | undefined
+    let thumbnailUrl: string | undefined
+
+    const targetRecipeId = isEdit ? id! : crypto.randomUUID()
+
+    if (pendingFile) {
+      try {
+        if (isSupabaseAvailable() && user) {
+          // Upload to Supabase Storage
+          const uploaded = await uploadRecipeImage(user.id, targetRecipeId, pendingFile)
+          imageUrl = uploaded.url
+          thumbnailUrl = uploaded.thumbnailUrl
+        } else {
+          // Local fallback: encode as data URLs (offline / not signed in)
+          imageUrl = await resizeToDataUrl(pendingFile, 1200)
+          thumbnailUrl = await resizeToDataUrl(pendingFile, 400)
+        }
+      } catch (err) {
+        console.error('Image upload failed:', err)
+        toast.error('Image upload failed — recipe saved without image.')
+        // Don't abort the save; just omit the image
+      }
+    } else if (!imageCleared) {
+      // Keep existing image unchanged
+      imageUrl = existingImage ?? undefined
+      thumbnailUrl = existingThumb ?? undefined
+    }
+    // If imageCleared and no pendingFile: both remain undefined → image removed
+
     const data = {
       name: form.name.trim(),
       description: form.description.trim(),
@@ -131,17 +236,26 @@ export default function RecipeFormPage() {
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean),
       nutrition,
+      image: imageUrl,
+      imageThumbnailUrl: thumbnailUrl,
     }
 
     try {
       if (isEdit && id) {
         await updateRecipe(id, data)
+        // Clean up old storage image if it was replaced or removed
+        if (imageCleared && existingImage && isStorageUrl(existingImage) && user) {
+          deleteRecipeImages(user.id, id).catch(console.error)
+        }
+        toast.success('Recipe saved.')
         navigate(`/recipes/${id}`)
       } else {
-        const recipe = await createRecipe(data)
-        navigate(`/recipes/${recipe.id}`)
+        await createRecipe(data, targetRecipeId)
+        toast.success('Recipe added.')
+        navigate(`/recipes/${targetRecipeId}`)
       }
-    } finally {
+    } catch {
+      toast.error('Failed to save recipe. Please try again.')
       setSaving(false)
     }
   }
@@ -229,6 +343,56 @@ export default function RecipeFormPage() {
             rows={2}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
+        </div>
+
+        {/* Photo */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Photo</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            className="sr-only"
+            aria-label="Upload recipe photo"
+          />
+
+          {previewUrl ? (
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700">
+              <img
+                src={previewUrl}
+                alt="Recipe photo preview"
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleClearImage}
+                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+                aria-label="Remove photo"
+              >
+                <X size={14} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Camera size={12} strokeWidth={2} />
+                Change
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500 hover:border-green-500 dark:hover:border-green-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+            >
+              <Camera size={24} strokeWidth={1.5} />
+              <span className="text-sm">Add a photo</span>
+              <span className="text-xs">JPEG, PNG, WebP · up to 20 MB</span>
+            </button>
+          )}
         </div>
 
         {/* Times + Servings */}

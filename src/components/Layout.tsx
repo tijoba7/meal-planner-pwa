@@ -12,6 +12,7 @@ import ToastContainer from './ToastContainer'
 import OnboardingWizard, { isOnboardingDone } from './OnboardingWizard'
 import OfflineBanner from './OfflineBanner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import SearchDialog from './SearchDialog'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
 
@@ -61,6 +62,7 @@ export default function Layout() {
   const supIsAvailable = isSupabaseAvailable()
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
@@ -72,10 +74,26 @@ export default function Layout() {
     return unsub
   }, [user, supIsAvailable])
 
+  // Cmd+K / Ctrl+K opens search — useKeyboardShortcuts skips metaKey/ctrlKey combos
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   useKeyboardShortcuts({
     n: () => navigate('/recipes/new'),
+    '/': () => setShowSearch(true),
     '?': () => setShowShortcuts((v) => !v),
-    Escape: () => setShowShortcuts(false),
+    Escape: () => {
+      setShowSearch(false)
+      setShowShortcuts(false)
+    },
   })
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -272,6 +290,9 @@ export default function Layout() {
 
       {/* Toast notifications */}
       <ToastContainer />
+
+      {/* Global search dialog */}
+      {showSearch && <SearchDialog onClose={() => setShowSearch(false)} />}
 
       {/* Keyboard shortcuts help dialog */}
       {showShortcuts && <KeyboardShortcutsDialog onClose={() => setShowShortcuts(false)} />}

@@ -12,6 +12,8 @@ const SHORTCUT_GROUPS: { heading: string; rows: ShortcutRow[] }[] = [
     heading: 'Global',
     rows: [
       { keys: ['n'], description: 'New recipe' },
+      { keys: ['/'], description: 'Open search' },
+      { keys: ['⌘', 'K'], description: 'Open search' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
     ],
   },

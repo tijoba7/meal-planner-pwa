@@ -16,34 +16,91 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PROVIDER_OPTIONS = [{ value: 'anthropic', label: 'Anthropic Claude' }] as const
-
-const MODEL_OPTIONS = [
-  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast, cost-effective)' },
-  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (balanced)' },
-  { value: 'claude-opus-4-6', label: 'Claude Opus 4.6 (most capable)' },
+const PROVIDER_OPTIONS = [
+  { value: 'anthropic', label: 'Anthropic Claude' },
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'gemini', label: 'Google Gemini' },
 ] as const
+
+type ProviderId = (typeof PROVIDER_OPTIONS)[number]['value']
+
+const MODEL_OPTIONS_BY_PROVIDER: Record<ProviderId, ReadonlyArray<{ value: string; label: string }>> =
+  {
+    anthropic: [
+      { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast, cost-effective)' },
+      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (balanced)' },
+      { value: 'claude-opus-4-6', label: 'Claude Opus 4.6 (most capable)' },
+    ],
+    openai: [
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini (fast, cost-effective)' },
+      { value: 'gpt-4o', label: 'GPT-4o (balanced)' },
+      { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini (latest fast)' },
+      { value: 'gpt-4.1', label: 'GPT-4.1 (most capable)' },
+    ],
+    gemini: [
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast, cost-effective)' },
+      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (stable fast)' },
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (most capable)' },
+    ],
+  }
+
+const API_KEY_LABELS: Record<ProviderId, { label: string; placeholder: string }> = {
+  anthropic: { label: 'Anthropic API key', placeholder: 'sk-ant-…' },
+  openai: { label: 'OpenAI API key', placeholder: 'sk-…' },
+  gemini: { label: 'Google Gemini API key', placeholder: 'AIza…' },
+}
 
 const DEFAULT_RATE_LIMIT = 10
 
 // ─── API key test ─────────────────────────────────────────────────────────────
 
-async function testApiKey(apiKey: string): Promise<{ ok: boolean; error?: string }> {
+async function testApiKey(
+  apiKey: string,
+  provider: ProviderId
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'ping' }],
-      }),
-    })
+    let res: Response
+    if (provider === 'openai') {
+      res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      })
+    } else if (provider === 'gemini') {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+            generationConfig: { maxOutputTokens: 1 },
+          }),
+        }
+      )
+    } else {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'ping' }],
+        }),
+      })
+    }
     if (res.ok) return { ok: true }
     const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     const msg = body.error?.message ?? `HTTP ${res.status}`
@@ -62,7 +119,7 @@ export default function AdminScrapingPage() {
   const updatedBy = user?.id ?? 'admin'
 
   // Provider & model
-  const [provider, setProvider] = useState('anthropic')
+  const [provider, setProvider] = useState<ProviderId>('anthropic')
   const [model, setModel] = useState('claude-haiku-4-5-20251001')
   const [providerStatus, setProviderStatus] = useState<SaveStatus>('idle')
   const [providerError, setProviderError] = useState<string | null>(null)
@@ -88,7 +145,8 @@ export default function AdminScrapingPage() {
         // We check if a key exists (non-null) without displaying it
         getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY),
       ])
-      if (storedProvider) setProvider(storedProvider)
+      if (storedProvider && storedProvider in MODEL_OPTIONS_BY_PROVIDER)
+        setProvider(storedProvider as ProviderId)
       if (storedModel) setModel(storedModel)
       if (storedRateLimit !== null) setRateLimit(storedRateLimit)
       setHasExistingKey(storedApiKey !== null && storedApiKey.length > 0)
@@ -125,7 +183,7 @@ export default function AdminScrapingPage() {
     setApiKeyStatus('testing')
     setApiKeyError(null)
 
-    const testResult = await testApiKey(trimmed)
+    const testResult = await testApiKey(trimmed, provider)
     if (!testResult.ok) {
       setApiKeyStatus('error')
       setApiKeyError(testResult.error ?? 'API key verification failed.')
@@ -188,7 +246,9 @@ export default function AdminScrapingPage() {
               <select
                 value={provider}
                 onChange={(e) => {
-                  setProvider(e.target.value)
+                  const next = e.target.value as ProviderId
+                  setProvider(next)
+                  setModel(MODEL_OPTIONS_BY_PROVIDER[next][0].value)
                   setProviderStatus('idle')
                 }}
                 className="mt-2 w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -203,7 +263,8 @@ export default function AdminScrapingPage() {
             <SettingsRow>
               <RowLabel>Model</RowLabel>
               <RowDescription>
-                Claude model for recipe extraction. Haiku is fastest and most cost-effective.
+                Model used for recipe extraction. The first option is fastest and most
+                cost-effective.
               </RowDescription>
               <select
                 value={model}
@@ -213,7 +274,7 @@ export default function AdminScrapingPage() {
                 }}
                 className="mt-2 w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                {MODEL_OPTIONS.map((opt) => (
+                {MODEL_OPTIONS_BY_PROVIDER[provider].map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -252,15 +313,15 @@ export default function AdminScrapingPage() {
         <SectionHeader>API Key</SectionHeader>
         <SettingsCard>
           <SettingsRow>
-            <RowLabel>Anthropic API key</RowLabel>
+            <RowLabel>{API_KEY_LABELS[provider].label}</RowLabel>
             <RowDescription>
               {hasExistingKey
                 ? 'A key is already configured. Enter a new key below to replace it.'
-                : 'Enter an Anthropic API key to enable AI-powered recipe scraping for all users.'}
+                : `Enter a ${PROVIDER_OPTIONS.find((p) => p.value === provider)?.label ?? 'provider'} API key to enable AI-powered recipe scraping for all users.`}
             </RowDescription>
             <form onSubmit={handleSaveApiKey} className="mt-3 space-y-3">
               <label htmlFor="admin-api-key" className="sr-only">
-                Anthropic API key
+                {API_KEY_LABELS[provider].label}
               </label>
               <input
                 id="admin-api-key"
@@ -271,7 +332,11 @@ export default function AdminScrapingPage() {
                   setApiKeyStatus('idle')
                   setApiKeyError(null)
                 }}
-                placeholder={hasExistingKey ? 'sk-ant-… (leave blank to keep existing)' : 'sk-ant-…'}
+                placeholder={
+                  hasExistingKey
+                    ? `${API_KEY_LABELS[provider].placeholder} (leave blank to keep existing)`
+                    : API_KEY_LABELS[provider].placeholder
+                }
                 className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
                 autoComplete="off"
               />

@@ -13,6 +13,7 @@ vi.mock('./appSettingsService', () => ({
   APP_SETTING_KEYS: {
     SCRAPING_API_KEY: 'scraping.api_key',
     SCRAPING_MODEL: 'scraping.model',
+    SCRAPING_PROVIDER: 'scraping.provider',
   },
 }))
 

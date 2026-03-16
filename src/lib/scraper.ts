@@ -79,26 +79,34 @@ Rules:
 - Preserve the original ingredient amounts and units as closely as possible.`
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
 
 // Cache admin scraping config for 60 s to avoid a Supabase round-trip on every URL in a batch.
-let _adminConfig: { apiKey: string | null; model: string | null } | null = null
+let _adminConfig: { apiKey: string | null; model: string | null; provider: string | null } | null =
+  null
 let _adminConfigAt = 0
 const ADMIN_CONFIG_TTL_MS = 60_000
 
-async function loadAdminScrapingConfig(): Promise<{ apiKey: string | null; model: string | null }> {
+async function loadAdminScrapingConfig(): Promise<{
+  apiKey: string | null
+  model: string | null
+  provider: string | null
+}> {
   const now = Date.now()
   if (_adminConfig && now - _adminConfigAt < ADMIN_CONFIG_TTL_MS) return _adminConfig
-  const [apiKey, model] = await Promise.all([
+  const [apiKey, model, provider] = await Promise.all([
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY),
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_MODEL),
+    getAppSettingString(APP_SETTING_KEYS.SCRAPING_PROVIDER),
   ])
-  _adminConfig = { apiKey, model }
+  _adminConfig = { apiKey, model, provider }
   _adminConfigAt = now
   return _adminConfig
 }
 
 async function resolveApiKeyAndModel(): Promise<
-  { apiKey: string; model: string } | { error: string }
+  { apiKey: string; model: string; provider: string } | { error: string }
 > {
   const admin = await loadAdminScrapingConfig()
   if (!admin.apiKey) {
@@ -106,7 +114,14 @@ async function resolveApiKeyAndModel(): Promise<
       error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
     }
   }
-  return { apiKey: admin.apiKey, model: admin.model ?? DEFAULT_MODEL }
+  const provider = admin.provider ?? 'anthropic'
+  const defaultModel =
+    provider === 'openai'
+      ? DEFAULT_OPENAI_MODEL
+      : provider === 'gemini'
+        ? DEFAULT_GEMINI_MODEL
+        : DEFAULT_MODEL
+  return { apiKey: admin.apiKey, model: admin.model ?? defaultModel, provider }
 }
 
 function truncate(text: string, maxChars: number): string {
@@ -129,6 +144,56 @@ async function fetchPageText(url: string): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+function extractJsonFromResponse(raw: string): string {
+  // Strategy 1: Try the raw string directly (model returned pure JSON)
+  const trimmed = raw.trim()
+  if (trimmed.startsWith('{')) return trimmed
+
+  // Strategy 2: Extract from markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)```/)
+  if (fenceMatch) return fenceMatch[1].trim()
+
+  // Strategy 3: Find the first { and last } to extract embedded JSON
+  const firstBrace = trimmed.indexOf('{')
+  const lastBrace = trimmed.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1)
+  }
+
+  return trimmed
+}
+
+function parseAiResponseText(raw: string): ScrapeResult {
+  let parsed: Record<string, unknown>
+  try {
+    const cleaned = extractJsonFromResponse(raw)
+    parsed = JSON.parse(cleaned) as Record<string, unknown>
+  } catch {
+    return { ok: false, error: 'Could not parse AI response as JSON.' }
+  }
+
+  if (parsed.error) return { ok: false, error: parsed.error as string }
+
+  const recipe: ExtractedRecipe = {
+    name: String(parsed.name ?? '').trim(),
+    description: String(parsed.description ?? '').trim(),
+    recipeYield: String(parsed.recipeYield ?? '2').trim(),
+    prepTime: String(parsed.prepTime ?? 'PT0M').trim(),
+    cookTime: String(parsed.cookTime ?? 'PT0M').trim(),
+    recipeIngredient: normaliseIngredients(parsed.recipeIngredient),
+    recipeInstructions: normaliseInstructions(parsed.recipeInstructions),
+    keywords: normaliseKeywords(parsed.keywords),
+    image: parsed.image ? String(parsed.image) : undefined,
+    author: parsed.author ? String(parsed.author) : undefined,
+    url: parsed.url ? String(parsed.url) : undefined,
+    recipeCategory: parsed.recipeCategory ? String(parsed.recipeCategory) : undefined,
+    recipeCuisine: parsed.recipeCuisine ? String(parsed.recipeCuisine) : undefined,
+  }
+
+  if (!recipe.name) return { ok: false, error: 'No recipe found.' }
+  return { ok: true, recipe: sanitizeRecipeData(recipe) }
 }
 
 async function callClaude(
@@ -170,37 +235,102 @@ async function callClaude(
     }
   }
 
-  let parsed: Record<string, unknown>
+  return parseAiResponseText(raw)
+}
+
+async function callOpenAI(
+  systemPrompt: string,
+  userMessage: string,
+  apiKey: string,
+  model = DEFAULT_OPENAI_MODEL
+): Promise<ScrapeResult> {
+  let raw: string
   try {
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/, '')
-      .trim()
-    parsed = JSON.parse(cleaned) as Record<string, unknown>
-  } catch {
-    return { ok: false, error: 'Could not parse AI response as JSON.' }
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2048,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
+      return { ok: false, error: `AI API error: ${msg}` }
+    }
+
+    const data = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>
+    }
+    raw = data.choices[0]?.message?.content ?? ''
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
+    }
   }
 
-  if (parsed.error) return { ok: false, error: parsed.error as string }
+  return parseAiResponseText(raw)
+}
 
-  const recipe: ExtractedRecipe = {
-    name: String(parsed.name ?? '').trim(),
-    description: String(parsed.description ?? '').trim(),
-    recipeYield: String(parsed.recipeYield ?? '2').trim(),
-    prepTime: String(parsed.prepTime ?? 'PT0M').trim(),
-    cookTime: String(parsed.cookTime ?? 'PT0M').trim(),
-    recipeIngredient: normaliseIngredients(parsed.recipeIngredient),
-    recipeInstructions: normaliseInstructions(parsed.recipeInstructions),
-    keywords: normaliseKeywords(parsed.keywords),
-    image: parsed.image ? String(parsed.image) : undefined,
-    author: parsed.author ? String(parsed.author) : undefined,
-    url: parsed.url ? String(parsed.url) : undefined,
-    recipeCategory: parsed.recipeCategory ? String(parsed.recipeCategory) : undefined,
-    recipeCuisine: parsed.recipeCuisine ? String(parsed.recipeCuisine) : undefined,
+async function callGemini(
+  systemPrompt: string,
+  userMessage: string,
+  apiKey: string,
+  model = DEFAULT_GEMINI_MODEL
+): Promise<ScrapeResult> {
+  let raw: string
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        generationConfig: { maxOutputTokens: 2048 },
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
+      return { ok: false, error: `AI API error: ${msg}` }
+    }
+
+    const data = (await res.json()) as {
+      candidates: Array<{ content: { parts: Array<{ text: string }> } }>
+    }
+    raw = data.candidates[0]?.content?.parts[0]?.text ?? ''
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
+    }
   }
 
-  if (!recipe.name) return { ok: false, error: 'No recipe found.' }
-  return { ok: true, recipe: sanitizeRecipeData(recipe) }
+  return parseAiResponseText(raw)
+}
+
+async function callAI(
+  systemPrompt: string,
+  userMessage: string,
+  apiKey: string,
+  model: string,
+  provider: string
+): Promise<ScrapeResult> {
+  if (provider === 'openai') return callOpenAI(systemPrompt, userMessage, apiKey, model)
+  if (provider === 'gemini') return callGemini(systemPrompt, userMessage, apiKey, model)
+  return callClaude(systemPrompt, userMessage, apiKey, model)
 }
 
 export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
@@ -225,7 +355,13 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
     ? `URL: ${url}\n\nPage content:\n${truncate(pageText, MAX_PAGE_CHARS)}`
     : `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
 
-  const result = await callClaude(SYSTEM_PROMPT, userMessage, resolved.apiKey, resolved.model)
+  const result = await callAI(
+    SYSTEM_PROMPT,
+    userMessage,
+    resolved.apiKey,
+    resolved.model,
+    resolved.provider
+  )
   if (result.ok && !result.recipe.url) {
     return { ok: true, recipe: { ...result.recipe, url } }
   }
@@ -246,11 +382,12 @@ export async function extractRecipeFromText(text: string): Promise<ScrapeResult>
   if ('error' in resolved) return { ok: false, error: resolved.error }
 
   const MAX_TEXT_CHARS = 12_000
-  return callClaude(
+  return callAI(
     TEXT_SYSTEM_PROMPT,
     `Recipe text:\n\n${truncate(text, MAX_TEXT_CHARS)}`,
     resolved.apiKey,
-    resolved.model
+    resolved.model,
+    resolved.provider
   )
 }
 

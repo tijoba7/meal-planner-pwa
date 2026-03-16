@@ -4,15 +4,8 @@ import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategi
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { registerRoute } from 'workbox-routing'
-import { BackgroundSyncPlugin } from 'workbox-background-sync'
 
 declare const self: ServiceWorkerGlobalScope
-
-// Background Sync API — not yet in TypeScript stdlib (experimental)
-interface SyncEvent extends ExtendableEvent {
-  readonly tag: string
-  readonly lastChance: boolean
-}
 
 // Clean up caches from previous SW versions
 cleanupOutdatedCaches()
@@ -22,11 +15,7 @@ precacheAndRoute(self.__WB_MANIFEST)
 
 // ─── Runtime caching ───────────────────────────────────────────────────────
 
-// Supabase REST API — network-first with background sync for mutations
-const bgSyncPlugin = new BackgroundSyncPlugin('mise-sync-queue', {
-  maxRetentionTime: 24 * 60, // keep queued requests up to 24 hours
-})
-
+// Supabase REST API — network-first (read-only cache, no mutation replay)
 registerRoute(
   ({ url }) => /^https:\/\/[a-z0-9]+\.supabase\.co\/rest\//i.test(url.href),
   new NetworkFirst({
@@ -35,7 +24,6 @@ registerRoute(
     plugins: [
       new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 24 * 60 * 60 }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
-      bgSyncPlugin,
     ],
   }),
   'GET'
@@ -76,20 +64,6 @@ registerRoute(
     ],
   })
 )
-
-// ─── Background Sync event ─────────────────────────────────────────────────
-// Workbox's BackgroundSyncPlugin automatically handles replay of queued requests.
-// Additionally notify all clients so they can pull fresh data after reconnect.
-
-self.addEventListener('sync', (event: SyncEvent) => {
-  if (event.tag === 'mise-pull') {
-    event.waitUntil(
-      self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then((clients) => {
-        clients.forEach((client) => client.postMessage({ type: 'BACKGROUND_SYNC' }))
-      })
-    )
-  }
-})
 
 // ─── Push notifications ────────────────────────────────────────────────────
 // Placeholder — push subscription management is handled by the app.

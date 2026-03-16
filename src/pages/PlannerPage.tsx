@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2, GripVertical } from 'lucide-react'
+import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2, GripVertical, History } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -9,6 +9,7 @@ import type { MealType, Recipe, MealPlan, MealPlanTemplate } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
   getRecipes,
+  getMealPlans,
   getMealPlanForWeek,
   createMealPlan,
   updateMealPlan,
@@ -64,6 +65,47 @@ function parseNutritionValue(value: string | number | undefined): number {
   return match ? parseFloat(match[0]) : 0
 }
 
+function countMeals(plan: MealPlan): number {
+  let count = 0
+  for (const dayPlan of Object.values(plan.days)) {
+    for (const slot of Object.values(dayPlan)) {
+      if (slot) count += normalizeMealSlot(slot).recipes.length
+    }
+  }
+  return count
+}
+
+function QuickPickCard({ recipe, onClick }: { recipe: Recipe; onClick: () => void }) {
+  const initials = recipe.name
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+  return (
+    <button
+      onClick={onClick}
+      className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex flex-col items-end justify-end hover:ring-2 hover:ring-green-500 active:scale-95 transition-transform"
+      aria-label={`Quick-add ${recipe.name}`}
+    >
+      {recipe.imageThumbnailUrl ? (
+        <img
+          src={recipe.imageThumbnailUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-xl font-bold text-gray-400 dark:text-gray-500">{initials}</span>
+        </div>
+      )}
+      <div className="relative w-full px-1.5 py-1 bg-black/50 backdrop-blur-sm">
+        <p className="text-xs font-medium text-white line-clamp-1">{recipe.name}</p>
+      </div>
+    </button>
+  )
+}
+
 export default function PlannerPage() {
   const [weekStart, setWeekStart] = useState<string>(() => toISODate(getMonday(new Date())))
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
@@ -82,12 +124,19 @@ export default function PlannerPage() {
   const [applyTemplateConfirm, setApplyTemplateConfirm] = useState<MealPlanTemplate | null>(null)
   const [savingTemplate, setSavingTemplate] = useState(false)
 
+  // History state
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [histMealPlans, setHistMealPlans] = useState<MealPlan[]>([])
+
   // Drag-and-drop state
   const [dragSource, setDragSource] = useState<DragSource | null>(null)
   const [dragOver, setDragOver] = useState<{ date: string; meal: MealType } | null>(null)
   const isDraggingRef = useRef(false)
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchSourceRef = useRef<DragSource | null>(null)
+
+  // Quick-pick state: recent recipe IDs from past meal plans
+  const [recentRecipeIds, setRecentRecipeIds] = useState<string[]>([])
 
   useEffect(() => {
     getRecipes().then(setRecipes)
@@ -113,6 +162,19 @@ export default function PlannerPage() {
   useEffect(() => {
     getMealPlanTemplates().then(setTemplates)
   }, [])
+
+  useEffect(() => {
+    if (!historyOpen) return
+    getMealPlans().then(plans => {
+      const filtered = plans
+        .filter(p =>
+          p.weekStartDate !== weekStart &&
+          Object.values(p.days).some(d => Object.keys(d).length > 0)
+        )
+        .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
+      setHistMealPlans(filtered)
+    })
+  }, [historyOpen, weekStart])
 
   // Non-passive touchmove listener: prevents page scroll while touch-dragging
   // and tracks which meal slot is under the finger.
@@ -148,7 +210,7 @@ export default function PlannerPage() {
     })
   }
 
-  const anyModalOpen = pickerTarget !== null || copyModalOpen || templateGalleryOpen || saveTemplateOpen || applyTemplateConfirm !== null
+  const anyModalOpen = pickerTarget !== null || copyModalOpen || templateGalleryOpen || saveTemplateOpen || applyTemplateConfirm !== null || historyOpen
 
   useKeyboardShortcuts({
     ArrowLeft: () => { if (!anyModalOpen) navigateWeek(-1) },
@@ -159,6 +221,7 @@ export default function PlannerPage() {
       else if (applyTemplateConfirm) setApplyTemplateConfirm(null)
       else if (saveTemplateOpen) setSaveTemplateOpen(false)
       else if (templateGalleryOpen) setTemplateGalleryOpen(false)
+      else if (historyOpen) setHistoryOpen(false)
     },
   })
 
@@ -313,6 +376,23 @@ export default function PlannerPage() {
     setTemplates(prev => prev.filter(t => t.id !== templateId))
   }
 
+  const copyFromHistory = async (sourcePlan: MealPlan) => {
+    if (!mealPlan) return
+    const sourceWeek = sourcePlan.weekStartDate
+    const targetDays: MealPlan['days'] = {}
+    for (const [dateStr, dayPlan] of Object.entries(sourcePlan.days)) {
+      const offset = Math.round(
+        (new Date(dateStr + 'T00:00:00').getTime() - new Date(sourceWeek + 'T00:00:00').getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+      const targetDate = toISODate(addDays(new Date(weekStart + 'T00:00:00'), offset))
+      targetDays[targetDate] = dayPlan
+    }
+    const updated = await updateMealPlan(mealPlan.id, { days: targetDays })
+    setMealPlan(updated)
+    setHistoryOpen(false)
+  }
+
   // ── HTML5 Drag-and-Drop handlers (desktop) ────────────────────────────────
 
   const handleDragStart = (e: React.DragEvent, date: string, meal: MealType, index: number) => {
@@ -403,10 +483,12 @@ export default function PlannerPage() {
     let hasData = false
     let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0
     let daysWithData = 0
+    const byDay: Record<string, { cal: number; protein: number; carbs: number; fat: number } | null> = {}
 
     for (const date of weekDates) {
       const dayPlan = mealPlan.days[date] ?? {}
       let dayCal = 0, dayProtein = 0, dayCarbs = 0, dayFat = 0
+      let dayHasData = false
 
       for (const slot of Object.values(dayPlan)) {
         const { recipes: slotRecipes } = normalizeMealSlot(slot)
@@ -418,10 +500,21 @@ export default function PlannerPage() {
           dayCarbs += parseNutritionValue(recipe.nutrition['carbohydrateContent']) * servings
           dayFat += parseNutritionValue(recipe.nutrition['fatContent']) * servings
           hasData = true
+          dayHasData = true
         }
       }
 
-      if (dayCal > 0 || dayProtein > 0 || dayCarbs > 0 || dayFat > 0) daysWithData++
+      if (dayHasData) {
+        byDay[date] = {
+          cal: Math.round(dayCal),
+          protein: Math.round(dayProtein),
+          carbs: Math.round(dayCarbs),
+          fat: Math.round(dayFat),
+        }
+        daysWithData++
+      } else {
+        byDay[date] = null
+      }
       totalCal += dayCal
       totalProtein += dayProtein
       totalCarbs += dayCarbs
@@ -444,6 +537,7 @@ export default function PlannerPage() {
         fat: Math.round(totalFat / daysWithData),
       } : null,
       daysWithData,
+      byDay,
     }
   }, [mealPlan, recipes, weekStart])
 
@@ -452,7 +546,45 @@ export default function PlannerPage() {
     return { date: toISODate(d), label: formatDayHeader(d) }
   })
 
-  const filteredRecipes = recipes.filter(r =>
+  // Load recent recipe IDs from past meal plans whenever the picker opens
+  useEffect(() => {
+    if (!pickerTarget) return
+    getMealPlans().then(plans => {
+      const sorted = [...plans].sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
+      const seen = new Set<string>()
+      const ids: string[] = []
+      for (const plan of sorted) {
+        if (plan.weekStartDate === weekStart) continue
+        for (const dayPlan of Object.values(plan.days)) {
+          for (const meal of MEAL_TYPES) {
+            const slot = dayPlan[meal as MealType]
+            if (!slot) continue
+            for (const { recipeId } of normalizeMealSlot(slot).recipes) {
+              if (!seen.has(recipeId)) {
+                seen.add(recipeId)
+                ids.push(recipeId)
+              }
+            }
+          }
+        }
+      }
+      setRecentRecipeIds(ids.slice(0, 20))
+    })
+  }, [pickerTarget, weekStart])
+
+  // favoriteRecipes and recentRecipes are computed for a planned "smart picker"
+  // UI that surfaces favorites + recents ahead of the full list. Inline the deps
+  // here so they're ready when that section is wired up.
+  const favoriteRecipes = useMemo(() => recipes.filter(r => r.isFavorite), [recipes])
+  const recentRecipes = useMemo(() => {
+    const favoriteIds = new Set(favoriteRecipes.map(r => r.id))
+    return recentRecipeIds
+      .map(id => recipes.find(r => r.id === id))
+      .filter((r): r is Recipe => r != null && !favoriteIds.has(r.id))
+      .slice(0, 12)
+  }, [recentRecipeIds, recipes, favoriteRecipes])
+
+  const filteredRecipes = (search ? recipes : [...favoriteRecipes, ...recentRecipes.filter(r => !favoriteRecipes.includes(r)), ...recipes.filter(r => !favoriteRecipes.includes(r) && !recentRecipes.includes(r))]).filter(r =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.keywords.some(t => t.toLowerCase().includes(search.toLowerCase()))
   )
@@ -511,7 +643,7 @@ export default function PlannerPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">{formatWeekRange(mondayDate)}</p>
           <button
             onClick={openCopyModal}
-            className="mt-1 inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+            className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
             aria-label="Copy this week's meal plan to another week"
           >
             <Copy size={12} strokeWidth={2} aria-hidden="true" />
@@ -527,11 +659,18 @@ export default function PlannerPage() {
         </button>
       </div>
 
-      {/* Template gallery button */}
-      <div className="flex justify-end mb-4">
+      {/* Toolbar: History + Templates */}
+      <div className="flex justify-end gap-2 mb-4">
+        <button
+          onClick={() => setHistoryOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <History size={13} strokeWidth={2} aria-hidden="true" />
+          History
+        </button>
         <button
           onClick={() => setTemplateGalleryOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 px-2.5 py-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400 border border-green-700 dark:border-green-500 px-2.5 py-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
         >
           <LayoutTemplate size={13} strokeWidth={2} aria-hidden="true" />
           Templates{templates.length > 0 && ` (${templates.length})`}
@@ -639,6 +778,19 @@ export default function PlannerPage() {
                   )
                 })}
               </div>
+              {weeklyNutrition?.byDay[date] && (
+                <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/20">
+                  <div className="flex items-center gap-2.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">
+                      {weeklyNutrition.byDay[date]!.cal.toLocaleString()} kcal
+                    </span>
+                    <span className="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+                    <span>P&nbsp;{weeklyNutrition.byDay[date]!.protein}g</span>
+                    <span>C&nbsp;{weeklyNutrition.byDay[date]!.carbs}g</span>
+                    <span>F&nbsp;{weeklyNutrition.byDay[date]!.fat}g</span>
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
@@ -796,6 +948,43 @@ export default function PlannerPage() {
               />
             </div>
             <div className="overflow-y-auto flex-1">
+              {/* Quick picks: favorites + recent, only shown when search is empty */}
+              {!search && (favoriteRecipes.length > 0 || recentRecipes.length > 0) && (
+                <div className="px-4 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                  {favoriteRecipes.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">
+                        Favorites
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {favoriteRecipes.slice(0, 6).map(recipe => (
+                          <QuickPickCard
+                            key={recipe.id}
+                            recipe={recipe}
+                            onClick={() => addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {recentRecipes.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">
+                        Recent
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {recentRecipes.slice(0, 6).map(recipe => (
+                          <QuickPickCard
+                            key={recipe.id}
+                            recipe={recipe}
+                            onClick={() => addRecipeToSlot(pickerTarget.date, pickerTarget.meal, recipe.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {filteredRecipes.length === 0 ? (
                 <div className="flex flex-col items-center text-center py-10 px-4">
                   <BookOpen size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
@@ -944,6 +1133,72 @@ export default function PlannerPage() {
               >
                 {savingTemplate ? 'Saving…' : 'Save'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History modal */}
+      {historyOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
+          onClick={() => setHistoryOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100">Meal plan history</h3>
+              <button
+                onClick={() => setHistoryOpen(false)}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+              {histMealPlans.length === 0 ? (
+                <div className="flex flex-col items-center text-center py-10 px-4">
+                  <History size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No history yet</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Past weeks with meals will appear here.</p>
+                </div>
+              ) : (
+                histMealPlans.map(plan => {
+                  const monday = new Date(plan.weekStartDate + 'T00:00:00')
+                  const mealCount = countMeals(plan)
+                  return (
+                    <div
+                      key={plan.id}
+                      className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{formatWeekRange(monday)}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          {mealCount} meal{mealCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3 shrink-0">
+                        <button
+                          onClick={() => { setWeekStart(plan.weekStartDate); setHistoryOpen(false) }}
+                          className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => void copyFromHistory(plan)}
+                          className="text-xs font-medium text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 px-2.5 py-1 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                        >
+                          Copy here
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>

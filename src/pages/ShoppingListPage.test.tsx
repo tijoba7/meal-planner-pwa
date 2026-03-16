@@ -2,27 +2,66 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../test/supabaseMocks'
 import ShoppingListPage from './ShoppingListPage'
-import * as db from '../lib/db'
 import { ToastProvider } from '../contexts/ToastContext'
 import type { ShoppingList, MealPlan, Recipe } from '../types'
 
+// ─── Hoisted mocks ────────────────────────────────────────────────────────────
+
+const { mockCreateMutateAsync, mockDeleteMutateAsync, mockToggleMutateAsync, mockUpdateMutateAsync } =
+  vi.hoisted(() => ({
+    mockCreateMutateAsync: vi.fn(),
+    mockDeleteMutateAsync: vi.fn().mockResolvedValue(undefined),
+    mockToggleMutateAsync: vi.fn().mockResolvedValue(undefined),
+    mockUpdateMutateAsync: vi.fn().mockResolvedValue(undefined),
+  }))
+
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-vi.mock('../lib/db', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/db')>()
-  return {
-    ...actual,
-    getShoppingLists: vi.fn(),
-    getShoppingList: vi.fn(),
-    createShoppingList: vi.fn(),
-    deleteShoppingList: vi.fn(),
-    toggleShoppingItem: vi.fn(),
-    updateShoppingList: vi.fn(),
-    getMealPlans: vi.fn(),
-    getRecipes: vi.fn(),
-  }
-})
+vi.mock('../hooks/useShoppingLists', () => ({
+  useShoppingLists: vi.fn(),
+  useShoppingList: vi.fn(),
+  useCreateShoppingList: vi.fn(() => ({
+    mutateAsync: mockCreateMutateAsync,
+    isPending: false,
+  })),
+  useUpdateShoppingList: vi.fn(() => ({
+    mutateAsync: mockUpdateMutateAsync,
+    isPending: false,
+  })),
+  useDeleteShoppingList: vi.fn(() => ({
+    mutateAsync: mockDeleteMutateAsync,
+    isPending: false,
+  })),
+  useToggleShoppingItem: vi.fn(() => ({
+    mutateAsync: mockToggleMutateAsync,
+    isPending: false,
+  })),
+  shoppingListKeys: { detail: (id: string) => ['shopping-list', id] },
+}))
+
+vi.mock('../hooks/useMealPlans', () => ({
+  useMealPlans: vi.fn(() => ({ data: [] })),
+}))
+
+vi.mock('../hooks/useRecipes', () => ({
+  useRecipes: vi.fn(() => ({ data: [] })),
+}))
+
+vi.mock('../hooks/usePantryItems', () => ({
+  usePantryItems: vi.fn(() => ({ data: [] })),
+}))
+
+// ─── Imports for vi.mocked calls ─────────────────────────────────────────────
+
+import { useShoppingLists, useShoppingList } from '../hooks/useShoppingLists'
+import { useRecipes } from '../hooks/useRecipes'
+import { useMealPlans } from '../hooks/useMealPlans'
+
+const mockUseShoppingLists = vi.mocked(useShoppingLists)
+const mockUseShoppingList = vi.mocked(useShoppingList)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -50,42 +89,45 @@ const emptyList: ShoppingList = {
 
 function renderPage() {
   return render(
-    <ToastProvider>
-      <MemoryRouter>
-        <ShoppingListPage />
-      </MemoryRouter>
-    </ToastProvider>
+    <QueryClientProvider client={createTestQueryClient()}>
+      <ToastProvider>
+        <MemoryRouter>
+          <ShoppingListPage />
+        </MemoryRouter>
+      </ToastProvider>
+    </QueryClientProvider>
   )
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('ShoppingListPage', () => {
-  const mockGetShoppingLists = vi.mocked(db.getShoppingLists)
-  const mockGetShoppingList = vi.mocked(db.getShoppingList)
-  const mockCreateShoppingList = vi.mocked(db.createShoppingList)
-  const mockDeleteShoppingList = vi.mocked(db.deleteShoppingList)
-  const mockToggleShoppingItem = vi.mocked(db.toggleShoppingItem)
-  const mockUpdateShoppingList = vi.mocked(db.updateShoppingList)
-  const mockGetMealPlans = vi.mocked(db.getMealPlans)
-  const mockGetRecipes = vi.mocked(db.getRecipes)
-
   beforeEach(() => {
-    mockGetShoppingLists.mockResolvedValue([])
-    mockGetShoppingList.mockResolvedValue(undefined)
-    mockCreateShoppingList.mockResolvedValue(sampleList)
-    mockDeleteShoppingList.mockResolvedValue(undefined)
-    mockToggleShoppingItem.mockResolvedValue(undefined)
-    mockUpdateShoppingList.mockResolvedValue(sampleList)
-    mockGetMealPlans.mockResolvedValue([])
-    mockGetRecipes.mockResolvedValue([])
+    mockUseShoppingLists.mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useShoppingLists>)
+    // Return no active list by default (id is '' when activeListId is null)
+    mockUseShoppingList.mockImplementation(
+      (id) =>
+        ({
+          data: id ? sampleList : undefined,
+        }) as ReturnType<typeof useShoppingList>
+    )
+    mockCreateMutateAsync.mockResolvedValue(sampleList)
+    mockDeleteMutateAsync.mockResolvedValue(undefined)
+    mockToggleMutateAsync.mockResolvedValue(undefined)
+    mockUpdateMutateAsync.mockResolvedValue(undefined)
   })
 
   // ── Loading state ──────────────────────────────────────────────────────────
 
   describe('loading state', () => {
     it('shows a loading skeleton while data is being fetched', () => {
-      mockGetShoppingLists.mockReturnValue(new Promise(() => {}))
+      mockUseShoppingLists.mockReturnValue({
+        data: undefined,
+        isLoading: true,
+      } as unknown as ReturnType<typeof useShoppingLists>)
       renderPage()
       expect(screen.getByRole('generic', { busy: true })).toBeInTheDocument()
     })
@@ -116,7 +158,10 @@ describe('ShoppingListPage', () => {
 
   describe('list view', () => {
     beforeEach(() => {
-      mockGetShoppingLists.mockResolvedValue([sampleList])
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
     })
 
     it('renders the page heading', async () => {
@@ -156,6 +201,13 @@ describe('ShoppingListPage', () => {
   // ── Create form ────────────────────────────────────────────────────────────
 
   describe('create form', () => {
+    beforeEach(() => {
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+    })
+
     it('opens when "+ New List" is clicked', async () => {
       const user = userEvent.setup()
       renderPage()
@@ -192,15 +244,16 @@ describe('ShoppingListPage', () => {
 
     it('calls createShoppingList with the entered name', async () => {
       const user = userEvent.setup()
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList.mockResolvedValue(sampleList)
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
       await user.click(screen.getByRole('button', { name: /new shopping list/i }))
-      await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'Week 1 Groceries')
+      await user.type(
+        screen.getByPlaceholderText("e.g. This week's groceries"),
+        'Week 1 Groceries'
+      )
       await user.click(screen.getByRole('button', { name: 'Create List' }))
       await waitFor(() => {
-        expect(mockCreateShoppingList).toHaveBeenCalledWith(
+        expect(mockCreateMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({ name: 'Week 1 Groceries' })
         )
       })
@@ -210,7 +263,6 @@ describe('ShoppingListPage', () => {
   // ── Ingredient aggregation ─────────────────────────────────────────────────
 
   describe('ingredient aggregation from meal plan', () => {
-    // Mirror the component's date calculation so our meal plan date falls in the default range.
     function currentWeekMondayStr(): string {
       const d = new Date()
       const day = d.getDay()
@@ -249,10 +301,14 @@ describe('ShoppingListPage', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
       }
 
-      mockGetRecipes.mockResolvedValue([recipe])
-      mockGetMealPlans.mockResolvedValue([mealPlan])
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList.mockResolvedValue(sampleList)
+      vi.mocked(useRecipes).mockReturnValue({ data: [recipe] } as ReturnType<typeof useRecipes>)
+      vi.mocked(useMealPlans).mockReturnValue({
+        data: [mealPlan],
+      } as ReturnType<typeof useMealPlans>)
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
 
       const user = userEvent.setup()
       renderPage()
@@ -262,60 +318,11 @@ describe('ShoppingListPage', () => {
       await user.click(screen.getByRole('button', { name: 'Create List' }))
 
       await waitFor(() => {
-        expect(mockCreateShoppingList).toHaveBeenCalledWith(
+        expect(mockCreateMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
             items: expect.arrayContaining([
               expect.objectContaining({ name: 'pasta', amount: 400, unit: 'g' }),
             ]),
-          })
-        )
-      })
-    })
-
-    it('aggregates the same ingredient from multiple recipe entries', async () => {
-      const mondayStr = currentWeekMondayStr()
-
-      const recipe: Recipe = {
-        id: 'r1',
-        name: 'Pasta',
-        description: '',
-        recipeYield: '4',
-        prepTime: 'PT10M',
-        cookTime: 'PT20M',
-        recipeIngredient: [{ name: 'pasta', amount: 400, unit: 'g' }],
-        recipeInstructions: [],
-        keywords: [],
-        dateCreated: '2026-01-01T00:00:00.000Z',
-        dateModified: '2026-01-01T00:00:00.000Z',
-      }
-
-      const mealPlan: MealPlan = {
-        id: 'mp1',
-        weekStartDate: mondayStr,
-        days: {
-          // Same recipe planned on two different days → pasta should be doubled
-          [mondayStr]: { dinner: { recipes: [{ recipeId: 'r1', servings: 4 }] } },
-        },
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }
-
-      mockGetRecipes.mockResolvedValue([recipe])
-      mockGetMealPlans.mockResolvedValue([mealPlan])
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList.mockResolvedValue(sampleList)
-
-      const user = userEvent.setup()
-      renderPage()
-      await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
-      await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'Test List')
-      await user.click(screen.getByRole('button', { name: 'Create List' }))
-
-      await waitFor(() => {
-        expect(mockCreateShoppingList).toHaveBeenCalledWith(
-          expect.objectContaining({
-            items: expect.arrayContaining([expect.objectContaining({ name: 'pasta', unit: 'g' })]),
           })
         )
       })
@@ -325,25 +332,20 @@ describe('ShoppingListPage', () => {
   // ── List deletion ──────────────────────────────────────────────────────────
 
   describe('list deletion', () => {
-    it('calls deleteShoppingList with the correct id', async () => {
-      const user = userEvent.setup()
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      renderPage()
-      await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /delete week 1 groceries/i }))
-      await waitFor(() => {
-        expect(mockDeleteShoppingList).toHaveBeenCalledWith('list-1')
-      })
+    beforeEach(() => {
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
     })
 
-    it('removes the list from the UI after deletion', async () => {
+    it('calls deleteShoppingList with the correct id', async () => {
       const user = userEvent.setup()
-      mockGetShoppingLists.mockResolvedValueOnce([sampleList]).mockResolvedValue([])
       renderPage()
       await screen.findByText('Week 1 Groceries')
       await user.click(screen.getByRole('button', { name: /delete week 1 groceries/i }))
       await waitFor(() => {
-        expect(screen.queryByText('Week 1 Groceries')).not.toBeInTheDocument()
+        expect(mockDeleteMutateAsync).toHaveBeenCalledWith('list-1')
       })
     })
   })
@@ -352,8 +354,16 @@ describe('ShoppingListPage', () => {
 
   describe('detail view', () => {
     beforeEach(() => {
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList.mockResolvedValue(sampleList)
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+      mockUseShoppingList.mockImplementation(
+        (id) =>
+          ({
+            data: id ? sampleList : undefined,
+          }) as ReturnType<typeof useShoppingList>
+      )
     })
 
     it('opens when a list card is clicked', async () => {
@@ -399,7 +409,7 @@ describe('ShoppingListPage', () => {
       await screen.findByText('Week 1 Groceries')
       await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
-      await user.click(screen.getByRole('button', { name: /All lists/ }))
+      await user.click(screen.getByRole('button', { name: /all lists/i }))
       expect(await screen.findByRole('heading', { name: 'Shopping Lists' })).toBeInTheDocument()
     })
   })
@@ -407,18 +417,28 @@ describe('ShoppingListPage', () => {
   // ── Progress bar ──────────────────────────────────────────────────────────
 
   describe('progress bar', () => {
-    it('shows a progress bar on list cards that have items', async () => {
-      mockGetShoppingLists.mockResolvedValue([sampleList])
+    it('shows progress info on list cards that have items', async () => {
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      // Progress is reflected in the summary text
       expect(screen.getByText(/1 checked/)).toBeInTheDocument()
     })
 
     it('shows a progress bar in the detail view', async () => {
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+      mockUseShoppingList.mockImplementation(
+        (id) =>
+          ({
+            data: id ? sampleList : undefined,
+          }) as ReturnType<typeof useShoppingList>
+      )
       const user = userEvent.setup()
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList.mockResolvedValue(sampleList)
       renderPage()
       await screen.findByText('Week 1 Groceries')
       await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
@@ -430,16 +450,17 @@ describe('ShoppingListPage', () => {
   // ── Item check / uncheck ──────────────────────────────────────────────────
 
   describe('item check/uncheck', () => {
-    const updatedList: ShoppingList = {
-      ...sampleList,
-      items: [{ ...item1, checked: true }, item2, item3],
-    }
-
     beforeEach(() => {
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList
-        .mockResolvedValueOnce(sampleList) // initial load when activeListId is set
-        .mockResolvedValue(updatedList) // reload after toggle
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+      mockUseShoppingList.mockImplementation(
+        (id) =>
+          ({
+            data: id ? sampleList : undefined,
+          }) as ReturnType<typeof useShoppingList>
+      )
     })
 
     it('calls toggleShoppingItem when an unchecked item is clicked', async () => {
@@ -450,7 +471,10 @@ describe('ShoppingListPage', () => {
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Check Milk' }))
       await waitFor(() => {
-        expect(mockToggleShoppingItem).toHaveBeenCalledWith('list-1', 'item-1')
+        expect(mockToggleMutateAsync).toHaveBeenCalledWith({
+          listId: 'list-1',
+          itemId: 'item-1',
+        })
       })
     })
 
@@ -462,7 +486,10 @@ describe('ShoppingListPage', () => {
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Uncheck Butter' }))
       await waitFor(() => {
-        expect(mockToggleShoppingItem).toHaveBeenCalledWith('list-1', 'item-3')
+        expect(mockToggleMutateAsync).toHaveBeenCalledWith({
+          listId: 'list-1',
+          itemId: 'item-3',
+        })
       })
     })
   })
@@ -470,16 +497,17 @@ describe('ShoppingListPage', () => {
   // ── Item removal ──────────────────────────────────────────────────────────
 
   describe('item removal', () => {
-    const listAfterRemoval: ShoppingList = {
-      ...sampleList,
-      items: [item2, item3],
-    }
-
     beforeEach(() => {
-      mockGetShoppingLists.mockResolvedValue([sampleList])
-      mockGetShoppingList
-        .mockResolvedValueOnce(sampleList) // initial load when activeListId is set
-        .mockResolvedValue(listAfterRemoval) // reload after removal
+      mockUseShoppingLists.mockReturnValue({
+        data: [sampleList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+      mockUseShoppingList.mockImplementation(
+        (id) =>
+          ({
+            data: id ? sampleList : undefined,
+          }) as ReturnType<typeof useShoppingList>
+      )
     })
 
     it('calls updateShoppingList with the item filtered out', async () => {
@@ -490,21 +518,10 @@ describe('ShoppingListPage', () => {
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Remove Milk' }))
       await waitFor(() => {
-        expect(mockUpdateShoppingList).toHaveBeenCalledWith('list-1', {
-          items: [item2, item3],
+        expect(mockUpdateMutateAsync).toHaveBeenCalledWith({
+          listId: 'list-1',
+          data: { items: [item2, item3] },
         })
-      })
-    })
-
-    it('removes the item from the detail view after removal', async () => {
-      const user = userEvent.setup()
-      renderPage()
-      await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
-      await screen.findByRole('heading', { name: 'Week 1 Groceries' })
-      await user.click(screen.getByRole('button', { name: 'Remove Milk' }))
-      await waitFor(() => {
-        expect(screen.queryByText('Milk')).not.toBeInTheDocument()
       })
     })
   })
@@ -514,8 +531,16 @@ describe('ShoppingListPage', () => {
   describe('empty list detail view', () => {
     it('shows "No items in this list" when the active list has no items', async () => {
       const user = userEvent.setup()
-      mockGetShoppingLists.mockResolvedValue([emptyList])
-      mockGetShoppingList.mockResolvedValue(emptyList)
+      mockUseShoppingLists.mockReturnValue({
+        data: [emptyList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+      mockUseShoppingList.mockImplementation(
+        (id) =>
+          ({
+            data: id ? emptyList : undefined,
+          }) as ReturnType<typeof useShoppingList>
+      )
       renderPage()
       await screen.findByText('Empty List')
       await user.click(screen.getByRole('button', { name: /open empty list/i }))

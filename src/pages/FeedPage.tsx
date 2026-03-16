@@ -14,7 +14,14 @@ import {
   useToggleLikeMutation,
   useToggleBookmarkMutation,
 } from '../hooks/useFeed'
-import StoriesBar, { type StoryItem } from '../components/social/StoriesBar'
+import {
+  useFriendsStories,
+  storyGroupsToBarItems,
+  useMarkStoriesViewedMutation,
+} from '../hooks/useStories'
+import StoriesBar from '../components/social/StoriesBar'
+import StoryViewer from '../components/social/StoryViewer'
+import StoryComposer from '../components/social/StoryComposer'
 import InstaRecipeCard from '../components/social/InstaRecipeCard'
 import CommentThread, { type CommentData } from '../components/social/CommentThread'
 import ShareDialog from '../components/social/ShareDialog'
@@ -192,24 +199,20 @@ export default function FeedPage() {
 
   const [commentSheetId, setCommentSheetId] = useState<string | null>(null)
   const [shareItem, setShareItem] = useState<CloudRecipeWithAuthor | null>(null)
+  const [viewerGroupIdx, setViewerGroupIdx] = useState<number | null>(null)
+  const [showComposer, setShowComposer] = useState(false)
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  // Stories derived from feed authors (unique per author, up to 10)
-  const stories: StoryItem[] = items
-    .reduce<StoryItem[]>((acc, item) => {
-      if (acc.some((s) => s.userId === item.author_id)) return acc
-      acc.push({
-        userId: item.author_id,
-        profile: {
-          display_name: item.profiles?.display_name ?? 'User',
-          avatar_url: item.profiles?.avatar_url ?? null,
-        },
-        hasNew: true,
-      })
-      return acc
-    }, [])
-    .slice(0, 10)
+  // Stories from the dedicated stories service
+  const { data: storyGroups = [] } = useFriendsStories()
+  const barItems = storyGroupsToBarItems(storyGroups)
+  const markViewed = useMarkStoriesViewedMutation()
+
+  function handleStoryClick(userId: string) {
+    const idx = storyGroups.findIndex((g) => g.userId === userId)
+    if (idx >= 0) setViewerGroupIdx(idx)
+  }
 
   // Infinite scroll sentinel
   const loadMore = useCallback(() => {
@@ -237,14 +240,10 @@ export default function FeedPage() {
         <StoriesBarSkeleton />
       ) : (
         <StoriesBar
-          stories={stories}
+          stories={barItems}
           currentUserProfile={profile}
-          onAddStory={() => {
-            /* TODO: story composer */
-          }}
-          onStoryClick={() => {
-            /* TODO: story viewer */
-          }}
+          onAddStory={() => setShowComposer(true)}
+          onStoryClick={handleStoryClick}
         />
       )}
 
@@ -324,6 +323,21 @@ export default function FeedPage() {
           currentVisibility={shareItem.visibility}
           onClose={() => setShareItem(null)}
         />
+      )}
+
+      {/* Story viewer */}
+      {viewerGroupIdx !== null && storyGroups.length > 0 && (
+        <StoryViewer
+          groups={storyGroups}
+          initialGroupIndex={viewerGroupIdx}
+          onClose={() => setViewerGroupIdx(null)}
+          onStoryViewed={(id) => markViewed.mutate([id])}
+        />
+      )}
+
+      {/* Story composer */}
+      {showComposer && (
+        <StoryComposer onClose={() => setShowComposer(false)} />
       )}
     </div>
   )

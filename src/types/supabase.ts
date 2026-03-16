@@ -569,6 +569,46 @@ export type Database = {
           },
         ]
       }
+      stories: {
+        Row: {
+          id: string
+          user_id: string
+          media_url: string
+          caption: string | null
+          linked_recipe_id: string | null
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          media_url: string
+          caption?: string | null
+          linked_recipe_id?: string | null
+          created_at?: string
+          expires_at?: string
+        }
+        Update: {
+          caption?: string | null
+          linked_recipe_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'stories_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'stories_linked_recipe_id_fkey'
+            columns: ['linked_recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes_cloud'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string
@@ -657,6 +697,7 @@ export type Group = Tables<'groups'>
 export type GroupMember = Tables<'group_members'>
 export type GroupRecipe = Tables<'group_recipes'>
 export type AppSetting = Tables<'app_settings'>
+export type Story = Tables<'stories'>
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 

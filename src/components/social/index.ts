@@ -25,3 +25,6 @@ export type { StoryItem } from './StoriesBar'
 
 export { default as InstaRecipeCard } from './InstaRecipeCard'
 export type { InstaRecipe } from './InstaRecipeCard'
+
+export { default as StoryViewer } from './StoryViewer'
+export { default as StoryComposer } from './StoryComposer'

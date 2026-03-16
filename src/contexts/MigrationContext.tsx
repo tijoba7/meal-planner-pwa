@@ -8,8 +8,6 @@ import {
   skipMigration,
   getPersistedState,
 } from '../lib/migrationService'
-import { isSupabaseAvailable } from '../lib/supabase'
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface MigrationContextValue {
@@ -38,7 +36,7 @@ export function MigrationProvider({ children }: { children: ReactNode }) {
   const checkedForRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!user || !isSupabaseAvailable()) {
+    if (!user) {
       setStatus('idle')
       return
     }

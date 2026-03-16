@@ -55,7 +55,6 @@ export async function migrateRecipesToCloud(
   userId: string,
   onProgress: (progress: MigrationProgress) => void
 ): Promise<void> {
-  if (!supabase) throw new Error('Supabase not configured')
 
   const localRecipes = await db.recipes.toArray()
   const total = localRecipes.length

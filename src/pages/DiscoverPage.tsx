@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Compass, Rss, Search, Globe, Heart, Star, LayoutGrid, List } from 'lucide-react'
+import { Compass, Rss, Search, Heart, Star, LayoutGrid, List } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import {
   getPublicFeed,
   getFriendsFeed,
@@ -244,8 +243,6 @@ type Tab = 'explore' | 'feed'
 
 export default function DiscoverPage() {
   const { user } = useAuth()
-  const supAvailable = isSupabaseAvailable()
-
   const [activeTab, setActiveTab] = useState<Tab>('explore')
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
@@ -276,7 +273,6 @@ export default function DiscoverPage() {
   // ── Initial loads ────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!supAvailable) return
     setExploreLoading(true)
     setExploreError(null)
     getPublicFeed(0, PAGE_SIZE)
@@ -292,10 +288,10 @@ export default function DiscoverPage() {
       })
       .catch(() => setExploreError('Failed to load public recipes.'))
       .finally(() => setExploreLoading(false))
-  }, [supAvailable])
+  }, [])
 
   useEffect(() => {
-    if (!supAvailable || !user) return
+    if (!user) return
     setFeedLoading(true)
     setFeedError(null)
     getFriendsFeed(user.id, 0, PAGE_SIZE)
@@ -311,7 +307,7 @@ export default function DiscoverPage() {
       })
       .catch(() => setFeedError('Failed to load friends feed.'))
       .finally(() => setFeedLoading(false))
-  }, [supAvailable, user])
+  }, [user])
 
   // ── Load more ────────────────────────────────────────────────────────────
 
@@ -378,17 +374,6 @@ export default function DiscoverPage() {
   }, [loadMoreFeed, activeTab])
 
   // ── Render ───────────────────────────────────────────────────────────────
-
-  if (!supAvailable) {
-    return (
-      <div className="p-4 max-w-2xl mx-auto py-16 text-center">
-        <Globe size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          Connect to Supabase to discover shared recipes.
-        </p>
-      </div>
-    )
-  }
 
   const filteredExplore = exploreItems.filter((item) => {
     const r = item.data

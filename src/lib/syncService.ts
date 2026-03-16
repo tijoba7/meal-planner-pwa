@@ -83,7 +83,6 @@ function removePending(table: string, id: string): void {
 // ─── Push helpers ─────────────────────────────────────────────────────────────
 
 export async function pushRecipe(recipe: Recipe, userId: string): Promise<void> {
-  if (!supabase) return
   const { error } = await supabase.from('recipes_cloud').upsert(
     {
       id: recipe.id,
@@ -101,14 +100,12 @@ export async function pushRecipe(recipe: Recipe, userId: string): Promise<void> 
 }
 
 export async function deleteCloudRecipe(id: string): Promise<void> {
-  if (!supabase) return
   const { error } = await supabase.from('recipes_cloud').delete().eq('id', id)
   if (error) addPending({ table: 'recipes', id, op: 'delete' })
   else removePending('recipes', id)
 }
 
 export async function pushMealPlan(plan: MealPlan, userId: string): Promise<void> {
-  if (!supabase) return
 
   // Shared household plans: non-owners can only UPDATE (not insert).
   // Use a data-only update first; the plan must already exist in the cloud.
@@ -130,14 +127,12 @@ export async function pushMealPlan(plan: MealPlan, userId: string): Promise<void
 }
 
 export async function deleteCloudMealPlan(id: string): Promise<void> {
-  if (!supabase) return
   const { error } = await supabase.from('meal_plans_cloud').delete().eq('id', id)
   if (error) addPending({ table: 'meal_plans', id, op: 'delete' })
   else removePending('meal_plans', id)
 }
 
 export async function pushShoppingList(list: ShoppingList, userId: string): Promise<void> {
-  if (!supabase) return
   const { error } = await supabase.from('shopping_lists_cloud').upsert(
     {
       id: list.id,
@@ -152,7 +147,6 @@ export async function pushShoppingList(list: ShoppingList, userId: string): Prom
 }
 
 export async function deleteCloudShoppingList(id: string): Promise<void> {
-  if (!supabase) return
   const { error } = await supabase.from('shopping_lists_cloud').delete().eq('id', id)
   if (error) addPending({ table: 'shopping_lists', id, op: 'delete' })
   else removePending('shopping_lists', id)
@@ -161,7 +155,6 @@ export async function deleteCloudShoppingList(id: string): Promise<void> {
 // ─── Pending flush ────────────────────────────────────────────────────────────
 
 export async function flushPending(userId: string): Promise<void> {
-  if (!supabase) return
   for (const item of [...getPending()]) {
     try {
       if (item.op === 'upsert') {
@@ -190,7 +183,6 @@ export async function flushPending(userId: string): Promise<void> {
 
 /** Pull all cloud records for this user and apply them locally (last-write-wins). */
 export async function pullFromCloud(userId: string): Promise<void> {
-  if (!supabase) return
   await Promise.all([
     pullRecipes(userId),
     pullMealPlans(userId),
@@ -201,13 +193,11 @@ export async function pullFromCloud(userId: string): Promise<void> {
 
 /** Pull shared meal plans from all of the user's households. */
 async function pullHouseholdMealPlans(userId: string): Promise<void> {
-  if (!supabase) return
   const households = await getMyHouseholds(userId)
   await Promise.all(households.map((h) => pullHouseholdPlansForId(h.id)))
 }
 
 async function pullHouseholdPlansForId(householdId: string): Promise<void> {
-  if (!supabase) return
   const { data, error } = await supabase
     .from('meal_plans_cloud')
     .select('id, data, updated_at')
@@ -229,7 +219,6 @@ async function pullHouseholdPlansForId(householdId: string): Promise<void> {
 }
 
 async function pullRecipes(userId: string): Promise<void> {
-  if (!supabase) return
   const { data, error } = await supabase
     .from('recipes_cloud')
     .select('id, data, updated_at')
@@ -251,7 +240,6 @@ async function pullRecipes(userId: string): Promise<void> {
 }
 
 async function pullMealPlans(userId: string): Promise<void> {
-  if (!supabase) return
   const { data, error } = await supabase
     .from('meal_plans_cloud')
     .select('id, data, updated_at')
@@ -273,7 +261,6 @@ async function pullMealPlans(userId: string): Promise<void> {
 }
 
 async function pullShoppingLists(userId: string): Promise<void> {
-  if (!supabase) return
   const { data, error } = await supabase
     .from('shopping_lists_cloud')
     .select('id, data, updated_at')
@@ -445,7 +432,6 @@ let _onlineHandler: (() => void) | null = null
  * callers should invoke pullFromCloud separately to show loading state).
  */
 export async function startSync(userId: string): Promise<void> {
-  if (!supabase) return
   if (channel) stopSync()
 
   currentUserId = userId

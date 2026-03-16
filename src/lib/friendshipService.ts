@@ -81,7 +81,6 @@ interface SentRequestRow {
 export async function sendFriendRequest(
   addresseeId: string
 ): Promise<{ data: Friendship | null; error: Error | null }> {
-  if (!supabase) return { data: null, error: new Error('Supabase not configured') }
 
   // Soft rate-limit: count pending outgoing requests.
   const { count } = await supabase
@@ -117,7 +116,6 @@ export async function sendFriendRequest(
  * Cancel a friend request that the current user sent (requester action).
  */
 export async function cancelFriendRequest(friendshipId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
   return { error: error ? new Error(error.message) : null }
 }
@@ -126,7 +124,6 @@ export async function cancelFriendRequest(friendshipId: string): Promise<{ error
  * Accept an incoming friend request (addressee action).
  */
 export async function acceptFriendRequest(friendshipId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('friendships')
     .update({ status: 'accepted', responded_at: new Date().toISOString() })
@@ -138,7 +135,6 @@ export async function acceptFriendRequest(friendshipId: string): Promise<{ error
  * Reject / decline an incoming friend request (addressee action — deletes the row).
  */
 export async function rejectFriendRequest(friendshipId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
   return { error: error ? new Error(error.message) : null }
 }
@@ -148,7 +144,6 @@ export async function rejectFriendRequest(friendshipId: string): Promise<{ error
  * Either party can call this.
  */
 export async function unfriend(friendshipId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
   return { error: error ? new Error(error.message) : null }
 }
@@ -163,7 +158,6 @@ export async function blockUser(
   targetUserId: string,
   currentUserId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   // Check for existing friendship in either direction.
   const { data: existing } = await supabase
@@ -205,7 +199,6 @@ export async function blockUser(
  * Only the blocker (requester) can do this.
  */
 export async function unblockUser(friendshipId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
   return { error: error ? new Error(error.message) : null }
 }
@@ -216,7 +209,6 @@ export async function unblockUser(friendshipId: string): Promise<{ error: Error 
  * Get all accepted friends of the current user (with their profiles).
  */
 export async function getFriends(currentUserId: string): Promise<FriendshipWithProfile[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('friendships')
     .select(
@@ -250,7 +242,6 @@ export async function getFriends(currentUserId: string): Promise<FriendshipWithP
  * Get incoming pending friend requests for the current user.
  */
 export async function getPendingRequests(currentUserId: string): Promise<FriendshipWithProfile[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('friendships')
     .select(
@@ -280,7 +271,6 @@ export async function getPendingRequests(currentUserId: string): Promise<Friends
  * Get outgoing pending friend requests sent by the current user.
  */
 export async function getSentRequests(currentUserId: string): Promise<FriendshipWithProfile[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('friendships')
     .select(
@@ -313,7 +303,6 @@ export async function getFriendRelation(
   currentUserId: string,
   targetUserId: string
 ): Promise<FriendRelationResult> {
-  if (!supabase) return { relation: 'none', friendshipId: null }
 
   const { data } = await supabase
     .from('friendships')
@@ -348,7 +337,6 @@ export async function getFriendRelation(
  * Get the total number of accepted friends for a given user.
  */
 export async function getFriendCount(userId: string): Promise<number> {
-  if (!supabase) return 0
   const { count } = await supabase
     .from('friendships')
     .select('*', { count: 'exact', head: true })
@@ -387,7 +375,6 @@ export async function searchUsers(
 export async function getOrCreateInviteLink(
   userId: string
 ): Promise<{ token: string | null; error: Error | null }> {
-  if (!supabase) return { token: null, error: new Error('Supabase not configured') }
 
   // Return existing non-expired invite if present.
   const { data: existing } = await supabase
@@ -420,7 +407,6 @@ export async function getOrCreateInviteLink(
 export async function resolveInviteToken(
   token: string
 ): Promise<Pick<Profile, 'id' | 'display_name' | 'avatar_url' | 'bio'> | null> {
-  if (!supabase) return null
 
   type InviteRow = { user_id: string; expires_at: string; profiles: ProfilePick | null }
   const { data } = await supabase
@@ -443,7 +429,6 @@ export async function resolveInviteToken(
  * Revoke the current user's invite link (deletes all their invite rows).
  */
 export async function revokeInviteLink(userId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('friend_invites').delete().eq('user_id', userId)
   return { error: error ? new Error(error.message) : null }
 }

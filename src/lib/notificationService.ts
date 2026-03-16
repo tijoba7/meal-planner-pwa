@@ -38,7 +38,6 @@ export interface AppNotification extends Notification {
  * Fetch the most recent notifications for the current user (max 50).
  */
 export async function getNotifications(userId: string): Promise<AppNotification[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('notifications')
     .select('*')
@@ -54,7 +53,6 @@ export async function getNotifications(userId: string): Promise<AppNotification[
  * Returns the count of unread notifications for a user.
  */
 export async function getUnreadCount(userId: string): Promise<number> {
-  if (!supabase) return 0
   const { count } = await supabase
     .from('notifications')
     .select('id', { count: 'exact', head: true })
@@ -69,7 +67,6 @@ export async function getUnreadCount(userId: string): Promise<number> {
  * Mark a single notification as read.
  */
 export async function markRead(notificationId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
@@ -81,7 +78,6 @@ export async function markRead(notificationId: string): Promise<{ error: Error |
  * Mark all notifications for a user as read.
  */
 export async function markAllRead(userId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
@@ -97,7 +93,6 @@ export async function markAllRead(userId: string): Promise<{ error: Error | null
  * Returns an array of type strings the user has opted out of.
  */
 export async function getMutedTypes(userId: string): Promise<NotificationType[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('profiles')
     .select('notification_muted_types')
@@ -114,7 +109,6 @@ export async function setMutedTypes(
   userId: string,
   mutedTypes: NotificationType[]
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('profiles')
     // NotificationType[] is a subtype of string[]; cast is safe and matches the DB column type.
@@ -136,7 +130,6 @@ export function subscribeToNotifications(
   userId: string,
   onNew: (notification: AppNotification) => void
 ): () => void {
-  if (!supabase) return () => {}
 
   const channel: RealtimeChannel = supabase
     .channel(`notifications:${userId}`)

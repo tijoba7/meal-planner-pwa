@@ -17,7 +17,6 @@ import {
   Star,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import { Avatar } from '../components/ProfileCard'
 import {
   getGroup,
@@ -523,8 +522,6 @@ export default function GroupDetailPage() {
   const { id: groupId } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const supAvailable = isSupabaseAvailable()
-
   const [group, setGroup] = useState<Group | null>(null)
   const [members, setMembers] = useState<GroupMemberWithProfile[]>([])
   const [feed, setFeed] = useState<CloudRecipeWithAuthor[]>([])
@@ -540,7 +537,7 @@ export default function GroupDetailPage() {
   const [leaveBusy, setLeaveBusy] = useState(false)
 
   const loadAll = useCallback(async () => {
-    if (!groupId || !user || !supAvailable) {
+    if (!groupId || !user) {
       setLoading(false)
       return
     }
@@ -566,16 +563,16 @@ export default function GroupDetailPage() {
     if (recipes.length > 0) {
       getEngagementStats(recipes.map((r) => r.id)).then(setEngagementMap)
     }
-  }, [groupId, user, supAvailable, navigate])
+  }, [groupId, user, navigate])
 
   useEffect(() => {
     loadAll()
   }, [loadAll])
 
-  if (!supAvailable || !user) {
+  if (!user) {
     return (
       <div className="max-w-lg mx-auto px-4 py-12 text-center text-gray-500 text-sm">
-        <p>{!supAvailable ? 'Connect to Supabase to use groups.' : 'Sign in to view groups.'}</p>
+        <p>Sign in to view groups.</p>
       </div>
     )
   }

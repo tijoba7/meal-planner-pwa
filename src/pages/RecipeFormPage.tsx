@@ -16,7 +16,6 @@ import {
   isStorageUrl,
   MAX_INPUT_BYTES,
 } from '../lib/imageService'
-import { isSupabaseAvailable } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import type { Ingredient } from '../types'
@@ -567,7 +566,7 @@ export default function RecipeFormPage() {
 
     if (pendingFile) {
       try {
-        if (isSupabaseAvailable() && user) {
+        if (user) {
           // Upload to Supabase Storage
           const uploaded = await uploadRecipeImage(user.id, targetRecipeId, pendingFile)
           imageUrl = uploaded.url

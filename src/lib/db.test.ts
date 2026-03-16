@@ -18,7 +18,6 @@ import {
   updateShoppingList,
   deleteShoppingList,
   toggleShoppingItem,
-  seedIfEmpty,
   minutesToDuration,
   durationToMinutes,
 } from './db'
@@ -328,52 +327,6 @@ describe('toggleShoppingItem', () => {
 
   it('does nothing if the list does not exist', async () => {
     await expect(toggleShoppingItem('no-such-list', 'i1')).resolves.toBeUndefined()
-  })
-})
-
-// ─── seedIfEmpty ──────────────────────────────────────────────────────────────
-
-describe('seedIfEmpty', () => {
-  it('seeds three recipes when the database is empty', async () => {
-    await seedIfEmpty()
-    const recipes = await getRecipes()
-    expect(recipes).toHaveLength(3)
-  })
-
-  it('seeds the expected recipe names', async () => {
-    await seedIfEmpty()
-    const names = (await getRecipes()).map((r) => r.name)
-    expect(names).toContain('Spaghetti Bolognese')
-    expect(names).toContain('Chicken Caesar Salad')
-    expect(names).toContain('Vegetable Stir-Fry')
-  })
-
-  it('seeds recipes with ingredients and instructions', async () => {
-    await seedIfEmpty()
-    for (const recipe of await getRecipes()) {
-      expect(recipe.recipeIngredient.length).toBeGreaterThan(0)
-      expect(recipe.recipeInstructions.length).toBeGreaterThan(0)
-    }
-  })
-
-  it('seeds recipes with staggered dateCreated for stable ordering', async () => {
-    await seedIfEmpty()
-    const recipes = await getRecipes()
-    expect(recipes[0].dateCreated < recipes[1].dateCreated).toBe(true)
-    expect(recipes[1].dateCreated < recipes[2].dateCreated).toBe(true)
-  })
-
-  it('does not seed again when recipes already exist', async () => {
-    await createRecipe(sampleRecipe)
-    await seedIfEmpty()
-    const recipes = await getRecipes()
-    expect(recipes).toHaveLength(1)
-  })
-
-  it('assigns unique IDs to seeded recipes', async () => {
-    await seedIfEmpty()
-    const ids = (await getRecipes()).map((r) => r.id)
-    expect(new Set(ids).size).toBe(ids.length)
   })
 })
 

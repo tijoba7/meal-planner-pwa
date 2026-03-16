@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
       manifest: {
         name: 'Mise',
         short_name: 'Mise',
-        description: 'Everything in its place. A local-first meal planner and recipe store.',
+        description: 'Everything in its place. A social recipe platform for discovering and sharing meals.',
         theme_color: '#16a34a',
         background_color: '#ffffff',
         display: 'standalone',

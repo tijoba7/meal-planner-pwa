@@ -31,7 +31,6 @@ import {
 import { durationToMinutes } from '../lib/db'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import Skeleton from '../components/Skeleton'
 import CookingMode from '../components/CookingMode'
 
@@ -213,7 +212,7 @@ export default function SharedRecipeDetailPage() {
   const EMOJI_OPTIONS = ['😍', '🤤', '👌', '🔥', '💯', '🥗', '🍕', '🌮', '🍜', '🎉']
 
   useEffect(() => {
-    if (!id || !isSupabaseAvailable()) {
+    if (!id) {
       setNotFound(true)
       return
     }
@@ -229,7 +228,7 @@ export default function SharedRecipeDetailPage() {
 
   // Load engagement data once the recipe is known
   useEffect(() => {
-    if (!id || !isSupabaseAvailable()) return
+    if (!id) return
     const uid = user?.id
     Promise.all([getReactions(id, uid), getRating(id, uid), getComments(id)]).then(
       ([r, rat, c]) => {

@@ -37,7 +37,6 @@ import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import {
   publishRecipe,
   updateVisibility,
@@ -185,7 +184,7 @@ export default function RecipeDetailPage() {
   }, [id])
 
   useEffect(() => {
-    if (!id || !user || !isSupabaseAvailable()) return
+    if (!id || !user) return
     getCloudRecipeMeta(id).then((meta) => {
       if (meta) {
         setCloudMeta(meta)
@@ -230,7 +229,7 @@ export default function RecipeDetailPage() {
   }
 
   useEffect(() => {
-    if (!user || !isSupabaseAvailable() || !showSharePanel) return
+    if (!user || !showSharePanel) return
     Promise.all([
       getMyGroups(user.id),
       id ? getGroupRecipeIds(id) : Promise.resolve(new Set<string>()),
@@ -428,7 +427,7 @@ export default function RecipeDetailPage() {
               Cook
             </button>
           )}
-          {user && isSupabaseAvailable() && (
+          {user && (
             <button
               onClick={() => setShowSharePanel(true)}
               aria-label="Share recipe"
@@ -954,7 +953,7 @@ export default function RecipeDetailPage() {
                 />
                 Edit recipe
               </Link>
-              {user && isSupabaseAvailable() && (
+              {user && (
                 <button
                   onClick={() => {
                     setShowMoreSheet(false)

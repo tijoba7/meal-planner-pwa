@@ -49,7 +49,6 @@ export interface HouseholdInvitation {
  * Returns the new household, or null if Supabase is unavailable.
  */
 export async function createHousehold(name: string, userId: string): Promise<Household | null> {
-  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('households')
@@ -71,7 +70,6 @@ export async function createHousehold(name: string, userId: string): Promise<Hou
 
 /** Get all households the user belongs to. */
 export async function getMyHouseholds(_userId: string): Promise<Household[]> {
-  if (!supabase) return []
 
   const { data, error } = await supabase
     .from('households')
@@ -85,7 +83,6 @@ export async function getMyHouseholds(_userId: string): Promise<Household[]> {
 
 /** Get all members of a household, with profile info. */
 export async function getHouseholdMembers(householdId: string): Promise<HouseholdMember[]> {
-  if (!supabase) return []
 
   const { data, error } = await supabase
     .from('household_members')
@@ -101,14 +98,12 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
 
 /** Update a household's name (owner only). */
 export async function updateHousehold(householdId: string, name: string): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase.from('households').update({ name }).eq('id', householdId)
   return !error
 }
 
 /** Delete a household (owner only). All members and plans lose the association. */
 export async function deleteHousehold(householdId: string): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase.from('households').delete().eq('id', householdId)
   return !error
 }
@@ -117,7 +112,6 @@ export async function deleteHousehold(householdId: string): Promise<boolean> {
 
 /** Leave a household. Owners cannot leave — they must delete the household. */
 export async function leaveHousehold(householdId: string, userId: string): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase
     .from('household_members')
     .delete()
@@ -128,7 +122,6 @@ export async function leaveHousehold(householdId: string, userId: string): Promi
 
 /** Owner removes another member from the household. */
 export async function removeHouseholdMember(householdId: string, userId: string): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase
     .from('household_members')
     .delete()
@@ -149,7 +142,6 @@ export async function sendInvitation(
   inviteeEmail: string,
   invitedBy: string
 ): Promise<HouseholdInvitation | null> {
-  if (!supabase) return null
 
   // Expire any existing pending invitation for this email + household
   await supabase
@@ -176,7 +168,6 @@ export async function sendInvitation(
  * Returns the household they joined, or null on error/not-found/expired.
  */
 export async function acceptInvitation(token: string, userId: string): Promise<Household | null> {
-  if (!supabase) return null
 
   // Fetch the invitation
   const { data: invData, error: invErr } = await supabase
@@ -214,7 +205,6 @@ export async function acceptInvitation(token: string, userId: string): Promise<H
 
 /** Decline an invitation by token. */
 export async function declineInvitation(token: string): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase
     .from('household_invitations')
     .update({ status: 'declined' })
@@ -225,7 +215,6 @@ export async function declineInvitation(token: string): Promise<boolean> {
 
 /** List all pending invitations for a household (owner view). */
 export async function listInvitations(householdId: string): Promise<HouseholdInvitation[]> {
-  if (!supabase) return []
   const { data, error } = await supabase
     .from('household_invitations')
     .select('*')
@@ -245,7 +234,6 @@ export async function shareMealPlanWithHousehold(
   planId: string,
   householdId: string
 ): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase
     .from('meal_plans_cloud')
     .update({ household_id: householdId })
@@ -255,7 +243,6 @@ export async function shareMealPlanWithHousehold(
 
 /** Remove household sharing from a plan (owner only). */
 export async function unshareMealPlan(planId: string): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase
     .from('meal_plans_cloud')
     .update({ household_id: null })
@@ -270,7 +257,6 @@ export async function unshareMealPlan(planId: string): Promise<boolean> {
 export async function fetchHouseholdMealPlans(
   householdId: string
 ): Promise<Array<{ id: string; data: Json; updated_at: string }>> {
-  if (!supabase) return []
   const { data, error } = await supabase
     .from('meal_plans_cloud')
     .select('id, data, updated_at')
@@ -284,7 +270,6 @@ export async function fetchHouseholdMealPlans(
  * Non-owners use UPDATE (data only); ownership is preserved.
  */
 export async function pushSharedMealPlanData(plan: MealPlan): Promise<boolean> {
-  if (!supabase) return false
   const { error } = await supabase
     .from('meal_plans_cloud')
     .update({ data: toJson(plan), updated_at: plan.updatedAt })
@@ -301,7 +286,6 @@ export function subscribeToHouseholdMealPlans(
   onUpdate: (planId: string, data: Json, updatedAt: string) => void,
   onDelete: (planId: string) => void
 ): () => void {
-  if (!supabase) return () => {}
 
   const channel = supabase
     .channel(`household-plans:${householdId}`)

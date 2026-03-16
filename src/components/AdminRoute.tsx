@@ -10,7 +10,6 @@ interface Props {
  * Wraps routes that require admin role.
  * - Shows nothing while profile is loading (avoids flash of redirect).
  * - Redirects non-admins to /.
- * - In test bypass mode (VITE_TEST_BYPASS_AUTH=true), always allows through.
  */
 export default function AdminRoute({ children }: Props) {
   const { isAdmin, loading } = useAdmin()

@@ -46,7 +46,6 @@ export async function createGroup(
   description: string | null,
   userId: string
 ): Promise<{ data: Group | null; error: Error | null }> {
-  if (!supabase) return { data: null, error: new Error('Supabase not configured') }
 
   const { data, error } = await supabase
     .from('groups')
@@ -65,7 +64,6 @@ export async function createGroup(
  * Fetch all groups the current user belongs to, with member count and their role.
  */
 export async function getMyGroups(userId: string): Promise<GroupWithMeta[]> {
-  if (!supabase) return []
 
   type MembershipRow = { role: 'admin' | 'member'; group_id: string; groups: Group | null }
   const { data: memberships } = await supabase
@@ -106,7 +104,6 @@ export async function getMyGroups(userId: string): Promise<GroupWithMeta[]> {
  * Fetch a single group by ID (accessible to members only via RLS).
  */
 export async function getGroup(groupId: string): Promise<Group | null> {
-  if (!supabase) return null
   const { data } = await supabase.from('groups').select('*').eq('id', groupId).maybeSingle()
   return (data as Group | null) ?? null
 }
@@ -118,7 +115,6 @@ export async function updateGroup(
   groupId: string,
   updates: { name?: string; description?: string | null }
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const patch: Record<string, unknown> = {}
   if (updates.name !== undefined) patch.name = updates.name.trim()
   if (updates.description !== undefined) patch.description = updates.description?.trim() ?? null
@@ -131,7 +127,6 @@ export async function updateGroup(
  * Delete a group and all its data (admin only, enforced by RLS).
  */
 export async function deleteGroup(groupId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase.from('groups').delete().eq('id', groupId)
   return { error: error ? new Error(error.message) : null }
 }
@@ -142,7 +137,6 @@ export async function deleteGroup(groupId: string): Promise<{ error: Error | nul
  * Get all members of a group with their profiles.
  */
 export async function getGroupMembers(groupId: string): Promise<GroupMemberWithProfile[]> {
-  if (!supabase) return []
   type MemberRow = GroupMember & { profiles: GroupMemberWithProfile['profile'] }
   const { data } = await supabase
     .from('group_members')
@@ -169,7 +163,6 @@ export async function getMyGroupRole(
   groupId: string,
   userId: string
 ): Promise<'admin' | 'member' | null> {
-  if (!supabase) return null
   const { data } = await supabase
     .from('group_members')
     .select('role')
@@ -187,7 +180,6 @@ export async function inviteMember(
   groupId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('group_members')
     .insert({ group_id: groupId, user_id: userId, role: 'member' })
@@ -201,7 +193,6 @@ export async function leaveGroup(
   groupId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('group_members')
     .delete()
@@ -217,7 +208,6 @@ export async function removeMember(
   groupId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('group_members')
     .delete()
@@ -234,7 +224,6 @@ export async function updateMemberRole(
   userId: string,
   role: 'admin' | 'member'
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('group_members')
     .update({ role })
@@ -254,7 +243,6 @@ export async function shareRecipeToGroup(
   recipeId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('group_recipes')
     .insert({ group_id: groupId, recipe_id: recipeId, added_by: userId })
@@ -266,7 +254,6 @@ export async function shareRecipeToGroup(
  * RLS on recipes_cloud applies: private recipes are hidden even if shared.
  */
 export async function getGroupFeed(groupId: string): Promise<CloudRecipeWithAuthor[]> {
-  if (!supabase) return []
   type GroupRecipeRow = {
     recipe_id: string
     added_at: string
@@ -293,7 +280,6 @@ export async function removeRecipeFromGroup(
   groupId: string,
   recipeId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('group_recipes')
     .delete()
@@ -307,7 +293,6 @@ export async function removeRecipeFromGroup(
  * Used to mark recipes as "already shared" in the share picker.
  */
 export async function getGroupRecipeIds(groupId: string): Promise<Set<string>> {
-  if (!supabase) return new Set()
   const { data } = await supabase.from('group_recipes').select('recipe_id').eq('group_id', groupId)
   // data is typed as Pick<GroupRecipe, 'recipe_id'>[] | null by the SDK
   return new Set(data?.map((r) => r.recipe_id) ?? [])

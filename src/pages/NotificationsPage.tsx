@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, UserPlus, Heart, MessageCircle, Users, Check, Globe, Loader2 } from 'lucide-react'
+import { Bell, UserPlus, Heart, MessageCircle, Users, Check, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import {
   getNotifications,
   markRead,
@@ -158,8 +157,6 @@ function NotificationRow({
 
 export default function NotificationsPage() {
   const { user } = useAuth()
-  const supAvailable = isSupabaseAvailable()
-
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [markingAll, setMarkingAll] = useState(false)
@@ -167,7 +164,7 @@ export default function NotificationsPage() {
   const [showPrefs, setShowPrefs] = useState(false)
 
   const load = useCallback(async () => {
-    if (!user || !supAvailable) {
+    if (!user) {
       setLoading(false)
       return
     }
@@ -175,7 +172,7 @@ export default function NotificationsPage() {
     setNotifications(items)
     setMutedTypesState(muted)
     setLoading(false)
-  }, [user, supAvailable])
+  }, [user])
 
   useEffect(() => {
     load()
@@ -183,12 +180,12 @@ export default function NotificationsPage() {
 
   // Realtime subscription: prepend new notifications as they arrive
   useEffect(() => {
-    if (!user || !supAvailable) return
+    if (!user) return
     const unsub = subscribeToNotifications(user.id, (n) => {
       setNotifications((prev) => [n, ...prev])
     })
     return unsub
-  }, [user, supAvailable])
+  }, [user])
 
   async function handleRead(id: string) {
     setNotifications((prev) =>
@@ -216,17 +213,6 @@ export default function NotificationsPage() {
   }
 
   const unreadCount = notifications.filter((n) => !n.read_at).length
-
-  if (!supAvailable) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <Globe size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Connect to Supabase to see notifications.
-        </p>
-      </div>
-    )
-  }
 
   if (!user) {
     return (

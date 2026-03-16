@@ -17,8 +17,6 @@ export default function ResetPasswordPage() {
   const [isRecovery, setIsRecovery] = useState(false)
 
   useEffect(() => {
-    if (!supabase) return
-
     // The hash contains #access_token=...&type=recovery after clicking the link
     const hash = window.location.hash
     if (hash.includes('type=recovery')) {

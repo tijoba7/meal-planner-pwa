@@ -53,7 +53,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
 
   const fetchProfile = useCallback(async (userId: string) => {
-    if (!supabase) return
     setLoading(true)
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
     setProfile((data as Profile | null) ?? null)
@@ -73,7 +72,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile])
 
   async function updateProfile(updates: Updates<'profiles'>): Promise<{ error: Error | null }> {
-    if (!supabase || !user) return { error: new Error('Not authenticated') }
+    if (!user) return { error: new Error('Not authenticated') }
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -85,7 +84,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }
 
   async function uploadAvatar(file: File): Promise<{ error: Error | null }> {
-    if (!supabase || !user) return { error: new Error('Not authenticated') }
+    if (!user) return { error: new Error('Not authenticated') }
 
     let resized: File
     try {

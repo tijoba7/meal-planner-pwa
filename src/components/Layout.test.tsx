@@ -22,8 +22,7 @@ vi.mock('../contexts/ProfileContext', () => ({
 }))
 
 vi.mock('../lib/supabase', () => ({
-  isSupabaseAvailable: vi.fn(() => false),
-  supabase: null,
+  supabase: {},
 }))
 
 vi.mock('./OnboardingWizard', () => ({
@@ -63,7 +62,6 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 import * as AuthContext from '../contexts/AuthContext'
 import * as ProfileContext from '../contexts/ProfileContext'
-import * as supabaseLib from '../lib/supabase'
 import * as OnboardingWizard from './OnboardingWizard'
 
 function renderLayout(initialPath = '/') {
@@ -85,7 +83,6 @@ describe('Layout', () => {
     vi.mocked(ProfileContext.useProfile).mockReturnValue({ profile: null } as unknown as ReturnType<
       typeof ProfileContext.useProfile
     >)
-    vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(false)
     vi.mocked(OnboardingWizard.isOnboardingDone).mockReturnValue(true)
     mockNavigate.mockClear()
     mockSignOut.mockClear()
@@ -221,28 +218,10 @@ describe('Layout', () => {
     })
   })
 
-  // ── Auth section — Supabase unavailable ─────────────────────────────────────
-
-  describe('when Supabase is not available', () => {
-    it('does not show the sign in link in the sidebar', () => {
-      vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(false)
-      renderLayout()
-      const signInLinks = screen.queryAllByRole('link', { name: /sign in/i })
-      expect(signInLinks).toHaveLength(0)
-    })
-
-    it('does not show the sign out button in the sidebar', () => {
-      vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(false)
-      renderLayout()
-      expect(screen.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument()
-    })
-  })
-
   // ── Auth section — unauthenticated ──────────────────────────────────────────
 
-  describe('when Supabase is available and user is signed out', () => {
+  describe('when user is signed out', () => {
     beforeEach(() => {
-      vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(true)
       vi.mocked(AuthContext.useAuth).mockReturnValue({
         user: null,
         signOut: mockSignOut,
@@ -271,13 +250,12 @@ describe('Layout', () => {
 
   // ── Auth section — authenticated ─────────────────────────────────────────────
 
-  describe('when Supabase is available and user is signed in', () => {
+  describe('when user is signed in', () => {
     const mockUser = { id: 'user-1', email: 'test@example.com' } as ReturnType<
       typeof AuthContext.useAuth
     >['user']
 
     beforeEach(() => {
-      vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(true)
       vi.mocked(AuthContext.useAuth).mockReturnValue({
         user: mockUser,
         signOut: mockSignOut,

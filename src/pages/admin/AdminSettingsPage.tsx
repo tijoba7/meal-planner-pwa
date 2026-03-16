@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { APP_SETTING_KEYS, listAppSettings, setAppSetting } from '../../lib/appSettingsService'
 import { DIETARY_PREFERENCES } from '../../lib/dietary'
-import { isSupabaseAvailable } from '../../lib/supabase'
 import type { Json } from '../../types/supabase'
 import {
   SectionHeader,
@@ -17,8 +16,6 @@ import {
 
 export default function AdminSettingsPage() {
   const { user } = useAuth()
-  const supabaseAvailable = isSupabaseAvailable()
-
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
 
@@ -110,14 +107,6 @@ export default function AdminSettingsPage() {
           Global configuration applied app-wide.
         </p>
       </div>
-
-      {!supabaseAvailable && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
-            Supabase is not configured — changes will not be persisted.
-          </p>
-        </div>
-      )}
 
       {/* Feature Flags */}
       <section>

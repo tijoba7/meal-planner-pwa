@@ -47,7 +47,6 @@ export async function publishRecipe(
   userId: string,
   visibility: RecipeVisibility
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const now = new Date().toISOString()
   const { error } = await supabase.from('recipes_cloud').upsert(
@@ -72,7 +71,6 @@ export async function updateVisibility(
   cloudRecipeId: string,
   visibility: RecipeVisibility
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const now = new Date().toISOString()
   const { error } = await supabase
@@ -92,7 +90,6 @@ export async function updateVisibility(
  * or null if it has never been published.
  */
 export async function getCloudRecipeMeta(recipeId: string): Promise<RecipeCloudMeta | null> {
-  if (!supabase) return null
   const { data } = await supabase
     .from('recipes_cloud')
     .select('visibility, published_at')
@@ -109,7 +106,6 @@ export async function getCloudRecipeMeta(recipeId: string): Promise<RecipeCloudM
 export async function getSharedRecipe(
   cloudRecipeId: string
 ): Promise<CloudRecipeWithAuthor | null> {
-  if (!supabase) return null
   const { data } = await supabase
     .from('recipes_cloud')
     .select('*, profiles(display_name, avatar_url)')
@@ -131,7 +127,6 @@ export async function getFriendsFeed(
   offset = 0,
   limit = 20
 ): Promise<CloudRecipeWithAuthor[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('recipes_cloud')
     .select('*, profiles(display_name, avatar_url)')
@@ -148,7 +143,6 @@ export async function getFriendsFeed(
  * Fetch the public explore feed. Only returns `public` recipes from all users.
  */
 export async function getPublicFeed(offset = 0, limit = 20): Promise<CloudRecipeWithAuthor[]> {
-  if (!supabase) return []
   const { data } = await supabase
     .from('recipes_cloud')
     .select('*, profiles(display_name, avatar_url)')

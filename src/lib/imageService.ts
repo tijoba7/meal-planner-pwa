@@ -100,7 +100,6 @@ export async function uploadRecipeImage(
   recipeId: string,
   file: File
 ): Promise<UploadedImage> {
-  if (!supabase) throw new Error('Supabase is not configured')
 
   const [fullBlob, thumbBlob] = await Promise.all([
     resizeToBlob(file, MAX_FULL_PX, QUALITY),
@@ -138,7 +137,6 @@ export async function uploadRecipeImage(
  * Safe to call when Supabase is unavailable (no-op).
  */
 export async function deleteRecipeImages(userId: string, recipeId: string): Promise<void> {
-  if (!supabase) return
   await supabase.storage
     .from(BUCKET)
     .remove([`${userId}/${recipeId}/original.webp`, `${userId}/${recipeId}/thumb.webp`])

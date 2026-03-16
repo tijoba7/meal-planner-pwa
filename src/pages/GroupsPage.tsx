@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { UsersRound, Plus, ChevronRight, Loader2, Globe } from 'lucide-react'
+import { UsersRound, Plus, ChevronRight, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import { createGroup, getMyGroups, type GroupWithMeta } from '../lib/groupService'
 
 // ─── Create group dialog ──────────────────────────────────────────────────────
@@ -133,14 +132,12 @@ function GroupCard({ group }: { group: GroupWithMeta }) {
 
 export default function GroupsPage() {
   const { user } = useAuth()
-  const supAvailable = isSupabaseAvailable()
-
   const [groups, setGroups] = useState<GroupWithMeta[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
-    if (!user || !supAvailable) {
+    if (!user) {
       setLoading(false)
       return
     }
@@ -148,18 +145,7 @@ export default function GroupsPage() {
       setGroups(g)
       setLoading(false)
     })
-  }, [user, supAvailable])
-
-  if (!supAvailable) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <Globe size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Connect to Supabase to use groups.
-        </p>
-      </div>
-    )
-  }
+  }, [user])
 
   if (!user) {
     return (

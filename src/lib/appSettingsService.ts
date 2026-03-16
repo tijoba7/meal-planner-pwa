@@ -37,7 +37,6 @@ export type AppSettingKey = (typeof APP_SETTING_KEYS)[keyof typeof APP_SETTING_K
  * not readable by the current user (sensitive + not admin).
  */
 export async function getAppSetting(key: string): Promise<Json | null> {
-  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('app_settings')
@@ -78,7 +77,6 @@ export async function getAppSettingBoolean(key: string): Promise<boolean | null>
  * users; all keys for admins).
  */
 export async function listAppSettings(): Promise<AppSetting[]> {
-  if (!supabase) return []
 
   const { data } = await supabase
     .from('app_settings')
@@ -100,7 +98,6 @@ export async function setAppSetting(
   updatedBy: string,
   sensitive?: boolean
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const patch: AppSetting = {
     key,
@@ -121,7 +118,6 @@ export async function setAppSetting(
  * Delete a setting by key. Admin-only — RLS rejects non-admin callers.
  */
 export async function deleteAppSetting(key: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const { error } = await supabase.from('app_settings').delete().eq('key', key)
   return { error: error ? new Error(error.message) : null }

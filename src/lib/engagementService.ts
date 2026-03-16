@@ -58,7 +58,6 @@ export async function getReactions(recipeId: string, userId?: string): Promise<R
     bookmarkCount: 0,
     emojiCount: 0,
   }
-  if (!supabase) return empty
 
   const { data } = await supabase
     .from('reactions')
@@ -98,7 +97,6 @@ export async function toggleLike(
   recipeId: string,
   userId: string
 ): Promise<{ liked: boolean; error: Error | null }> {
-  if (!supabase) return { liked: false, error: new Error('Supabase not configured') }
 
   const { data: existing } = await supabase
     .from('reactions')
@@ -126,7 +124,6 @@ export async function toggleBookmark(
   recipeId: string,
   userId: string
 ): Promise<{ bookmarked: boolean; error: Error | null }> {
-  if (!supabase) return { bookmarked: false, error: new Error('Supabase not configured') }
 
   const { data: existing } = await supabase
     .from('reactions')
@@ -155,7 +152,6 @@ export async function setEmojiReaction(
   userId: string,
   emojiCode: string | null
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   // Remove existing emoji reaction first
   await supabase
@@ -180,7 +176,6 @@ export async function setEmojiReaction(
  * Soft-deleted comments are retained as placeholders with null body in the tree.
  */
 export async function getComments(recipeId: string): Promise<CommentWithAuthor[]> {
-  if (!supabase) return []
 
   const { data } = await supabase
     .from('comments')
@@ -229,7 +224,6 @@ export async function addComment(
   body: string,
   parentCommentId?: string
 ): Promise<{ data: CommentWithAuthor | null; error: Error | null }> {
-  if (!supabase) return { data: null, error: new Error('Supabase not configured') }
 
   const { data, error } = await supabase
     .from('comments')
@@ -257,7 +251,6 @@ export async function addComment(
  * Only the comment author or recipe owner can call this (enforced by RLS).
  */
 export async function deleteComment(commentId: string): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const { error } = await supabase
     .from('comments')
@@ -272,7 +265,6 @@ export async function deleteComment(commentId: string): Promise<{ error: Error |
  * Get aggregate rating and the current user's score for a recipe.
  */
 export async function getRating(recipeId: string, userId?: string): Promise<RecipeRating> {
-  if (!supabase) return { userScore: null, avgScore: null, ratingCount: 0 }
 
   const { data } = await supabase.from('ratings').select('user_id, score').eq('recipe_id', recipeId)
 
@@ -298,7 +290,6 @@ export async function upsertRating(
   userId: string,
   score: number
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const { error } = await supabase
     .from('ratings')
@@ -313,7 +304,6 @@ export async function deleteRating(
   recipeId: string,
   userId: string
 ): Promise<{ error: Error | null }> {
-  if (!supabase) return { error: new Error('Supabase not configured') }
 
   const { error } = await supabase
     .from('ratings')

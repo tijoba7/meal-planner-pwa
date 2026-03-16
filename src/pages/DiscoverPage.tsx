@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Compass, Rss, Search, Heart, Star, LayoutGrid, List } from 'lucide-react'
+import { Compass, Rss, Search, Heart, Star, LayoutGrid, List, TrendingUp } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import {
-  getPublicFeed,
-  getFriendsFeed,
-  type CloudRecipeWithAuthor,
-} from '../lib/recipeShareService'
-import { getEngagementStats, type EngagementStats } from '../lib/engagementService'
+import type { CloudRecipeWithAuthor } from '../lib/recipeShareService'
 import { durationToMinutes } from '../lib/db'
+import {
+  usePublicFeed,
+  useFriendsFeed,
+  useTrendingFeed,
+  useEngagementStats,
+} from '../hooks/useFeed'
 import Skeleton from '../components/Skeleton'
-
-const PAGE_SIZE = 20
 
 // ─── Category chips ────────────────────────────────────────────────────────────
 
@@ -51,7 +50,7 @@ function CategoryChips({
           aria-pressed={selected === cat.value}
           className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
             selected === cat.value
-              ? 'bg-green-600 border-green-600 text-white'
+              ? 'bg-green-700 border-green-700 text-white'
               : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-green-500 hover:text-green-600 dark:hover:text-green-400'
           }`}
         >
@@ -62,14 +61,16 @@ function CategoryChips({
   )
 }
 
-// ─── Recipe card ──────────────────────────────────────────────────────────────
+// ─── Recipe cards ─────────────────────────────────────────────────────────────
 
-function RecipeCard({
+function RecipeListCard({
   item,
-  engagement,
+  likeCount,
+  avgRating,
 }: {
   item: CloudRecipeWithAuthor
-  engagement?: EngagementStats
+  likeCount?: number
+  avgRating?: number | null
 }) {
   const recipe = item.data
   const prepMins = durationToMinutes(recipe.prepTime)
@@ -112,21 +113,16 @@ function RecipeCard({
             <span>prep {prepMins}m</span>
             <span>·</span>
             <span>cook {cookMins}m</span>
-            {engagement && engagement.likeCount > 0 && (
+            {likeCount != null && likeCount > 0 && (
               <>
                 <span>·</span>
                 <span className="flex items-center gap-0.5">
-                  <Heart
-                    size={10}
-                    className="text-red-400"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  />
-                  {engagement.likeCount}
+                  <Heart size={10} className="text-red-400" fill="currentColor" aria-hidden="true" />
+                  {likeCount}
                 </span>
               </>
             )}
-            {engagement && engagement.avgRating !== null && (
+            {avgRating != null && (
               <>
                 <span>·</span>
                 <span className="flex items-center gap-0.5">
@@ -136,7 +132,7 @@ function RecipeCard({
                     fill="currentColor"
                     aria-hidden="true"
                   />
-                  {engagement.avgRating}
+                  {avgRating}
                 </span>
               </>
             )}
@@ -159,7 +155,6 @@ function RecipeCard({
   )
 }
 
-/** 2-column grid card for the trending/grid view. */
 function RecipeGridCard({ item }: { item: CloudRecipeWithAuthor }) {
   const recipe = item.data
   const authorName = item.profiles?.display_name ?? 'Unknown'
@@ -170,7 +165,6 @@ function RecipeGridCard({ item }: { item: CloudRecipeWithAuthor }) {
         to={`/shared/${item.id}`}
         className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
       >
-        {/* Square image */}
         <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">
           {recipe.image ? (
             <img
@@ -182,11 +176,12 @@ function RecipeGridCard({ item }: { item: CloudRecipeWithAuthor }) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
-              <span className="text-3xl" role="img" aria-label="Recipe">🍽️</span>
+              <span className="text-3xl" role="img" aria-label="Recipe">
+                🍽️
+              </span>
             </div>
           )}
         </div>
-        {/* Card info */}
         <div className="p-3">
           <h3 className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight line-clamp-2">
             {recipe.name}
@@ -199,6 +194,8 @@ function RecipeGridCard({ item }: { item: CloudRecipeWithAuthor }) {
     </li>
   )
 }
+
+// ─── Skeletons ────────────────────────────────────────────────────────────────
 
 function CardSkeleton() {
   return (
@@ -237,6 +234,91 @@ function LoadingSpinner() {
   )
 }
 
+// ─── Trending section ─────────────────────────────────────────────────────────
+
+function TrendingSection() {
+  const { data: trendingItems = [], isLoading } = useTrendingFeed()
+  const trendingIds = trendingItems.map((i) => i.id)
+  const { data: engagementMap = {} } = useEngagementStats(trendingIds)
+
+  if (isLoading) {
+    return (
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingUp size={16} className="text-green-600" aria-hidden="true" />
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+            Trending this week
+          </h3>
+        </div>
+        <ul className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <GridSkeleton key={i} />
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  if (trendingItems.length === 0) return null
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp size={16} className="text-green-600" aria-hidden="true" />
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+          Trending this week
+        </h3>
+      </div>
+      <ul className="grid grid-cols-2 gap-3" aria-label="Trending recipes">
+        {trendingItems.slice(0, 6).map((item) => {
+          const eng = engagementMap[item.id]
+          return (
+            <li key={item.id}>
+              <Link
+                to={`/shared/${item.id}`}
+                className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
+              >
+                <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
+                  {item.data.image ? (
+                    <img
+                      src={item.data.imageThumbnailUrl ?? item.data.image}
+                      alt={item.data.name}
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-200"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                      <span className="text-3xl" role="img" aria-label="Recipe">
+                        🍽️
+                      </span>
+                    </div>
+                  )}
+                  {/* Engagement badge */}
+                  {eng && (eng.likeCount > 0 || eng.commentCount > 0) && (
+                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                      <Heart size={9} fill="currentColor" aria-hidden="true" />
+                      {eng.likeCount}
+                    </div>
+                  )}
+                </div>
+                <div className="p-2.5">
+                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight line-clamp-1">
+                    {item.data.name}
+                  </p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5 truncate">
+                    by {item.profiles?.display_name ?? 'Unknown'}
+                  </p>
+                </div>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type Tab = 'explore' | 'feed'
@@ -248,112 +330,75 @@ export default function DiscoverPage() {
   const [category, setCategory] = useState('')
   const [gridView, setGridView] = useState(false)
 
-  // Explore state
-  const [exploreItems, setExploreItems] = useState<CloudRecipeWithAuthor[]>([])
-  const [exploreOffset, setExploreOffset] = useState(0)
-  const [exploreHasMore, setExploreHasMore] = useState(true)
-  const [exploreLoading, setExploreLoading] = useState(true)
-  const [exploreLoadingMore, setExploreLoadingMore] = useState(false)
-  const [exploreError, setExploreError] = useState<string | null>(null)
-
-  // Friends feed state
-  const [feedItems, setFeedItems] = useState<CloudRecipeWithAuthor[]>([])
-  const [feedOffset, setFeedOffset] = useState(0)
-  const [feedHasMore, setFeedHasMore] = useState(true)
-  const [feedLoading, setFeedLoading] = useState(true)
-  const [feedLoadingMore, setFeedLoadingMore] = useState(false)
-  const [feedError, setFeedError] = useState<string | null>(null)
-
-  const [engagementMap, setEngagementMap] = useState<Record<string, EngagementStats>>({})
-
   // Sentinel refs for infinite scroll
   const exploreSentinelRef = useRef<HTMLDivElement>(null)
   const feedSentinelRef = useRef<HTMLDivElement>(null)
 
-  // ── Initial loads ────────────────────────────────────────────────────────
+  // ── Explore (public feed) ─────────────────────────────────────────────────
 
-  useEffect(() => {
-    setExploreLoading(true)
-    setExploreError(null)
-    getPublicFeed(0, PAGE_SIZE)
-      .then((items) => {
-        setExploreItems(items)
-        setExploreOffset(items.length)
-        setExploreHasMore(items.length === PAGE_SIZE)
-        if (items.length > 0) {
-          getEngagementStats(items.map((i) => i.id)).then((stats) =>
-            setEngagementMap((m) => ({ ...m, ...stats }))
-          )
-        }
-      })
-      .catch(() => setExploreError('Failed to load public recipes.'))
-      .finally(() => setExploreLoading(false))
-  }, [])
+  const {
+    data: exploreData,
+    isLoading: exploreLoading,
+    isError: exploreError,
+    fetchNextPage: fetchMoreExplore,
+    hasNextPage: exploreHasMore,
+    isFetchingNextPage: exploreFetchingMore,
+  } = usePublicFeed()
 
-  useEffect(() => {
-    if (!user) return
-    setFeedLoading(true)
-    setFeedError(null)
-    getFriendsFeed(user.id, 0, PAGE_SIZE)
-      .then((items) => {
-        setFeedItems(items)
-        setFeedOffset(items.length)
-        setFeedHasMore(items.length === PAGE_SIZE)
-        if (items.length > 0) {
-          getEngagementStats(items.map((i) => i.id)).then((stats) =>
-            setEngagementMap((m) => ({ ...m, ...stats }))
-          )
-        }
-      })
-      .catch(() => setFeedError('Failed to load friends feed.'))
-      .finally(() => setFeedLoading(false))
-  }, [user])
+  const exploreItems = exploreData?.pages.flat() ?? []
+  const exploreIds = exploreItems.map((i) => i.id)
+  const { data: exploreEngagement = {} } = useEngagementStats(exploreIds)
 
-  // ── Load more ────────────────────────────────────────────────────────────
+  // ── Friends feed ──────────────────────────────────────────────────────────
+
+  const {
+    data: feedData,
+    isLoading: feedLoading,
+    isError: feedError,
+    fetchNextPage: fetchMoreFeed,
+    hasNextPage: feedHasMore,
+    isFetchingNextPage: feedFetchingMore,
+  } = useFriendsFeed()
+
+  const feedItems = feedData?.pages.flat() ?? []
+
+  // ── Filtering ─────────────────────────────────────────────────────────────
+
+  const filteredExplore = useMemo(() => {
+    if (!query && !category) return exploreItems
+    return exploreItems.filter((item) => {
+      const r = item.data
+      if (query.trim()) {
+        const q = query.toLowerCase()
+        const matchesSearch =
+          r.name?.toLowerCase().includes(q) ||
+          r.description?.toLowerCase().includes(q) ||
+          r.keywords?.some((k) => k.toLowerCase().includes(q))
+        if (!matchesSearch) return false
+      }
+      if (category) {
+        const matchesCategory = r.keywords?.some((k) => k.toLowerCase().includes(category))
+        if (!matchesCategory) return false
+      }
+      return true
+    })
+  }, [exploreItems, query, category])
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
 
   const loadMoreExplore = useCallback(() => {
-    if (exploreLoadingMore || !exploreHasMore) return
-    setExploreLoadingMore(true)
-    getPublicFeed(exploreOffset, PAGE_SIZE)
-      .then((items) => {
-        setExploreItems((prev) => [...prev, ...items])
-        setExploreOffset((o) => o + items.length)
-        setExploreHasMore(items.length === PAGE_SIZE)
-        if (items.length > 0) {
-          getEngagementStats(items.map((i) => i.id)).then((stats) =>
-            setEngagementMap((m) => ({ ...m, ...stats }))
-          )
-        }
-      })
-      .catch(() => {})
-      .finally(() => setExploreLoadingMore(false))
-  }, [exploreOffset, exploreHasMore, exploreLoadingMore])
+    if (exploreHasMore && !exploreFetchingMore) fetchMoreExplore()
+  }, [exploreHasMore, exploreFetchingMore, fetchMoreExplore])
 
   const loadMoreFeed = useCallback(() => {
-    if (feedLoadingMore || !feedHasMore || !user) return
-    setFeedLoadingMore(true)
-    getFriendsFeed(user.id, feedOffset, PAGE_SIZE)
-      .then((items) => {
-        setFeedItems((prev) => [...prev, ...items])
-        setFeedOffset((o) => o + items.length)
-        setFeedHasMore(items.length === PAGE_SIZE)
-        if (items.length > 0) {
-          getEngagementStats(items.map((i) => i.id)).then((stats) =>
-            setEngagementMap((m) => ({ ...m, ...stats }))
-          )
-        }
-      })
-      .catch(() => {})
-      .finally(() => setFeedLoadingMore(false))
-  }, [feedOffset, feedHasMore, feedLoadingMore, user])
-
-  // ── Infinite scroll observers ────────────────────────────────────────────
+    if (feedHasMore && !feedFetchingMore) fetchMoreFeed()
+  }, [feedHasMore, feedFetchingMore, fetchMoreFeed])
 
   useEffect(() => {
     if (activeTab !== 'explore' || !exploreSentinelRef.current) return
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMoreExplore()
+      ([entry]) => {
+        if (entry.isIntersecting) loadMoreExplore()
       },
       { rootMargin: '200px' }
     )
@@ -364,8 +409,8 @@ export default function DiscoverPage() {
   useEffect(() => {
     if (activeTab !== 'feed' || !feedSentinelRef.current) return
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMoreFeed()
+      ([entry]) => {
+        if (entry.isIntersecting) loadMoreFeed()
       },
       { rootMargin: '200px' }
     )
@@ -373,24 +418,7 @@ export default function DiscoverPage() {
     return () => observer.disconnect()
   }, [loadMoreFeed, activeTab])
 
-  // ── Render ───────────────────────────────────────────────────────────────
-
-  const filteredExplore = exploreItems.filter((item) => {
-    const r = item.data
-    if (query.trim()) {
-      const q = query.toLowerCase()
-      const matchesSearch =
-        r.name?.toLowerCase().includes(q) ||
-        r.description?.toLowerCase().includes(q) ||
-        r.keywords?.some((k) => k.toLowerCase().includes(q))
-      if (!matchesSearch) return false
-    }
-    if (category) {
-      const matchesCategory = r.keywords?.some((k) => k.toLowerCase().includes(category))
-      if (!matchesCategory) return false
-    }
-    return true
-  })
+  // ── Render ────────────────────────────────────────────────────────────────
 
   const tabClass = (tab: Tab) =>
     `flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -435,15 +463,24 @@ export default function DiscoverPage() {
         )}
       </div>
 
-      {/* Explore tab */}
+      {/* ── Explore tab ─────────────────────────────────────────────────── */}
       {activeTab === 'explore' && (
         <div id="discover-tab-explore" role="tabpanel" aria-labelledby="discover-tab-btn-explore">
+          {/* Trending section — shown when no filter active */}
+          {!query && !category && <TrendingSection />}
+
           {/* Category chips */}
           <div className="mb-3">
-            <CategoryChips selected={category} onChange={(v) => { setCategory(v); setQuery('') }} />
+            <CategoryChips
+              selected={category}
+              onChange={(v) => {
+                setCategory(v)
+                setQuery('')
+              }}
+            />
           </div>
 
-          {/* Search bar + view toggle row */}
+          {/* Search bar + view toggle */}
           <div className="flex gap-2 mb-4">
             <div className="relative flex-1">
               <Search
@@ -460,7 +497,6 @@ export default function DiscoverPage() {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
-            {/* View toggle */}
             <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden shrink-0">
               <button
                 onClick={() => setGridView(false)}
@@ -468,7 +504,7 @@ export default function DiscoverPage() {
                 aria-label="List view"
                 className={`p-2 transition-colors ${
                   !gridView
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-green-700 text-white'
                     : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -480,7 +516,7 @@ export default function DiscoverPage() {
                 aria-label="Grid view"
                 className={`p-2 transition-colors border-l border-gray-200 dark:border-gray-600 ${
                   gridView
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-green-700 text-white'
                     : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -490,16 +526,24 @@ export default function DiscoverPage() {
           </div>
 
           {exploreError ? (
-            <p className="text-sm text-red-500 text-center py-8">{exploreError}</p>
+            <p className="text-sm text-red-500 text-center py-8">Failed to load public recipes.</p>
           ) : exploreLoading ? (
             gridView ? (
-              <ul className="grid grid-cols-2 gap-3" aria-busy="true" aria-label="Loading public recipes">
+              <ul
+                className="grid grid-cols-2 gap-3"
+                aria-busy="true"
+                aria-label="Loading public recipes"
+              >
                 {Array.from({ length: 6 }).map((_, i) => (
                   <GridSkeleton key={i} />
                 ))}
               </ul>
             ) : (
-              <ul className="space-y-3" aria-busy="true" aria-label="Loading public recipes">
+              <ul
+                className="space-y-3"
+                aria-busy="true"
+                aria-label="Loading public recipes"
+              >
                 {Array.from({ length: 4 }).map((_, i) => (
                   <CardSkeleton key={i} />
                 ))}
@@ -510,7 +554,7 @@ export default function DiscoverPage() {
               <Compass size={36} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
               <p className="text-gray-500 dark:text-gray-400 text-sm">
                 {query || category
-                  ? `No public recipes match your filters.`
+                  ? 'No public recipes match your filters.'
                   : 'No public recipes yet.'}
               </p>
             </div>
@@ -523,7 +567,7 @@ export default function DiscoverPage() {
               </ul>
               {!query && !category && (
                 <div ref={exploreSentinelRef}>
-                  {exploreLoadingMore && <LoadingSpinner />}
+                  {exploreFetchingMore && <LoadingSpinner />}
                   {!exploreHasMore && exploreItems.length > 0 && (
                     <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
                       All public recipes loaded
@@ -535,14 +579,21 @@ export default function DiscoverPage() {
           ) : (
             <>
               <ul className="space-y-3" aria-live="polite">
-                {filteredExplore.map((item) => (
-                  <RecipeCard key={item.id} item={item} engagement={engagementMap[item.id]} />
-                ))}
+                {filteredExplore.map((item) => {
+                  const eng = exploreEngagement[item.id]
+                  return (
+                    <RecipeListCard
+                      key={item.id}
+                      item={item}
+                      likeCount={eng?.likeCount}
+                      avgRating={eng?.avgRating}
+                    />
+                  )
+                })}
               </ul>
-              {/* Infinite scroll sentinel */}
               {!query && !category && (
                 <div ref={exploreSentinelRef}>
-                  {exploreLoadingMore && <LoadingSpinner />}
+                  {exploreFetchingMore && <LoadingSpinner />}
                   {!exploreHasMore && exploreItems.length > 0 && (
                     <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
                       All public recipes loaded
@@ -555,13 +606,17 @@ export default function DiscoverPage() {
         </div>
       )}
 
-      {/* Friends feed tab */}
+      {/* ── Friends feed tab ─────────────────────────────────────────────── */}
       {activeTab === 'feed' && user && (
         <div id="discover-tab-feed" role="tabpanel" aria-labelledby="discover-tab-btn-feed">
           {feedError ? (
-            <p className="text-sm text-red-500 text-center py-8">{feedError}</p>
+            <p className="text-sm text-red-500 text-center py-8">Failed to load friends feed.</p>
           ) : feedLoading ? (
-            <ul className="space-y-3" aria-busy="true" aria-label="Loading friends feed">
+            <ul
+              className="space-y-3"
+              aria-busy="true"
+              aria-label="Loading friends feed"
+            >
               {Array.from({ length: 4 }).map((_, i) => (
                 <CardSkeleton key={i} />
               ))}
@@ -577,12 +632,11 @@ export default function DiscoverPage() {
             <>
               <ul className="space-y-3" aria-live="polite">
                 {feedItems.map((item) => (
-                  <RecipeCard key={item.id} item={item} engagement={engagementMap[item.id]} />
+                  <RecipeListCard key={item.id} item={item} />
                 ))}
               </ul>
-              {/* Infinite scroll sentinel */}
               <div ref={feedSentinelRef}>
-                {feedLoadingMore && <LoadingSpinner />}
+                {feedFetchingMore && <LoadingSpinner />}
                 {!feedHasMore && feedItems.length > 0 && (
                   <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
                     All friends' recipes loaded

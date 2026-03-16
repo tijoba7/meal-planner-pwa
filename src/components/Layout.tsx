@@ -5,6 +5,7 @@ import {
   BookOpen,
   CalendarDays,
   Library,
+  Rss,
   ShoppingCart,
   Settings,
   LogIn,
@@ -36,6 +37,7 @@ import { getUnreadCount, subscribeToNotifications } from '../lib/notificationSer
 // Prefetch map — warming the chunk cache on hover/focus avoids a loading flash
 // when the user navigates to a lazy-loaded route.
 const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
+  '/recipes': () => import('../pages/RecipesPage'),
   '/collections': () => import('../pages/CollectionsPage'),
   '/meal-plan': () => import('../pages/PlannerPage'),
   '/shopping': () => import('../pages/ShoppingListPage'),
@@ -59,7 +61,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Recipes', icon: BookOpen, end: true },
+  { to: '/', label: 'Feed', icon: Rss, end: true },
+  { to: '/recipes', label: 'Recipes', icon: BookOpen, end: false },
   { to: '/collections', label: 'Collections', icon: Library, end: false },
   { to: '/meal-plan', label: 'Meal Plan', icon: CalendarDays, end: false },
   { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
@@ -253,7 +256,7 @@ export default function Layout() {
                       {profile.display_name}
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                     {user.email}
                   </p>
                 </div>

@@ -11,10 +11,11 @@ import ErrorBoundary from './components/ErrorBoundary'
 import AdminRoute from './components/AdminRoute'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
-// RecipesPage is on the critical path (home) — keep as eager import
-import RecipesPage from './pages/RecipesPage'
+// FeedPage is on the critical path (home) — keep as eager import
+import FeedPage from './pages/FeedPage'
 
 // All other routes are lazy-loaded
+const RecipesPage = lazy(() => import('./pages/RecipesPage'))
 const RecipeDetailPage = lazy(() => import('./pages/RecipeDetailPage'))
 const RecipeFormPage = lazy(() => import('./pages/RecipeFormPage'))
 const RecipeImportPage = lazy(() => import('./pages/RecipeImportPage'))
@@ -38,7 +39,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const PantryPage = lazy(() => import('./pages/PantryPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
-const FeedPage = lazy(() => import('./pages/FeedPage'))
+// FeedPage is already eagerly imported above
 const AdminLayout = lazy(() => import('./components/AdminLayout'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminScrapingPage = lazy(() => import('./pages/admin/AdminScrapingPage'))
@@ -84,7 +85,8 @@ export default function App() {
                           </ProtectedRoute>
                         }
                       >
-                        <Route index element={<RecipesPage />} />
+                        <Route index element={<FeedPage />} />
+                        <Route path="recipes" element={<RecipesPage />} />
                         <Route path="recipes/new" element={<RecipeFormPage />} />
                         <Route path="recipes/import" element={<RecipeImportPage />} />
                         <Route path="recipes/:id" element={<RecipeDetailPage />} />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, X, ClipboardList } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
+import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
 import { normalizeMealSlot } from '../types'
@@ -100,6 +101,7 @@ export default function ShoppingListPage() {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [creating, setCreating] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const reload = useCallback(async () => {
     const all = await getShoppingLists()
@@ -107,9 +109,9 @@ export default function ShoppingListPage() {
   }, [])
 
   useEffect(() => {
-    reload()
-    getMealPlans().then(setMealPlans)
-    getRecipes().then(setRecipes)
+    Promise.all([reload(), getMealPlans().then(setMealPlans), getRecipes().then(setRecipes)]).then(
+      () => setLoading(false)
+    )
   }, [reload])
 
   useEffect(() => {
@@ -286,14 +288,26 @@ export default function ShoppingListPage() {
         </button>
       </div>
 
-      {lists.length === 0 && !showCreate && (
+      {loading ? (
+        <div className="space-y-3" aria-busy="true" aria-label="Loading shopping lists">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-5 w-2/5" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+          ))}
+        </div>
+      ) : lists.length === 0 && !showCreate ? (
         <EmptyState
           icon={ShoppingCart}
           title="No shopping lists yet"
           description="Create one from your meal plan to auto-generate your grocery list."
           action={{ label: 'Create a list', onClick: () => setShowCreate(true) }}
         />
-      )}
+      ) : null}
 
       <div className="space-y-3">
         {lists.map((list) => {

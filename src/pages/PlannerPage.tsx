@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { X, BookOpen, Plus, Copy } from 'lucide-react'
-import type { MealType, Recipe, MealPlan } from '../types'
+import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2 } from 'lucide-react'
+import Skeleton from '../components/Skeleton'
+import type { MealType, Recipe, MealPlan, MealPlanTemplate } from '../types'
 import { normalizeMealSlot } from '../types'
-import { getRecipes, getMealPlanForWeek, createMealPlan, updateMealPlan } from '../lib/db'
+import {
+  getRecipes,
+  getMealPlanForWeek,
+  createMealPlan,
+  updateMealPlan,
+  getMealPlanTemplates,
+  createMealPlanTemplate,
+  deleteMealPlanTemplate,
+} from '../lib/db'
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -53,6 +62,14 @@ export default function PlannerPage() {
   const [copyTarget, setCopyTarget] = useState<string>('')
   const [copyTargetPlan, setCopyTargetPlan] = useState<MealPlan | null | undefined>(undefined)
 
+  // Template state
+  const [templates, setTemplates] = useState<MealPlanTemplate[]>([])
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false)
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [applyTemplateConfirm, setApplyTemplateConfirm] = useState<MealPlanTemplate | null>(null)
+  const [savingTemplate, setSavingTemplate] = useState(false)
+
   useEffect(() => {
     getRecipes().then(setRecipes)
   }, [])
@@ -73,6 +90,10 @@ export default function PlannerPage() {
     setCopyTargetPlan(undefined)
     getMealPlanForWeek(copyTarget).then(plan => setCopyTargetPlan(plan ?? null))
   }, [copyTarget])
+
+  useEffect(() => {
+    getMealPlanTemplates().then(setTemplates)
+  }, [])
 
   const navigateWeek = (delta: number) => {
     setWeekStart(prev => {
@@ -155,6 +176,44 @@ export default function PlannerPage() {
     setSearch('')
   }
 
+  const saveAsTemplate = async () => {
+    if (!mealPlan || !templateName.trim()) return
+    setSavingTemplate(true)
+    const templateDays: MealPlanTemplate['days'] = {}
+    for (const [dateStr, dayPlan] of Object.entries(mealPlan.days)) {
+      const offset = Math.round(
+        (new Date(dateStr + 'T00:00:00').getTime() - new Date(weekStart + 'T00:00:00').getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+      if (offset >= 0 && offset <= 6) templateDays[String(offset)] = dayPlan
+    }
+    await createMealPlanTemplate({ name: templateName.trim(), days: templateDays })
+    const updated = await getMealPlanTemplates()
+    setTemplates(updated)
+    setTemplateName('')
+    setSaveTemplateOpen(false)
+    setSavingTemplate(false)
+    setTemplateGalleryOpen(true)
+  }
+
+  const applyTemplate = async (template: MealPlanTemplate) => {
+    if (!mealPlan) return
+    const targetDays: MealPlan['days'] = {}
+    for (const [dayIdx, dayPlan] of Object.entries(template.days)) {
+      const d = addDays(new Date(weekStart + 'T00:00:00'), parseInt(dayIdx, 10))
+      targetDays[toISODate(d)] = dayPlan
+    }
+    const updated = await updateMealPlan(mealPlan.id, { days: targetDays })
+    setMealPlan(updated)
+    setApplyTemplateConfirm(null)
+    setTemplateGalleryOpen(false)
+  }
+
+  const deleteTemplate = async (templateId: string) => {
+    await deleteMealPlanTemplate(templateId)
+    setTemplates(prev => prev.filter(t => t.id !== templateId))
+  }
+
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(new Date(weekStart + 'T00:00:00'), i)
     return { date: toISODate(d), label: formatDayHeader(d) }
@@ -171,6 +230,37 @@ export default function PlannerPage() {
     copyTargetPlan != null && Object.values(copyTargetPlan.days).some(d => Object.keys(d).length > 0)
   const sourceHasMeals =
     mealPlan != null && Object.values(mealPlan.days).some(d => Object.keys(d).length > 0)
+
+  if (mealPlan === null) {
+    return (
+      <div className="p-4 max-w-2xl mx-auto" aria-busy="true" aria-label="Loading meal plan">
+        {/* Week nav skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <Skeleton className="h-9 w-9" />
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-9 w-9" />
+        </div>
+        {/* Day skeletons */}
+        <div className="space-y-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <div key={j} className="px-4 py-3">
+                    <Skeleton className="h-3 w-16 mb-2" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -201,6 +291,17 @@ export default function PlannerPage() {
           aria-label="Next week"
         >
           ›
+        </button>
+      </div>
+
+      {/* Template gallery button */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setTemplateGalleryOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 px-2.5 py-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+        >
+          <LayoutTemplate size={13} strokeWidth={2} aria-hidden="true" />
+          Templates{templates.length > 0 && ` (${templates.length})`}
         </button>
       </div>
 
@@ -416,6 +517,159 @@ export default function PlannerPage() {
                   </button>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template gallery modal */}
+      {templateGalleryOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          onClick={() => setTemplateGalleryOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100">Meal plan templates</h3>
+              <button
+                onClick={() => setTemplateGalleryOpen(false)}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+              {templates.length === 0 ? (
+                <div className="flex flex-col items-center text-center py-10 px-4">
+                  <LayoutTemplate size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No templates yet</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Save a week as a template to reuse it later.</p>
+                </div>
+              ) : (
+                templates.map(template => (
+                  <div
+                    key={template.id}
+                    className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{template.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {Object.keys(template.days).length} day{Object.keys(template.days).length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3 shrink-0">
+                      <button
+                        onClick={() => setApplyTemplateConfirm(template)}
+                        className="text-xs font-medium text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 px-2.5 py-1 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        onClick={() => deleteTemplate(template.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+                        aria-label={`Delete ${template.name}`}
+                      >
+                        <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setTemplateGalleryOpen(false)
+                  setSaveTemplateOpen(true)
+                }}
+                disabled={!sourceHasMeals}
+                className="w-full bg-green-600 text-white text-sm font-semibold py-3 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Save this week as template
+              </button>
+              {!sourceHasMeals && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">Add meals to save as a template.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save template dialog */}
+      {saveTemplateOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => { setSaveTemplateOpen(false); setTemplateName('') }}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">Save as template</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Give this week's meals a name so you can reuse them.</p>
+            <input
+              type="text"
+              placeholder="e.g. High-protein week"
+              value={templateName}
+              onChange={e => setTemplateName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && templateName.trim()) saveAsTemplate() }}
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setSaveTemplateOpen(false); setTemplateName('') }}
+                className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveAsTemplate}
+                disabled={!templateName.trim() || savingTemplate}
+                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {savingTemplate ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Apply template confirmation */}
+      {applyTemplateConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setApplyTemplateConfirm(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
+              Apply "{applyTemplateConfirm.name}"?
+            </h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              This will replace all meals in the current week with meals from this template.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setApplyTemplateConfirm(null)}
+                className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => applyTemplate(applyTemplateConfirm)}
+                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Apply
+              </button>
             </div>
           </div>
         </div>

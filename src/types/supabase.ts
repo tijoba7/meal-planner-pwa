@@ -256,11 +256,115 @@ export type Database = {
           }
         ]
       }
+      households: {
+        Row: {
+          id: string
+          name: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'households_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      household_members: {
+        Row: {
+          household_id: string
+          user_id: string
+          role: 'owner' | 'member'
+          joined_at: string
+        }
+        Insert: {
+          household_id: string
+          user_id: string
+          role?: 'owner' | 'member'
+          joined_at?: string
+        }
+        Update: {
+          role?: 'owner' | 'member'
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'household_members_household_id_fkey'
+            columns: ['household_id']
+            isOneToOne: false
+            referencedRelation: 'households'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'household_members_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      household_invitations: {
+        Row: {
+          id: string
+          household_id: string
+          invited_by: string
+          invitee_email: string
+          token: string
+          status: 'pending' | 'accepted' | 'declined' | 'expired'
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          invited_by: string
+          invitee_email: string
+          token?: string
+          status?: 'pending' | 'accepted' | 'declined' | 'expired'
+          created_at?: string
+          expires_at?: string
+        }
+        Update: {
+          status?: 'pending' | 'accepted' | 'declined' | 'expired'
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'household_invitations_household_id_fkey'
+            columns: ['household_id']
+            isOneToOne: false
+            referencedRelation: 'households'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'household_invitations_invited_by_fkey'
+            columns: ['invited_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       meal_plans_cloud: {
         Row: {
           id: string
           owner_id: string
           data: Json
+          household_id: string | null
           created_at: string
           updated_at: string
         }
@@ -268,11 +372,13 @@ export type Database = {
           id: string
           owner_id: string
           data: Json
+          household_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           data?: Json
+          household_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -281,6 +387,13 @@ export type Database = {
             columns: ['owner_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'meal_plans_cloud_household_id_fkey'
+            columns: ['household_id']
+            isOneToOne: false
+            referencedRelation: 'households'
             referencedColumns: ['id']
           }
         ]
@@ -321,6 +434,8 @@ export type Database = {
       recipe_visibility: 'private' | 'friends' | 'public'
       friendship_status: 'pending' | 'accepted' | 'blocked'
       reaction_type: 'like' | 'bookmark' | 'emoji'
+      household_member_role: 'owner' | 'member'
+      household_invitation_status: 'pending' | 'accepted' | 'declined' | 'expired'
     }
     CompositeTypes: Record<string, never>
   }
@@ -350,3 +465,19 @@ export type Notification = Tables<'notifications'>
 export type RecipeVisibility = Database['public']['Enums']['recipe_visibility']
 export type FriendshipStatus = Database['public']['Enums']['friendship_status']
 export type ReactionType = Database['public']['Enums']['reaction_type']
+export type HouseholdMemberRole = Database['public']['Enums']['household_member_role']
+export type HouseholdInvitationStatus = Database['public']['Enums']['household_invitation_status']
+
+export type Household = Tables<'households'>
+export type HouseholdMember = Tables<'household_members'>
+export type HouseholdInvitation = Tables<'household_invitations'>
+
+// ─── Storage ──────────────────────────────────────────────────────────────────
+
+/** Bucket IDs used in Supabase Storage. */
+export type StorageBucket = 'recipe-images'
+
+/** Public URL shape returned by supabase.storage.from(bucket).getPublicUrl(). */
+export interface StoragePublicUrl {
+  publicUrl: string
+}

@@ -55,9 +55,17 @@ function parseNutritionFormValue(val: string | number | undefined): string {
 
 interface FormErrors {
   name?: string
+  description?: string
   ingredients?: string
   instructions?: string
+  prepTimeMinutes?: string
+  cookTimeMinutes?: string
 }
+
+const CHAR_LIMITS = {
+  name: 200,
+  description: 1000,
+} as const
 
 export default function RecipeFormPage() {
   const { id } = useParams<{ id: string }>()
@@ -161,14 +169,38 @@ export default function RecipeFormPage() {
 
   function validate(): FormErrors {
     const e: FormErrors = {}
-    if (!form.name.trim()) e.name = 'Name is required.'
+    if (!form.name.trim()) {
+      e.name = 'Name is required.'
+    } else if (form.name.trim().length > CHAR_LIMITS.name) {
+      e.name = `Name must be ${CHAR_LIMITS.name} characters or fewer.`
+    }
+    if (form.description.length > CHAR_LIMITS.description) {
+      e.description = `Description must be ${CHAR_LIMITS.description} characters or fewer.`
+    }
     if (!form.ingredients.some((ing) => ing.name.trim())) {
       e.ingredients = 'Add at least one ingredient.'
     }
     if (!form.instructions.some((step) => step.trim())) {
       e.instructions = 'Add at least one instruction step.'
     }
+    const prep = parseInt(form.prepTimeMinutes, 10)
+    if (form.prepTimeMinutes.trim() !== '' && (isNaN(prep) || prep < 0)) {
+      e.prepTimeMinutes = 'Enter a valid number of minutes (0 or more).'
+    }
+    const cook = parseInt(form.cookTimeMinutes, 10)
+    if (form.cookTimeMinutes.trim() !== '' && (isNaN(cook) || cook < 0)) {
+      e.cookTimeMinutes = 'Enter a valid number of minutes (0 or more).'
+    }
     return e
+  }
+
+  function handleBlur(field: keyof FormErrors) {
+    const errs = validate()
+    setErrors((prev) => ({ ...prev, [field]: errs[field] }))
+  }
+
+  function clearFieldError(field: keyof FormErrors) {
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -326,11 +358,13 @@ export default function RecipeFormPage() {
           <input
             type="text"
             value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); clearFieldError('name') }}
+            onBlur={() => handleBlur('name')}
             placeholder="e.g. Spaghetti Bolognese"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+            aria-invalid={Boolean(errors.name)}
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.name ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
           />
-          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+          {errors.name && <p className="text-red-500 text-xs mt-1" role="alert">{errors.name}</p>}
         </div>
 
         {/* Description */}
@@ -338,11 +372,14 @@ export default function RecipeFormPage() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
           <textarea
             value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            onChange={(e) => { setForm((f) => ({ ...f, description: e.target.value })); clearFieldError('description') }}
+            onBlur={() => handleBlur('description')}
             placeholder="A short description of the dish…"
             rows={2}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+            aria-invalid={Boolean(errors.description)}
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.description ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
           />
+          {errors.description && <p className="text-red-500 text-xs mt-1" role="alert">{errors.description}</p>}
         </div>
 
         {/* Photo */}
@@ -403,9 +440,12 @@ export default function RecipeFormPage() {
               type="number"
               min="0"
               value={form.prepTimeMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, prepTimeMinutes: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+              onChange={(e) => { setForm((f) => ({ ...f, prepTimeMinutes: e.target.value })); clearFieldError('prepTimeMinutes') }}
+              onBlur={() => handleBlur('prepTimeMinutes')}
+              aria-invalid={Boolean(errors.prepTimeMinutes)}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.prepTimeMinutes ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
             />
+            {errors.prepTimeMinutes && <p className="text-red-500 text-xs mt-1" role="alert">{errors.prepTimeMinutes}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cook (min)</label>
@@ -413,9 +453,12 @@ export default function RecipeFormPage() {
               type="number"
               min="0"
               value={form.cookTimeMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, cookTimeMinutes: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+              onChange={(e) => { setForm((f) => ({ ...f, cookTimeMinutes: e.target.value })); clearFieldError('cookTimeMinutes') }}
+              onBlur={() => handleBlur('cookTimeMinutes')}
+              aria-invalid={Boolean(errors.cookTimeMinutes)}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500 ${errors.cookTimeMinutes ? 'border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-gray-200 focus:ring-green-500 dark:border-gray-600'}`}
             />
+            {errors.cookTimeMinutes && <p className="text-red-500 text-xs mt-1" role="alert">{errors.cookTimeMinutes}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Servings</label>
@@ -500,7 +543,8 @@ export default function RecipeFormPage() {
                 <input
                   type="text"
                   value={ing.name}
-                  onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                  onChange={(e) => { updateIngredient(i, 'name', e.target.value); clearFieldError('ingredients') }}
+                  onBlur={() => handleBlur('ingredients')}
                   placeholder="ingredient name"
                   className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
@@ -518,7 +562,7 @@ export default function RecipeFormPage() {
             ))}
           </div>
           {errors.ingredients && (
-            <p className="text-red-500 text-xs mt-1">{errors.ingredients}</p>
+            <p className="text-red-500 text-xs mt-1" role="alert">{errors.ingredients}</p>
           )}
           <button
             type="button"
@@ -542,7 +586,8 @@ export default function RecipeFormPage() {
                 </span>
                 <textarea
                   value={step}
-                  onChange={(e) => updateInstruction(i, e.target.value)}
+                  onChange={(e) => { updateInstruction(i, e.target.value); clearFieldError('instructions') }}
+                  onBlur={() => handleBlur('instructions')}
                   placeholder={`Step ${i + 1}…`}
                   rows={2}
                   className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
@@ -561,7 +606,7 @@ export default function RecipeFormPage() {
             ))}
           </div>
           {errors.instructions && (
-            <p className="text-red-500 text-xs mt-1">{errors.instructions}</p>
+            <p className="text-red-500 text-xs mt-1" role="alert">{errors.instructions}</p>
           )}
           <button
             type="button"

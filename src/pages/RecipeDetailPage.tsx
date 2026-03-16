@@ -5,6 +5,7 @@ import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
+import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
@@ -113,8 +114,27 @@ export default function RecipeDetailPage() {
 
   if (!recipe) {
     return (
-      <div className="p-4 max-w-2xl mx-auto text-center py-16">
-        <p className="text-gray-400 dark:text-gray-500 text-sm">Loading...</p>
+      <div className="p-4 max-w-2xl mx-auto pb-8" aria-busy="true" aria-label="Loading recipe">
+        <Skeleton className="h-4 w-20 mb-4" />
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <Skeleton className="h-8 w-2/3" />
+          <div className="flex gap-2 shrink-0">
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-8 w-12" />
+          </div>
+        </div>
+        <div className="flex gap-4 mb-4">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <Skeleton className="w-full h-48 md:h-64 rounded-xl mb-4" />
+        <Skeleton className="h-4 w-full mb-2" />
+        <Skeleton className="h-4 w-4/5 mb-6" />
+        <Skeleton className="h-6 w-28 mb-3" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-full mb-2" />
+        ))}
       </div>
     )
   }

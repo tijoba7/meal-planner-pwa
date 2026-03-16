@@ -5,13 +5,39 @@ import { getRecipes, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import EmptyState from '../components/EmptyState'
 import RecipeImage from '../components/RecipeImage'
+import Skeleton from '../components/Skeleton'
+
+function RecipeCardSkeleton() {
+  return (
+    <li className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+      <Skeleton className="w-16 h-16 shrink-0 rounded-lg" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-4 w-12 shrink-0" />
+        </div>
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-4/5" />
+        <div className="flex gap-3 pt-1">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+    </li>
+  )
+}
 
 export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [query, setQuery] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getRecipes().then(setRecipes)
+    getRecipes().then((r) => {
+      setRecipes(r)
+      setLoading(false)
+    })
   }, [])
 
   const filtered = query.trim()
@@ -53,7 +79,13 @@ export default function RecipesPage() {
         className="w-full mb-4 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
       />
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <ul className="space-y-3" aria-busy="true" aria-label="Loading recipes">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <RecipeCardSkeleton key={i} />
+          ))}
+        </ul>
+      ) : filtered.length === 0 ? (
         query ? (
           <EmptyState
             icon={Search}
@@ -70,7 +102,7 @@ export default function RecipesPage() {
           />
         )
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-3" aria-live="polite">
           {filtered.map((recipe) => {
             const prepMins = durationToMinutes(recipe.prepTime)
             const cookMins = durationToMinutes(recipe.cookTime)
@@ -81,9 +113,9 @@ export default function RecipesPage() {
                   className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
                 >
                   {/* Thumbnail */}
-                  {recipe.image && (
+                  {(recipe.imageThumbnailUrl || recipe.image) && (
                     <RecipeImage
-                      src={recipe.image}
+                      src={recipe.imageThumbnailUrl ?? recipe.image}
                       alt={recipe.name}
                       className="w-16 h-16 shrink-0 rounded-lg"
                     />

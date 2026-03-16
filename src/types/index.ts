@@ -61,6 +61,8 @@ export interface MealPlan {
   days: Record<string, DayPlan> // key: ISO date string
   createdAt: string
   updatedAt: string
+  /** Set when this plan is shared with a household; absent for personal plans. */
+  householdId?: string
 }
 
 export interface ShoppingItem {

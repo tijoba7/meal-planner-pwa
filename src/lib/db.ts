@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Recipe, MealPlan, ShoppingList, ShoppingItem } from '../types'
+import type { Recipe, MealPlan, ShoppingList, ShoppingItem, MealPlanTemplate } from '../types'
 
 // ─── Database ────────────────────────────────────────────────────────────────
 
@@ -7,6 +7,7 @@ class MealPlannerDB extends Dexie {
   recipes!: Table<Recipe>
   mealPlans!: Table<MealPlan>
   shoppingLists!: Table<ShoppingList>
+  mealPlanTemplates!: Table<MealPlanTemplate>
 
   constructor() {
     super('meal-planner')
@@ -53,6 +54,12 @@ class MealPlannerDB extends Dexie {
             delete recipe.updatedAt
           })
       })
+    this.version(3).stores({
+      recipes: '&id, name, *keywords, dateCreated',
+      mealPlans: '&id, weekStartDate, createdAt',
+      shoppingLists: '&id, name, mealPlanId, createdAt',
+      mealPlanTemplates: '&id, name, createdAt',
+    })
   }
 }
 
@@ -100,9 +107,10 @@ export async function getRecipe(recipeId: string): Promise<Recipe | undefined> {
 }
 
 export async function createRecipe(
-  data: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>
+  data: Omit<Recipe, 'id' | 'dateCreated' | 'dateModified'>,
+  recipeId?: string,
 ): Promise<Recipe> {
-  const recipe: Recipe = { ...data, id: id(), dateCreated: now(), dateModified: now() }
+  const recipe: Recipe = { ...data, id: recipeId ?? id(), dateCreated: now(), dateModified: now() }
   await db.recipes.add(recipe)
   return recipe
 }
@@ -191,6 +199,24 @@ export async function toggleShoppingItem(listId: string, itemId: string): Promis
     item.id === itemId ? { ...item, checked: !item.checked } : item
   )
   await db.shoppingLists.update(listId, { items, updatedAt: now() })
+}
+
+// ─── MealPlanTemplate CRUD ────────────────────────────────────────────────────
+
+export async function getMealPlanTemplates(): Promise<MealPlanTemplate[]> {
+  return db.mealPlanTemplates.orderBy('createdAt').toArray()
+}
+
+export async function createMealPlanTemplate(
+  data: Omit<MealPlanTemplate, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<MealPlanTemplate> {
+  const template: MealPlanTemplate = { ...data, id: id(), createdAt: now(), updatedAt: now() }
+  await db.mealPlanTemplates.add(template)
+  return template
+}
+
+export async function deleteMealPlanTemplate(templateId: string): Promise<void> {
+  await db.mealPlanTemplates.delete(templateId)
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────

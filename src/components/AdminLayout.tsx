@@ -1,4 +1,4 @@
-import { Outlet, NavLink, Link } from 'react-router-dom'
+import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Globe, Settings, ArrowLeft, type LucideIcon } from 'lucide-react'
 
 interface AdminNavItem {
@@ -15,6 +15,7 @@ const ADMIN_NAV_ITEMS: AdminNavItem[] = [
 ]
 
 export default function AdminLayout() {
+  const location = useLocation()
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center justify-center lg:justify-start gap-3 p-2.5 lg:px-3 lg:py-2.5 rounded-lg text-sm font-medium transition-colors ${
       isActive
@@ -100,7 +101,9 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <main id="main-content" className="flex-1 overflow-auto">
-        <Outlet />
+        <div key={location.pathname} className="animate-fade-in">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

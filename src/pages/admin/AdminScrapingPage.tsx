@@ -6,38 +6,13 @@ import {
   getAppSettingNumber,
   setAppSetting,
 } from '../../lib/appSettingsService'
-
-// ─── UI primitives (mirrors SettingsPage patterns) ────────────────────────────
-
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-1">
-      {children}
-    </h2>
-  )
-}
-
-function SettingsCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-      {children}
-    </div>
-  )
-}
-
-function SettingsRow({ children }: { children: React.ReactNode }) {
-  return <div className="p-4">{children}</div>
-}
-
-function RowLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-0.5">{children}</p>
-  )
-}
-
-function RowDescription({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-gray-400 dark:text-gray-500">{children}</p>
-}
+import {
+  SectionHeader,
+  SettingsCard,
+  SettingsRow,
+  RowLabel,
+  RowDescription,
+} from '../../components/ui/SettingsComponents'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,7 +169,7 @@ export default function AdminScrapingPage() {
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Scraping Config</h2>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Scraping Config</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Configure the AI provider, model, and API key used for recipe scraping.
         </p>

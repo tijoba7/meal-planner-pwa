@@ -10,6 +10,8 @@ jobs:
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
+    # Skip entirely when Vercel credentials are not configured
+    if: ${{ vars.VERCEL_CONFIGURED == 'true' }}
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
       url: ${{ steps.deploy.outputs.url }}

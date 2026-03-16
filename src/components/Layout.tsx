@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
-import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -11,6 +11,8 @@ import PWAInstallBanner from './PWAInstallBanner'
 import ToastContainer from './ToastContainer'
 import OnboardingWizard, { isOnboardingDone } from './OnboardingWizard'
 import OfflineBanner from './OfflineBanner'
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 
 interface NavItem {
   to: string
@@ -23,6 +25,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Recipes', icon: BookOpen, end: true },
   { to: '/meal-plan', label: 'Meal Plan', icon: CalendarDays, end: false },
   { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
+  { to: '/discover', label: 'Discover', icon: Compass, end: false },
+  { to: '/friends', label: 'Friends', icon: Users, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
@@ -32,6 +36,13 @@ export default function Layout() {
   const navigate = useNavigate()
   const supIsAvailable = isSupabaseAvailable()
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  useKeyboardShortcuts({
+    n: () => navigate('/recipes/new'),
+    '?': () => setShowShortcuts((v) => !v),
+    Escape: () => setShowShortcuts(false),
+  })
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-colors ${
@@ -66,6 +77,18 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* Keyboard shortcuts hint */}
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            title="Keyboard shortcuts (?)"
+          >
+            <kbd className="inline-flex items-center justify-center w-5 h-5 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400">?</kbd>
+            <span>Keyboard shortcuts</span>
+          </button>
+        </div>
 
         {/* Auth section at bottom of sidebar */}
         {supIsAvailable && (
@@ -164,6 +187,9 @@ export default function Layout() {
 
       {/* Toast notifications */}
       <ToastContainer />
+
+      {/* Keyboard shortcuts help dialog */}
+      {showShortcuts && <KeyboardShortcutsDialog onClose={() => setShowShortcuts(false)} />}
     </div>
   )
 }

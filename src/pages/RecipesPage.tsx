@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
@@ -82,12 +82,29 @@ export default function RecipesPage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>(getSavedSort)
   const [loading, setLoading] = useState(true)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const shortcuts = useMemo(() => ({
+  useKeyboardShortcuts({
     '/': () => { searchRef.current?.focus(); searchRef.current?.select() },
-  }), [])
-  useKeyboardShortcuts(shortcuts)
+  })
+
+  const allCategories = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of recipes) {
+      if (r.recipeCategory?.trim()) set.add(r.recipeCategory.trim())
+    }
+    return [...set].sort()
+  }, [recipes])
+
+  const allCuisines = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of recipes) {
+      if (r.recipeCuisine?.trim()) set.add(r.recipeCuisine.trim())
+    }
+    return [...set].sort()
+  }, [recipes])
 
   useEffect(() => {
     getRecipes().then((r) => {
@@ -117,6 +134,8 @@ export default function RecipesPage() {
   const filtered = sortRecipes(
     recipes.filter((r) => {
       if (showFavoritesOnly && !r.isFavorite) return false
+      if (selectedCategories.length > 0 && !selectedCategories.includes(r.recipeCategory?.trim() ?? '')) return false
+      if (selectedCuisines.length > 0 && !selectedCuisines.includes(r.recipeCuisine?.trim() ?? '')) return false
       if (!query.trim()) return true
       const q = query.toLowerCase()
       return (
@@ -199,6 +218,50 @@ export default function RecipesPage() {
         </select>
       </div>
 
+      {/* Category filter chips */}
+      {allCategories.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-2 scrollbar-hide">
+          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Category</span>
+          {allCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategories((prev) =>
+                prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+              )}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                selectedCategories.includes(cat)
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Cuisine filter chips */}
+      {allCuisines.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Cuisine</span>
+          {allCuisines.map((cui) => (
+            <button
+              key={cui}
+              onClick={() => setSelectedCuisines((prev) =>
+                prev.includes(cui) ? prev.filter((c) => c !== cui) : [...prev, cui]
+              )}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                selectedCuisines.includes(cui)
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              {cui}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <ul className="space-y-3" aria-busy="true" aria-label="Loading recipes">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -212,6 +275,13 @@ export default function RecipesPage() {
             title="No favorites yet"
             description="Tap the heart on any recipe to save it here."
             action={{ label: 'Browse all recipes', onClick: () => setShowFavoritesOnly(false) }}
+          />
+        ) : selectedCategories.length > 0 || selectedCuisines.length > 0 ? (
+          <EmptyState
+            illustration={<SearchNoResultsIllustration />}
+            title="No recipes found"
+            description="No recipes match the selected category or cuisine."
+            action={{ label: 'Clear filters', onClick: () => { setSelectedCategories([]); setSelectedCuisines([]) } }}
           />
         ) : query ? (
           <EmptyState

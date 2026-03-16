@@ -27,6 +27,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 const SORT_STORAGE_KEY = 'mise-recipe-sort'
 const MAX_COOK_TIME = 180 // slider max in minutes; at this value = no limit
+const PAGE_SIZE = 24
 
 function getSavedSort(): SortKey {
   try {
@@ -91,6 +92,7 @@ export default function RecipesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [ingredientQuery, setIngredientQuery] = useState('')
   const [maxCookTime, setMaxCookTime] = useState(MAX_COOK_TIME)
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE)
   const searchRef = useRef<HTMLInputElement>(null)
   const ingredientRef = useRef<HTMLInputElement>(null)
 
@@ -172,6 +174,10 @@ export default function RecipesPage() {
 
   const hasAnyFilter = activeFilterCount > 0 || showFavoritesOnly || !!query.trim()
 
+  // Reset to first page whenever any filter or sort changes
+  const filterKey = `${query}|${showFavoritesOnly}|${sort}|${selectedCategories.join(',')}|${selectedCuisines.join(',')}|${selectedTags.join(',')}|${selectedDiets.join(',')}|${ingredientQuery}|${maxCookTime}`
+  useEffect(() => { setDisplayCount(PAGE_SIZE) }, [filterKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const filtered = sortRecipes(
     recipes.filter((r) => {
       if (showFavoritesOnly && !r.isFavorite) return false
@@ -200,6 +206,9 @@ export default function RecipesPage() {
     }),
     sort,
   )
+
+  const displayed = filtered.slice(0, displayCount)
+  const hasMore = displayCount < filtered.length
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
@@ -502,8 +511,9 @@ export default function RecipesPage() {
           />
         )
       ) : (
+        <>
         <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" aria-live="polite">
-          {filtered.map((recipe, index) => {
+          {displayed.map((recipe, index) => {
             const prepMins = durationToMinutes(recipe.prepTime)
             const cookMins = durationToMinutes(recipe.cookTime)
             return (
@@ -573,6 +583,17 @@ export default function RecipesPage() {
             )
           })}
         </ul>
+        {hasMore && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => setDisplayCount((c) => c + PAGE_SIZE)}
+              className="px-6 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Show {Math.min(PAGE_SIZE, filtered.length - displayCount)} more recipes
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   )

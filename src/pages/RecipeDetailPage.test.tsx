@@ -25,6 +25,13 @@ vi.mock('../lib/db', async (importOriginal) => {
   }
 })
 
+// Stub nutritionCalculator — prevents estimated-nutrition from showing in tests
+// that only want to verify the explicit recipe.nutrition field behaviour.
+vi.mock('../lib/nutritionCalculator', () => ({
+  calculateNutrition: vi.fn().mockReturnValue(null),
+  nutritionResultToRecord: vi.fn(),
+}))
+
 // Stub CookingMode so tests stay focused on RecipeDetailPage behaviour.
 vi.mock('../components/CookingMode', () => ({
   default: ({ onClose }: { onClose: () => void }) => (

@@ -77,7 +77,7 @@ test.describe('Recipe CRUD', () => {
 
     // Check detail page contents
     await expect(page.getByRole('heading', { name })).toBeVisible()
-    await expect(page.getByText(ingredient)).toBeVisible()
+    await expect(page.getByText(ingredient, { exact: true })).toBeVisible()
     await expect(page.getByText(step)).toBeVisible()
 
     // Edit and Delete actions should be present

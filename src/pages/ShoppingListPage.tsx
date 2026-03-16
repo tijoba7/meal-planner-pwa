@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Share2, Copy, Download, Plus, Trash2 } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
@@ -106,6 +106,8 @@ const CATEGORY_COLORS: Record<IngredientCategory, string> = {
   Other: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
 }
 
+const SWIPE_REVEAL = 80 // px width of delete zone revealed on full swipe
+
 function ItemRow({
   item,
   onToggle,
@@ -120,56 +122,127 @@ function ItemRow({
   isJustChecked?: boolean
 }) {
   const [editingCat, setEditingCat] = useState(false)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [swipeOpen, setSwipeOpen] = useState(false)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const swipeAxisLocked = useRef<'h' | 'v' | null>(null)
   const cat = item.category ?? 'Other'
 
-  return (
-    <div className="flex items-center px-2 min-h-[44px] gap-1">
-      {/* Checkbox — expanded to 44px touch target */}
-      <button
-        onClick={onToggle}
-        className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
-        aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
-      >
-        <span
-          className={`w-5 h-5 rounded border-2 shrink-0 transition-colors flex items-center justify-center ${
-            item.checked
-              ? 'border-green-500 bg-green-500 text-white text-xs'
-              : 'border-gray-300 dark:border-gray-600'
-          } ${isJustChecked ? 'animate-check-pop' : ''}`}
-          aria-hidden="true"
-        >
-          {item.checked && <>&#10003;</>}
-        </span>
-      </button>
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    swipeAxisLocked.current = null
+  }
 
-      <div className="flex-1 min-w-0">
-        <span
-          className={`text-sm ${item.checked ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-800 dark:text-gray-100'}`}
+  function handleTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - touchStartX.current
+    const dy = e.touches[0].clientY - touchStartY.current
+    if (!swipeAxisLocked.current) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+      swipeAxisLocked.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    }
+    if (swipeAxisLocked.current === 'v') return
+    e.preventDefault()
+    const base = swipeOpen ? -SWIPE_REVEAL : 0
+    setSwipeOffset(Math.max(-SWIPE_REVEAL, Math.min(0, base + dx)))
+  }
+
+  function handleTouchEnd() {
+    if (swipeAxisLocked.current !== 'h') return
+    if (swipeOffset < -SWIPE_REVEAL / 2) {
+      setSwipeOffset(-SWIPE_REVEAL)
+      setSwipeOpen(true)
+    } else {
+      setSwipeOffset(0)
+      setSwipeOpen(false)
+    }
+  }
+
+  function closeSwipe() {
+    setSwipeOffset(0)
+    setSwipeOpen(false)
+  }
+
+  // Checked items — simple row, no swipe
+  if (item.checked) {
+    return (
+      <div className="flex items-center px-2 min-h-[44px] gap-1">
+        <button
+          onClick={onToggle}
+          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label={`Uncheck ${item.name}`}
         >
-          {item.name}
-        </span>
-        {!item.checked && (
+          <span className="w-5 h-5 rounded border-2 border-green-500 bg-green-500 text-white text-xs flex items-center justify-center" aria-hidden="true">
+            &#10003;
+          </span>
+        </button>
+        <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 line-through">{item.name}</span>
+        <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">{item.amount} {item.unit}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Red delete zone — revealed when row is swiped left */}
+      <div
+        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 bg-red-500 text-white"
+        style={{ width: SWIPE_REVEAL }}
+        aria-hidden="true"
+      >
+        <button
+          tabIndex={swipeOpen ? 0 : -1}
+          onClick={() => { closeSwipe(); onRemove() }}
+          className="w-full h-full flex flex-col items-center justify-center gap-1"
+          aria-label={`Delete ${item.name}`}
+        >
+          <Trash2 size={18} strokeWidth={2} aria-hidden="true" />
+          <span className="text-xs font-medium">Delete</span>
+        </button>
+      </div>
+
+      {/* Swipeable row */}
+      <div
+        className="relative bg-white dark:bg-gray-800 flex items-center px-2 min-h-[44px] gap-1"
+        style={{
+          transform: `translateX(${swipeOffset}px)`,
+          transition: swipeAxisLocked.current === 'h' ? 'none' : 'transform 0.22s ease',
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Checkbox — 44px touch target */}
+        <button
+          onClick={() => { if (swipeOpen) { closeSwipe(); return } onToggle() }}
+          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label={`Check ${item.name}`}
+        >
+          <span
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center border-gray-300 dark:border-gray-600 ${isJustChecked ? 'animate-check-pop' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <span className="text-sm text-gray-800 dark:text-gray-100">{item.name}</span>
           <div className="mt-0.5">
             {editingCat ? (
               <select
                 value={cat}
                 autoFocus
-                onChange={(e) => {
-                  onCategoryChange(e.target.value as IngredientCategory)
-                  setEditingCat(false)
-                }}
+                onChange={(e) => { onCategoryChange(e.target.value as IngredientCategory); setEditingCat(false) }}
                 onBlur={() => setEditingCat(false)}
                 className="text-xs border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500"
               >
                 {ALL_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             ) : (
               <button
-                onClick={() => setEditingCat(true)}
+                onClick={() => { if (swipeOpen) { closeSwipe(); return } setEditingCat(true) }}
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[cat]} hover:opacity-80 transition-opacity`}
                 aria-label={`Change category for ${item.name}: currently ${cat}`}
               >
@@ -177,16 +250,11 @@ function ItemRow({
               </button>
             )}
           </div>
-        )}
-      </div>
+        </div>
 
-      <span
-        className={`text-xs shrink-0 ${item.checked ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}`}
-      >
-        {item.amount} {item.unit}
-      </span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{item.amount} {item.unit}</span>
 
-      {!item.checked && (
+        {/* X button — 44px touch target, always accessible */}
         <button
           onClick={onRemove}
           className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
@@ -194,7 +262,7 @@ function ItemRow({
         >
           <X size={14} strokeWidth={2} aria-hidden="true" />
         </button>
-      )}
+      </div>
     </div>
   )
 }

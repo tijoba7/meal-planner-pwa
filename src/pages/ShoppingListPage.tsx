@@ -466,7 +466,7 @@ export default function ShoppingListPage() {
       amount: parseFloat(newItemAmount) || 0,
       unit: newItemUnit.trim(),
       checked: false,
-      category: 'Other',
+      category: categorizeIngredient(newItemName.trim()),
     }
     const items = [...activeList.items, newItem]
     await updateShoppingList(activeList.id, { items })
@@ -743,7 +743,7 @@ export default function ShoppingListPage() {
         <button
           onClick={() => setShowCreate(true)}
           aria-label="New shopping list"
-          className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
         >
           + New List
         </button>
@@ -865,7 +865,7 @@ export default function ShoppingListPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Generate from meal plan
                 </label>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                   Select date range to pull ingredients from planned meals.
                 </p>
                 <div className="grid grid-cols-2 gap-3">

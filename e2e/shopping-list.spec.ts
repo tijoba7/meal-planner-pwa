@@ -48,12 +48,15 @@ async function addRecipeToPlanner(
   await addButton.click()
 
   // Wait for recipes to load from IndexedDB before clicking.
-  // Use force:true — a success toast from recipe creation may still be
-  // visible and intercept the click.
+  // dispatchEvent bypasses all actionability checks (position, viewport) —
+  // needed because a success toast or the picker's own fixed overlay can
+  // prevent a regular click from reaching the button on mobile viewports.
   const recipeButton = page.getByRole('button', { name: new RegExp(recipeName) })
   await expect(recipeButton).toBeVisible()
-  // eslint-disable-next-line playwright/no-force-option
-  await recipeButton.click({ force: true })
+  await recipeButton.dispatchEvent('click')
+  // Wait for the picker to close before continuing (ensures the DB write for
+  // the meal plan entry completes before we navigate to the shopping page).
+  await expect(recipeButton).not.toBeVisible()
 }
 
 /** Manually add an item to the currently open list detail view.
@@ -252,6 +255,79 @@ test.describe('Shopping List — item interactions', () => {
     await page.getByRole('button', { name: `Remove ${itemName}` }).click()
 
     await expect(page.getByText(itemName, { exact: true })).not.toBeVisible()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Category grouping (MEA-100)
+// ---------------------------------------------------------------------------
+
+test.describe('Shopping List — category grouping', () => {
+  test('known ingredient is auto-categorized into the correct section', async ({
+    page,
+    shoppingPage,
+  }) => {
+    const listName = `Category List ${RUN_ID}`
+
+    await shoppingPage.goto()
+    await shoppingPage.createList(listName)
+
+    // Add a produce item — "apples" should match the Produce category
+    await addItemToList(page, 'apples')
+
+    // "Produce" section header should be visible
+    await expect(page.getByRole('button', { name: /Produce/i })).toBeVisible()
+    await expect(page.getByText('apples', { exact: true })).toBeVisible()
+  })
+
+  test('unknown ingredient defaults to Other section', async ({ page, shoppingPage }) => {
+    const listName = `Other Category List ${RUN_ID}`
+    const itemName = `UnknownItem${RUN_ID}`
+
+    await shoppingPage.goto()
+    await shoppingPage.createList(listName)
+    await addItemToList(page, itemName)
+
+    // "Other" section header should appear for unrecognized ingredients
+    await expect(page.getByRole('button', { name: /Other/i })).toBeVisible()
+    await expect(page.getByText(itemName, { exact: true })).toBeVisible()
+  })
+
+  test('category section is collapsible', async ({ page, shoppingPage }) => {
+    const listName = `Collapse List ${RUN_ID}`
+
+    await shoppingPage.goto()
+    await shoppingPage.createList(listName)
+    await addItemToList(page, 'apples')
+
+    const sectionHeader = page.getByRole('button', { name: /Produce/i })
+    await expect(sectionHeader).toBeVisible()
+
+    // Collapse the section
+    await sectionHeader.click()
+    await expect(page.getByText('apples', { exact: true })).not.toBeVisible()
+
+    // Expand again
+    await sectionHeader.click()
+    await expect(page.getByText('apples', { exact: true })).toBeVisible()
+  })
+
+  test('user can change an item category via inline selector', async ({ page, shoppingPage }) => {
+    const listName = `Reclassify List ${RUN_ID}`
+
+    await shoppingPage.goto()
+    await shoppingPage.createList(listName)
+    await addItemToList(page, 'apples')
+
+    // Click the category badge to open the dropdown
+    await page.getByRole('button', { name: /Change category for apples/i }).click()
+
+    // Select "Pantry" from the dropdown
+    await page.getByRole('combobox').selectOption('Pantry')
+
+    // Item should now appear under Pantry
+    await expect(page.getByRole('button', { name: /Pantry/i })).toBeVisible()
+    await expect(page.getByText('apples', { exact: true })).toBeVisible()
   })
 })
 

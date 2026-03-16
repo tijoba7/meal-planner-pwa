@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { extractRecipeFromUrl, getStoredApiKey, setStoredApiKey } from './scraper'
+import { extractRecipeFromUrl } from './scraper'
 import type { ExtractedRecipe } from './scraper'
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-// Prevent loadAdminScrapingConfig() from consuming mocked fetch calls.
+// Mock admin scraping config — return the fake API key so extractRecipeFromUrl works.
 vi.mock('./appSettingsService', () => ({
-  getAppSettingString: vi.fn().mockResolvedValue(null),
+  getAppSettingString: vi.fn().mockImplementation((key: string) => {
+    if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
+    return Promise.resolve(null)
+  }),
   APP_SETTING_KEYS: {
     SCRAPING_API_KEY: 'scraping.api_key',
     SCRAPING_MODEL: 'scraping.model',
@@ -15,7 +18,7 @@ vi.mock('./appSettingsService', () => ({
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FAKE_API_KEY = 'sk-ant-test-key'
+const ADMIN_API_KEY = 'sk-ant-test-key'
 const RECIPE_URL = 'https://example.com/recipe/pasta'
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -85,7 +88,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html><body>pasta recipe content</body></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -110,10 +113,10 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      await extractRecipeFromUrl(RECIPE_URL)
 
       const [, claudeCall] = mockFetch.mock.calls
-      expect(claudeCall[1].headers['x-api-key']).toBe(FAKE_API_KEY)
+      expect(claudeCall[1].headers['x-api-key']).toBe(ADMIN_API_KEY)
     })
 
     it('uses the claude-haiku-4-5-20251001 model', async () => {
@@ -121,7 +124,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      await extractRecipeFromUrl(RECIPE_URL)
 
       const [, claudeCall] = mockFetch.mock.calls
       const body = JSON.parse(claudeCall[1].body as string)
@@ -133,7 +136,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html><body>pasta</body></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      await extractRecipeFromUrl(RECIPE_URL)
 
       const [, claudeCall] = mockFetch.mock.calls
       const body = JSON.parse(claudeCall[1].body as string)
@@ -149,7 +152,7 @@ describe('extractRecipeFromUrl', () => {
         .mockRejectedValueOnce(new TypeError('Failed to fetch'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
 
       const [, claudeCall] = mockFetch.mock.calls
@@ -162,7 +165,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('', false))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
 
       const [, claudeCall] = mockFetch.mock.calls
@@ -177,7 +180,7 @@ describe('extractRecipeFromUrl', () => {
         )
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      await extractRecipeFromUrl(RECIPE_URL)
 
       const [, claudeCall] = mockFetch.mock.calls
       const body = JSON.parse(claudeCall[1].body as string)
@@ -190,7 +193,7 @@ describe('extractRecipeFromUrl', () => {
         .mockRejectedValueOnce(new TypeError('CORS error'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      const result = await extractRecipeFromUrl('https://instagram.com/p/abc123', FAKE_API_KEY)
+      const result = await extractRecipeFromUrl('https://instagram.com/p/abc123')
       expect(result.ok).toBe(true)
     })
 
@@ -201,7 +204,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse(longHtml))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      await extractRecipeFromUrl(RECIPE_URL)
 
       const [, claudeCall] = mockFetch.mock.calls
       const body = JSON.parse(claudeCall[1].body as string)
@@ -220,7 +223,7 @@ describe('extractRecipeFromUrl', () => {
         .mockRejectedValueOnce(abortError)
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
 
       const [, claudeCall] = mockFetch.mock.calls
@@ -233,7 +236,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockRejectedValueOnce(new TypeError('Failed to fetch'))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -251,7 +254,7 @@ describe('extractRecipeFromUrl', () => {
         json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'Not JSON at all!' }] }),
       })
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -266,7 +269,7 @@ describe('extractRecipeFromUrl', () => {
         json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: withFences }] }),
       })
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
     })
 
@@ -280,7 +283,7 @@ describe('extractRecipeFromUrl', () => {
         }),
       })
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -294,7 +297,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(noName)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -306,7 +309,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeError('Invalid API key', 401))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -321,7 +324,7 @@ describe('extractRecipeFromUrl', () => {
         json: vi.fn().mockResolvedValue({}),
       })
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
@@ -334,7 +337,7 @@ describe('extractRecipeFromUrl', () => {
         json: vi.fn().mockResolvedValue({ content: [] }),
       })
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
       // Empty text → empty string → JSON.parse('') throws → parse error
       expect(result.ok).toBe(false)
     })
@@ -357,7 +360,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -378,7 +381,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -396,7 +399,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -415,7 +418,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -431,7 +434,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(minimal)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -453,7 +456,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(minimal)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -470,7 +473,7 @@ describe('extractRecipeFromUrl', () => {
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(withoutUrl)))
 
-      const result = await extractRecipeFromUrl(RECIPE_URL, FAKE_API_KEY)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(true)
       if (!result.ok) return
@@ -483,71 +486,3 @@ describe('extractRecipeFromUrl', () => {
 // jsdom 29 + fake-indexeddb/auto can leave localStorage in a broken state.
 // Stub it with a real Map-backed implementation for these tests.
 
-function makeLocalStorage() {
-  const store = new Map<string, string>()
-  return {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => store.set(key, value),
-    removeItem: (key: string) => store.delete(key),
-    clear: () => store.clear(),
-  }
-}
-
-describe('getStoredApiKey', () => {
-  let ls: ReturnType<typeof makeLocalStorage>
-
-  beforeEach(() => {
-    ls = makeLocalStorage()
-    vi.stubGlobal('localStorage', ls)
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('returns an empty string when no key is stored', () => {
-    expect(getStoredApiKey()).toBe('')
-  })
-
-  it('returns the stored API key', () => {
-    ls.setItem('mise_anthropic_api_key', 'sk-ant-stored')
-    expect(getStoredApiKey()).toBe('sk-ant-stored')
-  })
-})
-
-// ─── setStoredApiKey ──────────────────────────────────────────────────────────
-
-describe('setStoredApiKey', () => {
-  let ls: ReturnType<typeof makeLocalStorage>
-
-  beforeEach(() => {
-    ls = makeLocalStorage()
-    vi.stubGlobal('localStorage', ls)
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('stores a non-empty key in localStorage', () => {
-    setStoredApiKey('sk-ant-new-key')
-    expect(ls.getItem('mise_anthropic_api_key')).toBe('sk-ant-new-key')
-  })
-
-  it('trims whitespace before storing', () => {
-    setStoredApiKey('  sk-ant-trimmed  ')
-    expect(ls.getItem('mise_anthropic_api_key')).toBe('sk-ant-trimmed')
-  })
-
-  it('removes the key when given an empty string', () => {
-    ls.setItem('mise_anthropic_api_key', 'existing-key')
-    setStoredApiKey('')
-    expect(ls.getItem('mise_anthropic_api_key')).toBeNull()
-  })
-
-  it('removes the key when given a whitespace-only string', () => {
-    ls.setItem('mise_anthropic_api_key', 'existing-key')
-    setStoredApiKey('   ')
-    expect(ls.getItem('mise_anthropic_api_key')).toBeNull()
-  })
-})

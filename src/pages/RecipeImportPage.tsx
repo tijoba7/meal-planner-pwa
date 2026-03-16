@@ -11,7 +11,6 @@ import {
   parseJsonLdRecipe,
   parsePaprikaRecipe,
   parseCroutonExport,
-  getStoredApiKey,
   type ExtractedRecipe,
   type BatchItemState,
   type ScrapeResult,
@@ -42,9 +41,6 @@ export default function RecipeImportPage() {
       setAdminKeyConfigured(key !== null)
     })
   }, [])
-
-  const userApiKey = getStoredApiKey()
-  const hasAnyKey = adminKeyConfigured === true || userApiKey.length > 0
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -119,7 +115,7 @@ export default function RecipeImportPage() {
 
     if (mode.type === 'single-url') {
       setState({ phase: 'loading', label: 'Extracting recipe from URL…' })
-      const result = await extractRecipeFromUrl(mode.url, userApiKey || undefined)
+      const result = await extractRecipeFromUrl(mode.url)
       if (result.ok) {
         setState({ phase: 'review', recipe: result.recipe })
       } else {
@@ -134,7 +130,7 @@ export default function RecipeImportPage() {
         status: 'pending' as const,
       }))
       setState({ phase: 'batch', items: initialItems })
-      await extractRecipesFromUrls(mode.urls, userApiKey || undefined, (items: BatchItemState[]) => {
+      await extractRecipesFromUrls(mode.urls, (items: BatchItemState[]) => {
         setState({ phase: 'batch', items })
       })
       return
@@ -142,7 +138,7 @@ export default function RecipeImportPage() {
 
     // Plain text
     setState({ phase: 'loading', label: 'Extracting recipe from text…' })
-    const result = await extractRecipeFromText(raw, userApiKey || undefined)
+    const result = await extractRecipeFromText(raw)
     if (result.ok) {
       setState({ phase: 'review', recipe: result.recipe })
     } else {
@@ -221,7 +217,7 @@ export default function RecipeImportPage() {
     return null
   }
 
-  if (!hasAnyKey && state.phase === 'idle') {
+  if (adminKeyConfigured === false && state.phase === 'idle') {
     return (
       <div className="p-4 max-w-2xl mx-auto">
         <Link
@@ -233,27 +229,19 @@ export default function RecipeImportPage() {
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Import Recipe</h2>
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5 text-center">
           <p className="text-amber-800 dark:text-amber-300 font-medium mb-1">
-            AI API key required for URL &amp; text import
+            AI API key not configured
           </p>
           <p className="text-sm text-amber-700 dark:text-amber-400 mb-4">
-            Paste a URL or recipe text to import with AI. You can also import .paprikarecipe and
-            .json files without an API key.
+            An admin must configure the scraping API key in the Admin panel before URL and text
+            import can be used. You can still import .paprikarecipe and .json files.
           </p>
-          <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <Link
-              to="/settings"
-              className="inline-block bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
-            >
-              Add API key in Settings
-            </Link>
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center justify-center gap-2 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors"
-            >
-              <Upload size={16} />
-              Import file
-            </button>
-          </div>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="inline-flex items-center justify-center gap-2 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 text-sm font-medium px-4 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors"
+          >
+            <Upload size={16} />
+            Import file
+          </button>
         </div>
         <input
           ref={fileRef}

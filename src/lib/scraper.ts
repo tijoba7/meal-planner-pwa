@@ -97,17 +97,16 @@ async function loadAdminScrapingConfig(): Promise<{ apiKey: string | null; model
   return _adminConfig
 }
 
-async function resolveApiKeyAndModel(
-  userApiKey?: string
-): Promise<{ apiKey: string; model: string } | { error: string }> {
+async function resolveApiKeyAndModel(): Promise<
+  { apiKey: string; model: string } | { error: string }
+> {
   const admin = await loadAdminScrapingConfig()
-  const apiKey = admin.apiKey ?? userApiKey
-  if (!apiKey) {
+  if (!admin.apiKey) {
     return {
-      error: 'AI API key required. Ask your admin to configure a key, or add your own in Settings.',
+      error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
     }
   }
-  return { apiKey, model: admin.model ?? DEFAULT_MODEL }
+  return { apiKey: admin.apiKey, model: admin.model ?? DEFAULT_MODEL }
 }
 
 function truncate(text: string, maxChars: number): string {
@@ -204,10 +203,7 @@ async function callClaude(
   return { ok: true, recipe: sanitizeRecipeData(recipe) }
 }
 
-export async function extractRecipeFromUrl(
-  url: string,
-  userApiKey?: string
-): Promise<ScrapeResult> {
+export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
   const urlError = validateImportUrl(url)
   if (urlError) return { ok: false, error: URL_VALIDATION_MESSAGES[urlError] }
 
@@ -220,7 +216,7 @@ export async function extractRecipeFromUrl(
     }
   }
 
-  const resolved = await resolveApiKeyAndModel(userApiKey)
+  const resolved = await resolveApiKeyAndModel()
   if ('error' in resolved) return { ok: false, error: resolved.error }
 
   const pageText = await fetchPageText(url)
@@ -236,10 +232,7 @@ export async function extractRecipeFromUrl(
   return result
 }
 
-export async function extractRecipeFromText(
-  text: string,
-  userApiKey?: string
-): Promise<ScrapeResult> {
+export async function extractRecipeFromText(text: string): Promise<ScrapeResult> {
   const rateLimit = checkImportRateLimit()
   if (!rateLimit.allowed) {
     const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
@@ -249,7 +242,7 @@ export async function extractRecipeFromText(
     }
   }
 
-  const resolved = await resolveApiKeyAndModel(userApiKey)
+  const resolved = await resolveApiKeyAndModel()
   if ('error' in resolved) return { ok: false, error: resolved.error }
 
   const MAX_TEXT_CHARS = 12_000
@@ -263,7 +256,6 @@ export async function extractRecipeFromText(
 
 export async function extractRecipesFromUrls(
   urls: string[],
-  userApiKey: string | undefined,
   onProgress: (items: BatchItemState[]) => void
 ): Promise<BatchItemState[]> {
   const items: BatchItemState[] = urls.map((url) => ({ label: url, status: 'pending' as const }))
@@ -273,7 +265,7 @@ export async function extractRecipesFromUrls(
     items[i] = { ...items[i], status: 'loading' }
     onProgress([...items])
 
-    const result = await extractRecipeFromUrl(items[i].label, userApiKey)
+    const result = await extractRecipeFromUrl(items[i].label)
 
     if (result.ok) {
       items[i] = { ...items[i], status: 'done', recipe: result.recipe }
@@ -781,22 +773,6 @@ function normaliseInstructions(raw: unknown): HowToStep[] {
 function normaliseKeywords(raw: unknown): string[] {
   if (!Array.isArray(raw)) return []
   return raw.map((k) => String(k).trim().toLowerCase()).filter((k) => k.length > 0)
-}
-
-// ─── Settings helpers ─────────────────────────────────────────────────────────
-
-const API_KEY_STORAGE_KEY = 'mise_anthropic_api_key'
-
-export function getStoredApiKey(): string {
-  return localStorage.getItem(API_KEY_STORAGE_KEY) ?? ''
-}
-
-export function setStoredApiKey(key: string): void {
-  if (key.trim()) {
-    localStorage.setItem(API_KEY_STORAGE_KEY, key.trim())
-  } else {
-    localStorage.removeItem(API_KEY_STORAGE_KEY)
-  }
 }
 
 // Re-export Recipe type for convenience

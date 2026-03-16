@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -6,6 +6,7 @@ import RecipeImportPage from './RecipeImportPage'
 import { ToastProvider } from '../contexts/ToastContext'
 import * as scraper from '../lib/scraper'
 import * as db from '../lib/db'
+import * as appSettings from '../lib/appSettingsService'
 import type { ExtractedRecipe } from '../lib/scraper'
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
@@ -28,7 +29,6 @@ vi.mock('../lib/scraper', async (importOriginal) => {
     extractRecipeFromUrl: vi.fn(),
     extractRecipeFromText: vi.fn(),
     extractRecipesFromUrls: vi.fn(),
-    getStoredApiKey: vi.fn(),
     detectInputMode: actual.detectInputMode,
   }
 })
@@ -43,7 +43,7 @@ vi.mock('../components/RecipeImage', () => ({
 }))
 
 vi.mock('../lib/appSettingsService', () => ({
-  getAppSettingString: vi.fn().mockResolvedValue(null),
+  getAppSettingString: vi.fn().mockResolvedValue('admin-api-key'),
   APP_SETTING_KEYS: { SCRAPING_API_KEY: 'scraping.api_key' },
 }))
 
@@ -86,43 +86,39 @@ function renderPage() {
 
 describe('RecipeImportPage', () => {
   const mockExtractRecipeFromUrl = vi.mocked(scraper.extractRecipeFromUrl)
-  const mockGetStoredApiKey = vi.mocked(scraper.getStoredApiKey)
   const mockCreateRecipe = vi.mocked(db.createRecipe)
 
   beforeEach(() => {
-    mockGetStoredApiKey.mockReturnValue('test-api-key')
     mockExtractRecipeFromUrl.mockResolvedValue({ ok: true, recipe: sampleExtractedRecipe })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockCreateRecipe.mockResolvedValue({ id: 'new-recipe-id' } as any)
     mockNavigate.mockClear()
   })
 
-  // ── No API key gate ────────────────────────────────────────────────────────
+  // ── No admin key gate ──────────────────────────────────────────────────────
 
-  describe('no API key gate', () => {
+  describe('no admin key gate', () => {
     beforeEach(() => {
-      mockGetStoredApiKey.mockReturnValue('')
+      vi.mocked(appSettings.getAppSettingString).mockResolvedValue(null)
     })
 
-    it('shows the AI API key required banner', async () => {
+    afterEach(() => {
+      vi.mocked(appSettings.getAppSettingString).mockResolvedValue('admin-api-key')
+    })
+
+    it('shows the AI API key not configured banner', async () => {
       renderPage()
-      expect(await screen.findByText(/AI API key required for URL/i)).toBeInTheDocument()
+      expect(await screen.findByText(/AI API key not configured/i)).toBeInTheDocument()
     })
 
-    it('renders a link to Settings to add an API key', async () => {
-      renderPage()
-      const link = await screen.findByRole('link', { name: /add api key in settings/i })
-      expect(link).toHaveAttribute('href', '/settings')
-    })
-
-    it('renders an "Import file" button for file import without API key', async () => {
+    it('renders an "Import file" button for file import without admin key', async () => {
       renderPage()
       expect(await screen.findByRole('button', { name: /import file/i })).toBeInTheDocument()
     })
 
-    it('does not render the textarea input when API key is missing', async () => {
+    it('does not render the textarea input when admin key is not configured', async () => {
       renderPage()
-      await screen.findByText(/AI API key required for URL/i)
+      await screen.findByText(/AI API key not configured/i)
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })

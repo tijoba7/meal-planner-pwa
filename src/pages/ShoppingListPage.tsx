@@ -194,7 +194,6 @@ function formatDate(iso: string): string {
   })
 }
 
-/** Aggregate ingredients from meal plans for the given date range. */
 /** Aggregate ingredients from meal plans for the given date range, excluding pantry items. */
 function aggregateIngredients(
   startDate: string,
@@ -513,6 +512,7 @@ export default function ShoppingListPage() {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([])
+  const [excludePantry, setExcludePantry] = useState(true)
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
@@ -1049,10 +1049,20 @@ export default function ShoppingListPage() {
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                   Select date range to pull ingredients from planned meals.
-                  {pantryItems.length > 0 && (
-                    <span className="text-green-600 dark:text-green-400"> Items in your pantry will be excluded.</span>
-                  )}
                 </p>
+                {pantryItems.length > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={excludePantry}
+                      onChange={(e) => setExcludePantry(e.target.checked)}
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-xs text-gray-600 dark:text-gray-300">
+                      Exclude {pantryItems.length} pantry item{pantryItems.length !== 1 ? 's' : ''} already at home
+                    </span>
+                  </label>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label htmlFor="new-list-start-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>

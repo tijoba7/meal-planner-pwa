@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChefHat, Heart, Share2, Globe, Users, Lock, X } from 'lucide-react'
-import { getRecipe, deleteRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
+import { ChefHat, Copy, Heart, Share2, Globe, Users, Lock, X } from 'lucide-react'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
@@ -89,6 +90,7 @@ export default function RecipeDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
   const [scaledServings, setScaledServings] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
 
@@ -97,6 +99,15 @@ export default function RecipeDetailPage() {
   const [cloudMeta, setCloudMeta] = useState<RecipeCloudMeta | null>(null)
   const [selectedVisibility, setSelectedVisibility] = useState<RecipeVisibility>('public')
   const [sharing, setSharing] = useState(false)
+
+  useKeyboardShortcuts({
+    Escape: () => {
+      if (cookingMode) return // CookingMode handles its own Escape
+      if (showDeleteConfirm) setShowDeleteConfirm(false)
+      else if (showSharePanel) setShowSharePanel(false)
+      else navigate(-1)
+    },
+  })
 
   useEffect(() => {
     if (!id) return
@@ -122,6 +133,14 @@ export default function RecipeDetailPage() {
     if (!id || !recipe) return
     const newVal = await toggleFavorite(id)
     setRecipe((r) => (r ? { ...r, isFavorite: newVal } : r))
+  }
+
+  async function handleDuplicate() {
+    if (!id) return
+    setDuplicating(true)
+    const copy = await duplicateRecipe(id)
+    toast.success(`"${copy.name}" created.`)
+    navigate(`/recipes/${copy.id}/edit`)
   }
 
   async function handleDelete() {
@@ -261,6 +280,15 @@ export default function RecipeDetailPage() {
           >
             Edit
           </Link>
+          <button
+            onClick={handleDuplicate}
+            disabled={duplicating}
+            aria-label="Duplicate recipe"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            <Copy size={14} strokeWidth={2} aria-hidden="true" />
+            {duplicating ? 'Copying…' : 'Duplicate'}
+          </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="text-sm font-medium text-red-500 dark:text-red-400 border border-red-300 dark:border-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"

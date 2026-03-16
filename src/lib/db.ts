@@ -134,6 +134,13 @@ export async function deleteRecipe(recipeId: string): Promise<void> {
   await db.recipes.delete(recipeId)
 }
 
+export async function duplicateRecipe(recipeId: string): Promise<Recipe> {
+  const original = await db.recipes.get(recipeId)
+  if (!original) throw new Error('Recipe not found')
+  const { id: _id, dateCreated: _dc, dateModified: _dm, ...data } = original
+  return createRecipe({ ...data, name: `${data.name} (Copy)`, isFavorite: false })
+}
+
 export async function toggleFavorite(recipeId: string): Promise<boolean> {
   const recipe = await db.recipes.get(recipeId)
   if (!recipe) throw new Error('Recipe not found')

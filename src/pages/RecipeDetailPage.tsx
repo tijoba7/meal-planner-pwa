@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
+import { AlertTriangle, ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useUnitPreference } from '../hooks/useUnitPreference'
+import { getDietaryPrefs, detectAllergenIngredients, DIETARY_PREFERENCES } from '../lib/dietary'
 import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes, getCollections, addRecipeToCollection, removeRecipeFromCollection } from '../lib/db'
+import { convertUnit } from '../lib/units'
 import type { Recipe, Collection } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
@@ -118,6 +121,20 @@ export default function RecipeDetailPage() {
   const [userGroups, setUserGroups] = useState<GroupWithMeta[]>([])
   const [sharedGroupIds, setSharedGroupIds] = useState<Set<string>>(new Set())
   const [groupTogglingId, setGroupTogglingId] = useState<string | null>(null)
+
+  const [unitSystem] = useUnitPreference()
+
+  // Allergen detection based on user dietary prefs
+  const userDietaryPrefs = getDietaryPrefs()
+  const allergenIngredientIndices = recipe
+    ? detectAllergenIngredients(
+        recipe.recipeIngredient.map((i) => i.name),
+        userDietaryPrefs,
+      )
+    : new Set<number>()
+  const flaggedDietLabels = userDietaryPrefs
+    .filter((id) => allergenIngredientIndices.size > 0 && DIETARY_PREFERENCES.find((p) => p.id === id))
+    .map((id) => DIETARY_PREFERENCES.find((p) => p.id === id)!.label)
 
   useKeyboardShortcuts({
     Escape: () => {
@@ -469,15 +486,16 @@ export default function RecipeDetailPage() {
         <ul className="space-y-2 print:columns-2 print:[column-gap:1.5rem]">
           {recipe.recipeIngredient.map((ing, i) => {
             const scaledAmount = ing.amount * scale
+            const { amount: displayAmount, unit: displayUnit } = convertUnit(scaledAmount, ing.unit, unitSystem)
             const showOriginal = isScaled && ing.amount > 0
             return (
               <li key={i} className="flex items-baseline gap-2 text-sm">
                 <span className="text-gray-400 dark:text-gray-500">·</span>
                 <span className="font-medium text-gray-700 dark:text-gray-200">
-                  {formatAmount(scaledAmount)} {ing.unit}
+                  {formatAmount(displayAmount)} {displayUnit}
                   {showOriginal && (
                     <span className="font-normal text-gray-400 dark:text-gray-500 ml-1">
-                      (was {formatAmount(ing.amount)})
+                      (was {formatAmount(ing.amount)} {ing.unit})
                     </span>
                   )}
                 </span>

@@ -4,6 +4,8 @@ import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
+import { useUnitPreference } from '../hooks/useUnitPreference'
+import { convertUnit, type UnitSystem } from '../lib/units'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe, IngredientCategory, PantryItem } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
@@ -280,12 +282,14 @@ function ItemRow({
   onRemove,
   onCategoryChange,
   isJustChecked = false,
+  unitSystem,
 }: {
   item: ShoppingItem
   onToggle: () => void
   onRemove: () => void
   onCategoryChange: (cat: IngredientCategory) => void
   isJustChecked?: boolean
+  unitSystem: UnitSystem
 }) {
   const [editingCat, setEditingCat] = useState(false)
   const [swipeOffset, setSwipeOffset] = useState(0)
@@ -294,6 +298,8 @@ function ItemRow({
   const touchStartY = useRef(0)
   const swipeAxisLocked = useRef<'h' | 'v' | null>(null)
   const cat = item.category ?? 'Other'
+  const { amount: rawDisplayAmount, unit: displayUnit } = convertUnit(item.amount, item.unit, unitSystem)
+  const displayAmount = Math.round(rawDisplayAmount * 10) / 10
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
@@ -344,7 +350,7 @@ function ItemRow({
           </span>
         </button>
         <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 line-through">{item.name}</span>
-        <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">{item.amount} {item.unit}</span>
+        <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">{displayAmount} {displayUnit}</span>
       </div>
     )
   }
@@ -418,7 +424,7 @@ function ItemRow({
           </div>
         </div>
 
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{item.amount} {item.unit}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{displayAmount} {displayUnit}</span>
 
         {/* X button — 44px touch target, always accessible */}
         <button
@@ -440,6 +446,7 @@ function CategorySection({
   onRemove,
   onCategoryChange,
   justChecked,
+  unitSystem,
 }: {
   category: IngredientCategory
   items: ShoppingItem[]
@@ -447,6 +454,7 @@ function CategorySection({
   onRemove: (id: string) => void
   onCategoryChange: (id: string, cat: IngredientCategory) => void
   justChecked: Set<string>
+  unitSystem: UnitSystem
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const allChecked = items.every((i) => i.checked)
@@ -482,9 +490,10 @@ function CategorySection({
               <ItemRow
                 item={item}
                 onToggle={() => onToggle(item.id)}
-            isJustChecked={justChecked.has(item.id)}
+                isJustChecked={justChecked.has(item.id)}
                 onRemove={() => onRemove(item.id)}
                 onCategoryChange={(cat) => onCategoryChange(item.id, cat)}
+                unitSystem={unitSystem}
               />
             </div>
           ))}
@@ -496,6 +505,7 @@ function CategorySection({
 
 export default function ShoppingListPage() {
   const toast = useToast()
+  const [unitSystem] = useUnitPreference()
   const [lists, setLists] = useState<ShoppingList[]>([])
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [activeList, setActiveList] = useState<ShoppingList | null>(null)
@@ -772,6 +782,7 @@ export default function ShoppingListPage() {
             onRemove={handleRemoveItem}
             onCategoryChange={handleCategoryChange}
             justChecked={justChecked}
+            unitSystem={unitSystem}
           />
         ))}
 
@@ -856,6 +867,7 @@ export default function ShoppingListPage() {
                     onToggle={() => handleToggle(item.id)}
                     onRemove={() => handleRemoveItem(item.id)}
                     onCategoryChange={(cat) => handleCategoryChange(item.id, cat)}
+                    unitSystem={unitSystem}
                   />
                 </div>
               ))}

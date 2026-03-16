@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { getStoredApiKey, setStoredApiKey } from '../lib/scraper'
 import { useTheme } from '../contexts/ThemeContext'
+import { useUnitPreference } from '../hooks/useUnitPreference'
 import { db } from '../lib/db'
 import type { Recipe, MealPlan, ShoppingList, MealPlanTemplate, Collection, PantryItem } from '../types'
+import { DIETARY_PREFERENCES, getDietaryPrefs, saveDietaryPrefs } from '../lib/dietary'
 
 // ─── Import types ─────────────────────────────────────────────────────────────
 
@@ -230,6 +232,7 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = useState(() => getStoredApiKey())
   const [saved, setSaved] = useState(false)
   const { theme, setTheme } = useTheme()
+  const [unitSystem, setUnitSystem] = useUnitPreference()
   const [clearStep, setClearStep] = useState<0 | 1 | 2>(0)
   const [clearing, setClearing] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -248,6 +251,17 @@ export default function SettingsPage() {
     if (typeof Notification === 'undefined') return 'unsupported'
     return Notification.permission
   })
+
+  // Dietary preferences
+  const [dietaryPrefs, setDietaryPrefsState] = useState<string[]>(() => getDietaryPrefs())
+
+  function handleToggleDiet(id: string) {
+    setDietaryPrefsState((prev) => {
+      const next = prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+      saveDietaryPrefs(next)
+      return next
+    })
+  }
 
   // Display name
   const [displayName, setDisplayName] = useState(() => localStorage.getItem(DISPLAY_NAME_KEY) ?? '')
@@ -481,15 +495,67 @@ export default function SettingsPage() {
             </div>
           </SettingsRow>
           <SettingsRow>
-            <div className="flex items-center justify-between">
-              <div>
-                <RowLabel>Units</RowLabel>
-                <RowDescription>Ingredient measurements</RowDescription>
-              </div>
-              <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                Coming soon
-              </span>
+            <RowLabel>Units</RowLabel>
+            <RowDescription>Ingredient measurements</RowDescription>
+            <div className="flex gap-2 mt-2">
+              {([
+                { value: 'imperial', label: 'Imperial' },
+                { value: 'metric', label: 'Metric' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setUnitSystem(opt.value)}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                    unitSystem === opt.value
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
+          </SettingsRow>
+        </SettingsCard>
+      </section>
+
+      {/* Dietary Preferences */}
+      <section>
+        <SectionHeader>Dietary Preferences</SectionHeader>
+        <SettingsCard>
+          <SettingsRow>
+            <RowLabel>Your dietary needs</RowLabel>
+            <RowDescription>Recipes will be filtered and allergens highlighted based on your selections.</RowDescription>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {DIETARY_PREFERENCES.map((pref) => {
+                const selected = dietaryPrefs.includes(pref.id)
+                return (
+                  <button
+                    key={pref.id}
+                    type="button"
+                    onClick={() => handleToggleDiet(pref.id)}
+                    aria-pressed={selected}
+                    title={pref.description}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      selected
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {pref.label}
+                  </button>
+                )
+              })}
+            </div>
+            {dietaryPrefs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { setDietaryPrefsState([]); saveDietaryPrefs([]) }}
+                className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium mt-2"
+              >
+                Clear all
+              </button>
+            )}
           </SettingsRow>
         </SettingsCard>
       </section>

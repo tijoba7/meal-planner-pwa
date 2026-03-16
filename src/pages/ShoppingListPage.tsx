@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, useId } from 'react'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Share2, Copy, Download, Plus, Trash2 } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
-import type { ShoppingList, ShoppingItem, MealPlan, Recipe, IngredientCategory } from '../types'
+import type { ShoppingList, ShoppingItem, MealPlan, Recipe, IngredientCategory, PantryItem } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
   getShoppingLists,
@@ -15,8 +15,163 @@ import {
   updateShoppingList,
   getMealPlans,
   getRecipes,
+  getPantryItems,
 } from '../lib/db'
 import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
+
+// ── Autocomplete suggestion types ─────────────────────────────────────────────
+
+type SuggestionEntry = { name: string; unit: string }
+
+/** Parse "2 cups flour" or "1/2 lb chicken" → { name, amount, unit }. Returns null if no match. */
+function parseQuickAdd(raw: string): { name: string; amount: number; unit: string } | null {
+  const UNITS =
+    /^(cups?|tbsps?|tsps?|lbs?|oz|g|kg|ml|l|liters?|pounds?|ounces?|grams?|kilograms?|cans?|bunches?|cloves?|slices?|pieces?|heads?|stalks?|sprigs?)$/i
+  const m = raw.trim().match(/^(\d+(?:[./]\d+)?)\s+(\S+)\s+(.+)$/)
+  if (!m) return null
+  const [, qty, possibleUnit, rest] = m
+  if (!UNITS.test(possibleUnit)) return null
+  const amount = qty.includes('/')
+    ? (() => { const [n, d] = qty.split('/'); return +n / +d })()
+    : parseFloat(qty)
+  return { name: rest.trim(), amount, unit: possibleUnit.trim() }
+}
+
+/** Collect unique ingredient suggestions from loaded shopping lists and recipes, ranked by use frequency. */
+function buildSuggestions(lists: ShoppingList[], recipes: Recipe[]): SuggestionEntry[] {
+  const counts = new Map<string, { unit: string; count: number }>()
+  for (const list of lists) {
+    for (const item of list.items) {
+      const key = item.name.toLowerCase()
+      const existing = counts.get(key)
+      if (existing) {
+        existing.count++
+      } else {
+        counts.set(key, { unit: item.unit || '', count: 1 })
+      }
+    }
+  }
+  for (const recipe of recipes) {
+    for (const ing of recipe.recipeIngredient) {
+      const key = ing.name.toLowerCase()
+      if (!counts.has(key)) {
+        counts.set(key, { unit: ing.unit || '', count: 0 })
+      }
+    }
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
+    .map(([name, { unit }]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      unit,
+    }))
+}
+
+// ── Item name autocomplete input ───────────────────────────────────────────────
+
+function ItemNameInput({
+  value,
+  onChange,
+  onSelectSuggestion,
+  suggestions,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSelectSuggestion: (name: string, unit: string) => void
+  suggestions: SuggestionEntry[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const listId = useId()
+
+  const parsed = useMemo(() => parseQuickAdd(value), [value])
+
+  const filtered = useMemo(() => {
+    if (!value.trim()) return []
+    const q = (parsed?.name ?? value).toLowerCase()
+    return suggestions.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [value, suggestions, parsed])
+
+  const showDropdown = open && filtered.length > 0
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (!showDropdown) { setOpen(true); return }
+      setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && showDropdown && activeIdx >= 0) {
+      e.preventDefault()
+      const s = filtered[activeIdx]
+      onSelectSuggestion(s.name, s.unit)
+      setOpen(false)
+      setActiveIdx(-1)
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setActiveIdx(-1)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); setActiveIdx(-1) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => { setOpen(false); setActiveIdx(-1) }}
+        onKeyDown={handleKeyDown}
+        placeholder='Name or "2 cups flour"'
+        aria-label="Item name"
+        autoComplete="off"
+        autoFocus
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        aria-controls={showDropdown ? listId : undefined}
+        className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+      />
+      {parsed && (
+        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+          <span className="text-xs text-green-600 dark:text-green-400 font-medium bg-white dark:bg-gray-700 pl-1">
+            {parsed.amount} {parsed.unit}
+          </span>
+        </div>
+      )}
+      {showDropdown && (
+        <ul
+          id={listId}
+          role="listbox"
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-md max-h-48 overflow-y-auto"
+        >
+          {filtered.map((s, idx) => (
+            <li
+              key={s.name}
+              role="option"
+              aria-selected={idx === activeIdx}
+              onClick={() => { onSelectSuggestion(s.name, s.unit); setOpen(false); setActiveIdx(-1) }}
+              onMouseEnter={() => setActiveIdx(idx)}
+              className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
+                idx === activeIdx
+                  ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <span>{s.name}</span>
+              {s.unit && <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">{s.unit}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 function toISODate(date: Date): string {
   return date.toISOString().slice(0, 10)
@@ -40,13 +195,16 @@ function formatDate(iso: string): string {
 }
 
 /** Aggregate ingredients from meal plans for the given date range. */
+/** Aggregate ingredients from meal plans for the given date range, excluding pantry items. */
 function aggregateIngredients(
   startDate: string,
   endDate: string,
   mealPlans: MealPlan[],
-  recipesById: Map<string, Recipe>
-): Omit<ShoppingItem, 'id'>[] {
+  recipesById: Map<string, Recipe>,
+  pantryItems: PantryItem[] = []
+): { items: Omit<ShoppingItem, 'id'>[]; excludedCount: number } {
   const merged = new Map<string, { name: string; amount: number; unit: string }>()
+  const pantryNames = new Set(pantryItems.map((p) => p.name.toLowerCase()))
 
   for (const plan of mealPlans) {
     for (const [dateKey, dayPlan] of Object.entries(plan.days)) {
@@ -77,12 +235,21 @@ function aggregateIngredients(
     }
   }
 
-  return Array.from(merged.values()).map((item) => ({
-    ...item,
-    amount: Math.round(item.amount * 100) / 100,
-    checked: false,
-    category: categorizeIngredient(item.name),
-  }))
+  let excludedCount = 0
+  const items: Omit<ShoppingItem, 'id'>[] = []
+  for (const item of merged.values()) {
+    if (pantryNames.has(item.name.toLowerCase())) {
+      excludedCount++
+      continue
+    }
+    items.push({
+      ...item,
+      amount: Math.round(item.amount * 100) / 100,
+      checked: false,
+      category: categorizeIngredient(item.name),
+    })
+  }
+  return { items, excludedCount }
 }
 
 /** Group items by category, preserving display order. */
@@ -345,6 +512,8 @@ export default function ShoppingListPage() {
 
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>([])
+  const [excludePantry, setExcludePantry] = useState(true)
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
@@ -359,9 +528,12 @@ export default function ShoppingListPage() {
   }, [])
 
   useEffect(() => {
-    Promise.all([reload(), getMealPlans().then(setMealPlans), getRecipes().then(setRecipes)]).then(
-      () => setLoading(false)
-    )
+    Promise.all([
+      reload(),
+      getMealPlans().then(setMealPlans),
+      getRecipes().then(setRecipes),
+      getPantryItems().then(setPantryItems),
+    ]).then(() => setLoading(false))
   }, [reload])
 
   useEffect(() => {
@@ -374,11 +546,13 @@ export default function ShoppingListPage() {
 
   const recipesById = new Map(recipes.map((r) => [r.id, r]))
 
+  const suggestions = useMemo(() => buildSuggestions(lists, recipes), [lists, recipes])
+
   const handleCreate = async () => {
     if (!listName.trim()) return
     setCreating(true)
-    const items = aggregateIngredients(startDate, endDate, mealPlans, recipesById)
-    const itemsWithIds: ShoppingItem[] = items.map((item) => ({
+    const { items: aggregated, excludedCount } = aggregateIngredients(startDate, endDate, mealPlans, recipesById, pantryItems)
+    const itemsWithIds: ShoppingItem[] = aggregated.map((item) => ({
       ...item,
       id: crypto.randomUUID(),
     }))
@@ -391,7 +565,10 @@ export default function ShoppingListPage() {
     await reload()
     setActiveListId(list.id)
     setCreating(false)
-    toast.success('Shopping list created.')
+    const msg = excludedCount > 0
+      ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
+      : 'Shopping list created.'
+    toast.success(msg)
   }
 
   const handleDelete = async (id: string) => {
@@ -460,13 +637,18 @@ export default function ShoppingListPage() {
 
   const handleAddItem = async () => {
     if (!activeList || !newItemName.trim()) return
+    // Support quick-add: "2 cups flour" in the name field fills amount/unit
+    const quickParsed = parseQuickAdd(newItemName.trim())
+    const name = quickParsed?.name ?? newItemName.trim()
+    const amount = parseFloat(newItemAmount) || quickParsed?.amount || 0
+    const unit = newItemUnit.trim() || quickParsed?.unit || ''
     const newItem: ShoppingItem = {
       id: crypto.randomUUID(),
-      name: newItemName.trim(),
-      amount: parseFloat(newItemAmount) || 0,
-      unit: newItemUnit.trim(),
+      name,
+      amount,
+      unit,
       checked: false,
-      category: categorizeIngredient(newItemName.trim()),
+      category: categorizeIngredient(name),
     }
     const items = [...activeList.items, newItem]
     await updateShoppingList(activeList.id, { items })
@@ -598,15 +780,14 @@ export default function ShoppingListPage() {
               Add item
             </p>
             <div className="space-y-3">
-              <input
-                type="text"
+              <ItemNameInput
                 value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem() }}
-                placeholder="Item name (e.g. paper towels)"
-                aria-label="Item name"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                autoFocus
+                onChange={setNewItemName}
+                onSelectSuggestion={(name, unit) => {
+                  setNewItemName(name)
+                  if (!newItemUnit.trim()) setNewItemUnit(unit)
+                }}
+                suggestions={suggestions}
               />
               <div className="flex gap-2">
                 <input
@@ -867,6 +1048,9 @@ export default function ShoppingListPage() {
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                   Select date range to pull ingredients from planned meals.
+                  {pantryItems.length > 0 && (
+                    <span className="text-green-600 dark:text-green-400"> Items in your pantry will be excluded.</span>
+                  )}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

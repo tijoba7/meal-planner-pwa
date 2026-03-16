@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -6,6 +7,8 @@ import { isSupabaseAvailable } from '../lib/supabase'
 import { Avatar } from './ProfileCard'
 import MigrationPrompt from './MigrationPrompt'
 import AppUpdateBanner from './AppUpdateBanner'
+import PWAInstallBanner from './PWAInstallBanner'
+import OnboardingWizard, { isOnboardingDone } from './OnboardingWizard'
 
 interface NavItem {
   to: string
@@ -26,6 +29,7 @@ export default function Layout() {
   const { profile } = useProfile()
   const navigate = useNavigate()
   const supIsAvailable = isSupabaseAvailable()
+  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-colors ${
@@ -141,11 +145,17 @@ export default function Layout() {
         ))}
       </nav>
 
+      {/* First-time user onboarding wizard */}
+      {showOnboarding && <OnboardingWizard onDone={() => setShowOnboarding(false)} />}
+
       {/* Cloud migration prompt — shown once when user has local data after sign-in */}
       <MigrationPrompt />
 
       {/* App update notification — shown when a new service worker is ready */}
       <AppUpdateBanner />
+
+      {/* PWA install prompt — shown on 2nd+ visit when browser signals installability */}
+      <PWAInstallBanner />
     </div>
   )
 }

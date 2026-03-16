@@ -569,6 +569,38 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          key: string
+          value: Json
+          sensitive: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          key: string
+          value?: Json
+          sensitive?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          key?: string
+          value?: Json
+          sensitive?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'app_settings_updated_by_fkey'
+            columns: ['updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -624,6 +656,7 @@ export type FriendInvite = Tables<'friend_invites'>
 export type Group = Tables<'groups'>
 export type GroupMember = Tables<'group_members'>
 export type GroupRecipe = Tables<'group_recipes'>
+export type AppSetting = Tables<'app_settings'>
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 

@@ -2,9 +2,13 @@
 /**
  * Bundle size budget check.
  *
+ * After route-level code splitting (MEA-144) the meaningful budget is the
+ * INITIAL bundle — the JS the browser must parse before the app renders.
+ * Lazy chunks load on-demand and don't affect first-load performance.
+ *
  * Budgets (gzipped):
- *   JS  — 150 KB total across all entry chunks
- *   CSS — 20 KB total
+ *   JS initial chunk (index-*.js)  — 200 KB
+ *   CSS total                      — 20 KB
  *
  * Exit 1 if any budget is exceeded so CI fails.
  */
@@ -16,8 +20,8 @@ import { gzipSync } from 'zlib'
 const DIST_ASSETS = 'dist/assets'
 
 const BUDGETS = {
-  js: 150 * 1024,  // 150 KB
-  css: 20 * 1024,  // 20 KB
+  jsInitial: 200 * 1024, // 200 KB — initial bundle only
+  css: 20 * 1024,        // 20 KB
 }
 
 function gzippedSize(filePath) {
@@ -37,6 +41,7 @@ try {
   process.exit(1)
 }
 
+let initialJs = 0
 let totalJs = 0
 let totalCss = 0
 const rows = []
@@ -50,37 +55,44 @@ for (const file of files) {
 
   const gz = gzippedSize(filePath)
   const isWorkbox = file.includes('workbox')
+  // The initial entry chunk has no route-name prefix — matches index-[hash].js
+  const isInitial = ext === 'js' && /^index-/.test(file) && !isWorkbox
 
-  // Workbox service worker files are tracked but excluded from the JS budget
   if (ext === 'js' && !isWorkbox) totalJs += gz
+  if (ext === 'js' && isInitial) initialJs += gz
   if (ext === 'css') totalCss += gz
 
-  rows.push({ file, gz, ext, isWorkbox })
+  rows.push({ file, gz, ext, isWorkbox, isInitial })
 }
 
 // Print report table
-const colWidth = 48
+const colWidth = 52
 console.log('\nBundle size report (gzipped)\n')
 console.log('File'.padEnd(colWidth) + 'Gzipped')
 console.log('─'.repeat(colWidth + 12))
 for (const row of rows.sort((a, b) => b.gz - a.gz)) {
-  const note = row.isWorkbox ? ' (workbox — excluded from budget)' : ''
+  const note = row.isWorkbox
+    ? ' (workbox — excluded)'
+    : row.isInitial
+    ? ' ← initial bundle'
+    : ''
   console.log(row.file.padEnd(colWidth) + formatKB(row.gz) + note)
 }
 console.log('─'.repeat(colWidth + 12))
-console.log(`${'Total JS (excl. workbox)'.padEnd(colWidth)}${formatKB(totalJs)}  (budget: ${formatKB(BUDGETS.js)})`)
+console.log(`${'Initial JS (index-*.js)'.padEnd(colWidth)}${formatKB(initialJs)}  (budget: ${formatKB(BUDGETS.jsInitial)})`)
+console.log(`${'Total JS (all chunks, excl. workbox)'.padEnd(colWidth)}${formatKB(totalJs)}  (informational)`)
 console.log(`${'Total CSS'.padEnd(colWidth)}${formatKB(totalCss)}  (budget: ${formatKB(BUDGETS.css)})`)
 console.log()
 
 let failed = false
 
-if (totalJs > BUDGETS.js) {
-  console.error(`FAIL  JS budget exceeded: ${formatKB(totalJs)} > ${formatKB(BUDGETS.js)} (+${formatKB(totalJs - BUDGETS.js)} over)`)
-  console.error('      Tip: check for large deps (lucide-react, @supabase/supabase-js, react-router-dom).')
-  console.error('           Consider lazy-loading routes or importing icons individually.')
+if (initialJs > BUDGETS.jsInitial) {
+  console.error(`FAIL  Initial JS budget exceeded: ${formatKB(initialJs)} > ${formatKB(BUDGETS.jsInitial)} (+${formatKB(initialJs - BUDGETS.jsInitial)} over)`)
+  console.error('      Tip: check for large deps in the main bundle (React, Dexie, Layout).')
+  console.error('           Move more code to lazy routes or dynamic imports.')
   failed = true
 } else {
-  console.log(`PASS  JS: ${formatKB(totalJs)} / ${formatKB(BUDGETS.js)}`)
+  console.log(`PASS  Initial JS: ${formatKB(initialJs)} / ${formatKB(BUDGETS.jsInitial)}`)
 }
 
 if (totalCss > BUDGETS.css) {

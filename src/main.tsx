@@ -5,9 +5,11 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { seedIfEmpty } from './lib/db'
 import { initSentry } from './lib/sentry'
+import { startVitalsReporting } from './lib/vitals'
 import './index.css'
 
 initSentry()
+startVitalsReporting()
 seedIfEmpty()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

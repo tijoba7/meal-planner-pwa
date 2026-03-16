@@ -6,6 +6,7 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { db } from '../lib/db'
 import type { Recipe, MealPlan, ShoppingList, MealPlanTemplate, Collection, PantryItem } from '../types'
 import { DIETARY_PREFERENCES, getDietaryPrefs, saveDietaryPrefs } from '../lib/dietary'
+import PerformanceDashboard from '../components/PerformanceDashboard'
 
 // ─── Import types ─────────────────────────────────────────────────────────────
 
@@ -129,7 +130,9 @@ function getNotifPrefs(): NotificationPrefs {
   try {
     const raw = localStorage.getItem(NOTIF_PREFS_KEY)
     if (raw) return JSON.parse(raw) as NotificationPrefs
-  } catch {}
+  } catch {
+    // ignore JSON parse errors
+  }
   return { pushEnabled: false, mealPlanReminders: false }
 }
 
@@ -628,7 +631,7 @@ export default function SettingsPage() {
               <div className="mt-2 space-y-1.5">
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
-                    className="bg-green-500 h-2 rounded-full transition-all"
+                    className="bg-green-600 h-2 rounded-full transition-all"
                     style={{ width: `${storageUsedPct ?? 0}%` }}
                   />
                 </div>
@@ -801,6 +804,10 @@ export default function SettingsPage() {
             <RowLabel>Open source</RowLabel>
             <RowDescription>Built with React, Dexie.js, and Tailwind CSS.</RowDescription>
           </SettingsRow>
+          <SettingsRow>
+            <RowLabel>Performance</RowLabel>
+            <PerformanceDashboard />
+          </SettingsRow>
         </SettingsCard>
       </section>
 
@@ -920,7 +927,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
-                      className="bg-green-500 h-2 rounded-full transition-all duration-200"
+                      className="bg-green-600 h-2 rounded-full transition-all duration-200"
                       style={{ width: `${importProgress?.pct ?? 0}%` }}
                     />
                   </div>

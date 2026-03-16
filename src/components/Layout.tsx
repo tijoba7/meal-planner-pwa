@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -169,7 +169,7 @@ export default function Layout() {
             >
               {profile
                 ? <Avatar profile={profile} size="sm" />
-                : <LogOut size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
+                : <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
               }
             </Link>
           ) : (

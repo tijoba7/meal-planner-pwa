@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, Bell, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
-import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
 import { Avatar } from './ProfileCard'
 import MigrationPrompt from './MigrationPrompt'
 import AppUpdateBanner from './AppUpdateBanner'
@@ -14,6 +13,7 @@ import OnboardingWizard, { isOnboardingDone } from './OnboardingWizard'
 import OfflineBanner from './OfflineBanner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
 
 interface NavItem {
   to: string

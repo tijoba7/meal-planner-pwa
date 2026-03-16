@@ -41,6 +41,8 @@ export interface EngagementStats {
   commentCount: number
   avgRating: number | null
   ratingCount: number
+  userLiked: boolean
+  userBookmarked: boolean
 }
 
 // ─── Reactions ────────────────────────────────────────────────────────────────
@@ -320,12 +322,13 @@ export async function deleteRating(
  * Returns a map of recipeId → stats, suitable for annotating feed cards.
  */
 export async function getEngagementStats(
-  recipeIds: string[]
+  recipeIds: string[],
+  userId?: string
 ): Promise<Record<string, EngagementStats>> {
   if (!supabase || recipeIds.length === 0) return {}
 
   const [reactionsRes, commentsRes, ratingsRes] = await Promise.all([
-    supabase.from('reactions').select('recipe_id, type').in('recipe_id', recipeIds),
+    supabase.from('reactions').select('recipe_id, type, user_id').in('recipe_id', recipeIds),
     supabase.from('comments').select('recipe_id').in('recipe_id', recipeIds).is('deleted_at', null),
     supabase.from('ratings').select('recipe_id, score').in('recipe_id', recipeIds),
   ])
@@ -339,15 +342,22 @@ export async function getEngagementStats(
         commentCount: 0,
         avgRating: null,
         ratingCount: 0,
+        userLiked: false,
+        userBookmarked: false,
       }
     }
     return stats[id]
   }
 
-  for (const r of (reactionsRes.data ?? []) as { recipe_id: string; type: string }[]) {
+  for (const r of (reactionsRes.data ?? []) as { recipe_id: string; type: string; user_id: string }[]) {
     const e = ensureEntry(r.recipe_id)
-    if (r.type === 'like') e.likeCount++
-    else if (r.type === 'bookmark') e.bookmarkCount++
+    if (r.type === 'like') {
+      e.likeCount++
+      if (userId && r.user_id === userId) e.userLiked = true
+    } else if (r.type === 'bookmark') {
+      e.bookmarkCount++
+      if (userId && r.user_id === userId) e.userBookmarked = true
+    }
   }
 
   for (const c of (commentsRes.data ?? []) as { recipe_id: string }[]) {

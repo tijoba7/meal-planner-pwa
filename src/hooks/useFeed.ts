@@ -19,8 +19,8 @@ export const feedKeys = {
   friends: (userId: string) => ['feed', 'friends', userId] as const,
   public: () => ['feed', 'public'] as const,
   trending: () => ['feed', 'trending'] as const,
-  engagement: (ids: readonly string[]) =>
-    ['engagement', [...ids].sort().join(',')] as const,
+  engagement: (ids: readonly string[], userId?: string) =>
+    ['engagement', [...ids].sort().join(','), userId ?? ''] as const,
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -93,11 +93,12 @@ export function useTrendingFeed() {
 
 // ─── Engagement hooks ─────────────────────────────────────────────────────────
 
-/** Batch engagement stats (like count, comment count, avg rating) for a list of recipe IDs. */
+/** Batch engagement stats (like count, comment count, avg rating, userLiked) for a list of recipe IDs. */
 export function useEngagementStats(ids: string[]) {
+  const { user } = useAuth()
   return useQuery({
-    queryKey: feedKeys.engagement(ids),
-    queryFn: () => getEngagementStats(ids),
+    queryKey: feedKeys.engagement(ids, user?.id),
+    queryFn: () => getEngagementStats(ids, user?.id),
     enabled: ids.length > 0,
     staleTime: 30_000,
   })

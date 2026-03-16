@@ -322,6 +322,7 @@ export default function FeedPage() {
                   repost={rp}
                   likeCount={eng?.likeCount ?? 0}
                   commentCount={eng?.commentCount ?? 0}
+                  hasLiked={eng?.userLiked ?? false}
                   isOwn={rp.user_id === user?.id}
                   onLike={() => likeMutation.mutate(rp.recipe_id)}
                   onCommentClick={() => setCommentSheetId(rp.recipe_id)}
@@ -342,6 +343,7 @@ export default function FeedPage() {
                 }}
                 likeCount={eng?.likeCount ?? 0}
                 commentCount={eng?.commentCount ?? 0}
+                hasLiked={eng?.userLiked ?? false}
                 isFollowing={true}
                 onLike={() => likeMutation.mutate(item.id)}
                 onUnlike={() => likeMutation.mutate(item.id)}

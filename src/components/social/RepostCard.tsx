@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Repeat2, Heart, MessageCircle, Trash2 } from 'lucide-react'
 import { Avatar } from '../ProfileCard'
@@ -20,6 +21,7 @@ interface RepostCardProps {
   repost: RepostWithAuthor
   likeCount?: number
   commentCount?: number
+  hasLiked?: boolean
   isOwn?: boolean
   onLike?: () => void
   onCommentClick?: () => void
@@ -34,11 +36,26 @@ export default function RepostCard({
   repost,
   likeCount = 0,
   commentCount = 0,
+  hasLiked = false,
   isOwn = false,
   onLike,
   onCommentClick,
   onDelete,
 }: RepostCardProps) {
+  const [localLiked, setLocalLiked] = useState(hasLiked)
+  const [localLikeCount, setLocalLikeCount] = useState(likeCount)
+
+  function handleLike() {
+    if (localLiked) {
+      setLocalLiked(false)
+      setLocalLikeCount((c) => c - 1)
+    } else {
+      setLocalLiked(true)
+      setLocalLikeCount((c) => c + 1)
+    }
+    onLike?.()
+  }
+
   const reposter = repost.profiles ?? { display_name: 'Someone', avatar_url: null }
   const originalRecipe = repost.recipes_cloud
   const recipeData = originalRecipe?.data as Recipe | undefined
@@ -150,14 +167,16 @@ export default function RepostCard({
       {/* ── Action row ────────────────────────────────────────────────── */}
       <div className="flex items-center gap-0 px-2 py-1">
         <button
-          onClick={onLike}
-          aria-label="Like"
+          onClick={handleLike}
+          aria-pressed={localLiked}
+          aria-label={localLiked ? 'Unlike' : 'Like'}
           className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <Heart
             size={20}
-            strokeWidth={1.75}
-            className="text-gray-700 dark:text-gray-300"
+            strokeWidth={localLiked ? 0 : 1.75}
+            fill={localLiked ? '#ef4444' : 'none'}
+            className={localLiked ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}
             aria-hidden="true"
           />
         </button>
@@ -177,9 +196,9 @@ export default function RepostCard({
 
       {/* ── Counts + timestamp ────────────────────────────────────────── */}
       <div className="px-4 pb-3">
-        {likeCount > 0 && (
+        {localLikeCount > 0 && (
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">
-            {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
+            {localLikeCount.toLocaleString()} {localLikeCount === 1 ? 'like' : 'likes'}
           </p>
         )}
         <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">

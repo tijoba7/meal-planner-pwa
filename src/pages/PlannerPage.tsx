@@ -466,7 +466,7 @@ export default function PlannerPage() {
 
   if (mealPlan === null) {
     return (
-      <div className="p-4 max-w-2xl mx-auto" aria-busy="true" aria-label="Loading meal plan">
+      <div className="p-4 max-w-4xl mx-auto" aria-busy="true" aria-label="Loading meal plan">
         {/* Week nav skeleton */}
         <div className="flex items-center justify-between mb-6">
           <Skeleton className="h-9 w-9" />
@@ -474,7 +474,7 @@ export default function PlannerPage() {
           <Skeleton className="h-9 w-9" />
         </div>
         {/* Day skeletons */}
-        <div className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
@@ -496,7 +496,7 @@ export default function PlannerPage() {
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="p-4 max-w-4xl mx-auto">
       {/* Week navigation */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -549,7 +549,7 @@ export default function PlannerPage() {
       )}
 
       {/* Days */}
-      <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
         {weekDays.map(({ date, label }) => {
           const dayPlan = mealPlan?.days[date] ?? {}
           return (

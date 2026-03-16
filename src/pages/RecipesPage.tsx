@@ -194,7 +194,7 @@ export default function RecipesPage() {
   )
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="p-4 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Recipes</h2>
         <div className="flex gap-2">
@@ -436,7 +436,7 @@ export default function RecipesPage() {
       </div>
 
       {loading ? (
-        <ul className="space-y-3" aria-busy="true" aria-label="Loading recipes">
+        <ul className="grid gap-3 md:grid-cols-2" aria-busy="true" aria-label="Loading recipes">
           {Array.from({ length: 4 }).map((_, i) => (
             <RecipeCardSkeleton key={i} />
           ))}
@@ -465,7 +465,7 @@ export default function RecipesPage() {
           />
         )
       ) : (
-        <ul className="space-y-3" aria-live="polite">
+        <ul className="grid gap-3 md:grid-cols-2" aria-live="polite">
           {filtered.map((recipe, index) => {
             const prepMins = durationToMinutes(recipe.prepTime)
             const cookMins = durationToMinutes(recipe.cookTime)

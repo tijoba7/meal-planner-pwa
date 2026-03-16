@@ -466,9 +466,9 @@ text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2
 
 ## 6. Responsive Breakpoints
 
-Mobile-first. Single breakpoint: `md:` (768px).
+Mobile-first. Primary breakpoint: `md:` (768px). No third breakpoint is defined unless otherwise specified.
 
-| Context | Mobile | Desktop (`md:`) |
+| Context | Mobile | Tablet/Desktop (`md:`) |
 |---|---|---|
 | Layout | Single column, bottom tab bar | Sidebar + content area |
 | Modal | Bottom sheet (`items-end`, `rounded-t-2xl`) | Centered (`items-center`, `rounded-2xl`, `sm:p-4`) |
@@ -477,6 +477,28 @@ Mobile-first. Single breakpoint: `md:` (768px).
 | Main content padding | `pb-20` (clears tab bar) | `pb-0` |
 
 **Note:** the modal breakpoint uses `sm:` (640px) rather than `md:` for earlier centering on tablet-size screens.
+
+### Page Container (with tablet variants)
+
+Standard container for simple pages:
+```
+p-4 max-w-2xl mx-auto
+```
+
+Wider container for list/grid pages (recipes, planner):
+```
+p-4 max-w-3xl mx-auto   ← recipe list
+p-4 max-w-4xl mx-auto   ← meal planner (7-day grid)
+```
+
+### Tablet Grid Patterns
+
+**Two-column card grid (recipe list, day cards):**
+```
+grid gap-3 md:grid-cols-2
+```
+Use on `<ul>` / `<div>` containers that previously used `space-y-3`.
+List items / grid children need no changes — the card layout works in both stacked and grid contexts.
 
 ---
 

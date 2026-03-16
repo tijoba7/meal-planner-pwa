@@ -209,7 +209,7 @@ describe('RecipesPage', () => {
       await user.type(screen.getByPlaceholderText('Search recipes...'), 'xyznonexistent')
 
       await screen.findByText('No recipes found')
-      expect(screen.getByText(/No recipes match "xyznonexistent"/)).toBeInTheDocument()
+      expect(screen.getByText(/No recipes match your current filters/)).toBeInTheDocument()
     })
 
     it('clearing the input restores the full list', async () => {
@@ -235,7 +235,7 @@ describe('RecipesPage', () => {
       await user.type(screen.getByPlaceholderText('Search recipes...'), 'xyznonexistent')
       await screen.findByText('No recipes found')
 
-      await user.click(screen.getByRole('button', { name: 'Clear search' }))
+      await user.click(screen.getByRole('button', { name: 'Clear all filters' }))
 
       expect(screen.getByText('Spaghetti Bolognese')).toBeInTheDocument()
       expect(screen.getByText('Chicken Caesar Salad')).toBeInTheDocument()

@@ -146,12 +146,12 @@ describe('ShoppingListPage', () => {
     it('renders a Delete button for each list', async () => {
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /delete week 1 groceries/i })).toBeInTheDocument()
     })
 
     it('renders the "+ New List" button', async () => {
       renderPage()
-      expect(await screen.findByRole('button', { name: '+ New List' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /new shopping list/i })).toBeInTheDocument()
     })
   })
 
@@ -162,7 +162,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
       expect(screen.getByRole('heading', { name: 'New Shopping List' })).toBeInTheDocument()
     })
 
@@ -170,8 +170,8 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
+      await user.click(screen.getByRole('button', { name: /close new shopping list dialog/i }))
       expect(screen.queryByRole('heading', { name: 'New Shopping List' })).not.toBeInTheDocument()
     })
 
@@ -179,7 +179,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
       expect(screen.getByRole('button', { name: 'Create List' })).toBeDisabled()
     })
 
@@ -187,7 +187,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
       await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'My List')
       expect(screen.getByRole('button', { name: 'Create List' })).not.toBeDisabled()
     })
@@ -198,7 +198,7 @@ describe('ShoppingListPage', () => {
       mockGetShoppingList.mockResolvedValue(sampleList)
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
       await user.type(
         screen.getByPlaceholderText("e.g. This week's groceries"),
         'Week 1 Groceries',
@@ -262,7 +262,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
       await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'Test List')
       await user.click(screen.getByRole('button', { name: 'Create List' }))
 
@@ -313,7 +313,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByRole('heading', { name: 'Shopping Lists' })
-      await user.click(screen.getByRole('button', { name: '+ New List' }))
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
       await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'Test List')
       await user.click(screen.getByRole('button', { name: 'Create List' }))
 
@@ -337,7 +337,7 @@ describe('ShoppingListPage', () => {
       mockGetShoppingLists.mockResolvedValue([sampleList])
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: 'Delete' }))
+      await user.click(screen.getByRole('button', { name: /delete week 1 groceries/i }))
       await waitFor(() => {
         expect(mockDeleteShoppingList).toHaveBeenCalledWith('list-1')
       })
@@ -348,7 +348,7 @@ describe('ShoppingListPage', () => {
       mockGetShoppingLists.mockResolvedValueOnce([sampleList]).mockResolvedValue([])
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: 'Delete' }))
+      await user.click(screen.getByRole('button', { name: /delete week 1 groceries/i }))
       await waitFor(() => {
         expect(screen.queryByText('Week 1 Groceries')).not.toBeInTheDocument()
       })
@@ -367,7 +367,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       expect(await screen.findByRole('heading', { name: 'Week 1 Groceries' })).toBeInTheDocument()
     })
 
@@ -375,7 +375,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       expect(screen.getByText('1 of 3 items checked')).toBeInTheDocument()
     })
@@ -384,7 +384,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       expect(screen.getByText('Milk')).toBeInTheDocument()
       expect(screen.getByText('Eggs')).toBeInTheDocument()
@@ -394,7 +394,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       expect(screen.getByText('Checked off')).toBeInTheDocument()
       expect(screen.getByText('Butter')).toBeInTheDocument()
@@ -404,7 +404,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: /All lists/ }))
       expect(await screen.findByRole('heading', { name: 'Shopping Lists' })).toBeInTheDocument()
@@ -428,7 +428,7 @@ describe('ShoppingListPage', () => {
       mockGetShoppingList.mockResolvedValue(sampleList)
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       expect(screen.getByText('1 of 3 items checked')).toBeInTheDocument()
     })
@@ -453,7 +453,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Check Milk' }))
       await waitFor(() => {
@@ -465,7 +465,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Uncheck Butter' }))
       await waitFor(() => {
@@ -493,7 +493,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Remove Milk' }))
       await waitFor(() => {
@@ -507,7 +507,7 @@ describe('ShoppingListPage', () => {
       const user = userEvent.setup()
       renderPage()
       await screen.findByText('Week 1 Groceries')
-      await user.click(screen.getByRole('button', { name: /Week 1 Groceries/ }))
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: 'Remove Milk' }))
       await waitFor(() => {
@@ -525,7 +525,7 @@ describe('ShoppingListPage', () => {
       mockGetShoppingList.mockResolvedValue(emptyList)
       renderPage()
       await screen.findByText('Empty List')
-      await user.click(screen.getByRole('button', { name: /Empty List/ }))
+      await user.click(screen.getByRole('button', { name: /open empty list/i }))
       await screen.findByText('No items in this list')
     })
   })

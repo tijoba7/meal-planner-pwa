@@ -23,6 +23,7 @@ vi.mock('../contexts/ProfileContext', () => ({
 
 vi.mock('../lib/supabase', () => ({
   isSupabaseAvailable: vi.fn(() => false),
+  supabase: null,
 }))
 
 vi.mock('./OnboardingWizard', () => ({
@@ -48,6 +49,10 @@ vi.mock('./KeyboardShortcutsDialog', () => ({
 }))
 vi.mock('../hooks/useKeyboardShortcuts', () => ({
   useKeyboardShortcuts: vi.fn(),
+}))
+vi.mock('../lib/notificationService', () => ({
+  getUnreadCount: vi.fn().mockResolvedValue(0),
+  subscribeToNotifications: vi.fn().mockReturnValue(() => {}),
 }))
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
@@ -97,10 +102,13 @@ describe('Layout', () => {
   describe('navigation items', () => {
     const expectedItems = [
       { label: 'Recipes', href: '/' },
+      { label: 'Collections', href: '/collections' },
       { label: 'Meal Plan', href: '/meal-plan' },
       { label: 'Shopping', href: '/shopping' },
       { label: 'Discover', href: '/discover' },
       { label: 'Friends', href: '/friends' },
+      { label: 'Groups', href: '/groups' },
+      { label: 'Alerts', href: '/notifications' },
       { label: 'Settings', href: '/settings' },
     ]
 
@@ -124,16 +132,16 @@ describe('Layout', () => {
       }
     })
 
-    it('renders exactly 6 navigation items in the mobile tab bar', () => {
+    it('renders exactly 9 navigation items in the mobile tab bar', () => {
       const { container } = renderLayout()
       // The mobile bottom tab bar is the fixed nav at the bottom (md:hidden)
       const mobileNav = container.querySelector('nav.md\\:hidden.fixed')
       expect(mobileNav).toBeInTheDocument()
       const links = mobileNav!.querySelectorAll('a')
-      expect(links).toHaveLength(6)
+      expect(links).toHaveLength(9)
     })
 
-    it('renders exactly 6 navigation items in the desktop sidebar', () => {
+    it('renders exactly 9 navigation items in the desktop sidebar', () => {
       const { container } = renderLayout()
       const sidebar = container.querySelector('aside')
       expect(sidebar).toBeInTheDocument()
@@ -141,7 +149,7 @@ describe('Layout', () => {
       const sidebarNav = sidebar!.querySelector('nav')
       expect(sidebarNav).toBeInTheDocument()
       const navLinks = sidebarNav!.querySelectorAll('a')
-      expect(navLinks).toHaveLength(6)
+      expect(navLinks).toHaveLength(9)
     })
   })
 

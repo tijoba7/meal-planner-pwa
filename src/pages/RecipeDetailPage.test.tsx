@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import RecipeDetailPage from './RecipeDetailPage'
 import * as db from '../lib/db'
 import { ToastProvider } from '../contexts/ToastContext'
+import { AuthProvider } from '../contexts/AuthContext'
 import type { Recipe } from '../types'
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
@@ -64,13 +65,15 @@ const sampleRecipe: Recipe = {
 
 function renderPage(id = 'recipe-123') {
   return render(
-    <ToastProvider>
-      <MemoryRouter initialEntries={[`/recipes/${id}`]}>
-        <Routes>
-          <Route path="/recipes/:id" element={<RecipeDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    </ToastProvider>,
+    <AuthProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/recipes/${id}`]}>
+          <Routes>
+            <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    </AuthProvider>,
   )
 }
 
@@ -191,27 +194,31 @@ describe('RecipeDetailPage', () => {
   describe('Cook button', () => {
     it('shows the Cook button when the recipe has instructions', async () => {
       renderPage()
-      expect(await screen.findByRole('button', { name: /cook/i })).toBeInTheDocument()
+      // The page renders both mobile and desktop Cook buttons; at least one must be present.
+      const cookButtons = await screen.findAllByRole('button', { name: /^cook$/i })
+      expect(cookButtons.length).toBeGreaterThanOrEqual(1)
     })
 
     it('hides the Cook button when the recipe has no instructions', async () => {
       mockGetRecipe.mockResolvedValue({ ...sampleRecipe, recipeInstructions: [] })
       renderPage()
       await screen.findByRole('heading', { name: 'Test Pasta' })
-      expect(screen.queryByRole('button', { name: /cook/i })).not.toBeInTheDocument()
+      expect(screen.queryAllByRole('button', { name: /^cook$/i })).toHaveLength(0)
     })
 
     it('opens CookingMode when the Cook button is clicked', async () => {
       const user = userEvent.setup()
       renderPage()
-      await user.click(await screen.findByRole('button', { name: /cook/i }))
+      const cookButtons = await screen.findAllByRole('button', { name: /^cook$/i })
+      await user.click(cookButtons[0])
       expect(screen.getByTestId('cooking-mode')).toBeInTheDocument()
     })
 
     it('closes CookingMode when onClose is called', async () => {
       const user = userEvent.setup()
       renderPage()
-      await user.click(await screen.findByRole('button', { name: /cook/i }))
+      const cookButtons = await screen.findAllByRole('button', { name: /^cook$/i })
+      await user.click(cookButtons[0])
       await user.click(screen.getByRole('button', { name: 'Close Cooking Mode' }))
       expect(screen.queryByTestId('cooking-mode')).not.toBeInTheDocument()
     })

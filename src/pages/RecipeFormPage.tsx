@@ -861,6 +861,7 @@ export default function RecipeFormPage() {
                   value={ing.amount}
                   onChange={(e) => updateIngredient(i, 'amount', e.target.value)}
                   placeholder="Amt"
+                  aria-label={`Amount for ingredient ${i + 1}`}
                   className="w-16 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 <input
@@ -868,6 +869,7 @@ export default function RecipeFormPage() {
                   value={ing.unit}
                   onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
                   placeholder="unit"
+                  aria-label={`Unit for ingredient ${i + 1}`}
                   className="w-20 border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 <IngredientNameInput

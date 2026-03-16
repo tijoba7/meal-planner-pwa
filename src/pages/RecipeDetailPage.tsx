@@ -4,6 +4,8 @@ import { ChefHat } from 'lucide-react'
 import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
+import RecipeImage from '../components/RecipeImage'
+import { useToast } from '../contexts/ToastContext'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
 
@@ -71,6 +73,7 @@ function formatAmount(amount: number): string {
 export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const toast = useToast()
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -91,7 +94,9 @@ export default function RecipeDetailPage() {
   async function handleDelete() {
     if (!id) return
     setDeleting(true)
+    const name = recipe?.name ?? 'Recipe'
     await deleteRecipe(id)
+    toast.success(`"${name}" deleted.`)
     navigate('/')
   }
 
@@ -204,6 +209,15 @@ export default function RecipeDetailPage() {
             </span>
           ))}
         </div>
+      )}
+
+      {/* Hero image */}
+      {recipe.image && (
+        <RecipeImage
+          src={recipe.image}
+          alt={recipe.name}
+          className="w-full h-48 md:h-64 rounded-xl mb-4"
+        />
       )}
 
       {/* Description */}

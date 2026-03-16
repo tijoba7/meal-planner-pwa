@@ -4,6 +4,7 @@ import { BookOpen, Search } from 'lucide-react'
 import { getRecipes, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import EmptyState from '../components/EmptyState'
+import RecipeImage from '../components/RecipeImage'
 
 export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -77,36 +78,48 @@ export default function RecipesPage() {
               <li key={recipe.id}>
                 <Link
                   to={`/recipes/${recipe.id}`}
-                  className="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
+                  className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-gray-800 dark:text-gray-100">{recipe.name}</h3>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                      {prepMins + cookMins} min
-                    </span>
-                  </div>
-                  {recipe.description && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{recipe.description}</p>
+                  {/* Thumbnail */}
+                  {recipe.image && (
+                    <RecipeImage
+                      src={recipe.image}
+                      alt={recipe.name}
+                      className="w-16 h-16 shrink-0 rounded-lg"
+                    />
                   )}
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
-                    <span>{recipe.recipeYield} servings</span>
-                    <span>·</span>
-                    <span>prep {prepMins}m</span>
-                    <span>·</span>
-                    <span>cook {cookMins}m</span>
-                  </div>
-                  {recipe.keywords.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {recipe.keywords.map((tag) => (
-                        <span
-                          key={tag}
-                          className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-100">{recipe.name}</h3>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                        {prepMins + cookMins} min
+                      </span>
                     </div>
-                  )}
+                    {recipe.description && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{recipe.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                      <span>{recipe.recipeYield} servings</span>
+                      <span>·</span>
+                      <span>prep {prepMins}m</span>
+                      <span>·</span>
+                      <span>cook {cookMins}m</span>
+                    </div>
+                    {recipe.keywords.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {recipe.keywords.map((tag) => (
+                          <span
+                            key={tag}
+                            className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </Link>
               </li>
             )

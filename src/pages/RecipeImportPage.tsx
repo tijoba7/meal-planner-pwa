@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { createRecipe } from '../lib/db'
 import { extractRecipeFromUrl, getStoredApiKey, type ExtractedRecipe } from '../lib/scraper'
+import RecipeImage from '../components/RecipeImage'
+import { useToast } from '../contexts/ToastContext'
 
 type ImportState =
   | { phase: 'idle' }
@@ -12,6 +14,7 @@ type ImportState =
 
 export default function RecipeImportPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [url, setUrl] = useState('')
   const [state, setState] = useState<ImportState>({ phase: 'idle' })
 
@@ -28,6 +31,7 @@ export default function RecipeImportPage() {
     if (result.ok) {
       setState({ phase: 'review', recipe: result.recipe })
     } else {
+      toast.error('Could not extract recipe. Try a different URL.')
       setState({ phase: 'error', message: result.error })
     }
   }
@@ -52,6 +56,7 @@ export default function RecipeImportPage() {
       recipeCuisine: recipe.recipeCuisine,
     })
 
+    toast.success('Recipe imported.')
     navigate(`/recipes/${saved.id}`)
   }
 
@@ -173,11 +178,10 @@ function RecipeReview({
       </div>
 
       {recipe.image && (
-        <img
+        <RecipeImage
           src={recipe.image}
           alt={recipe.name}
-          className="w-full h-48 object-cover rounded-xl"
-          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+          className="w-full h-48 rounded-xl"
         />
       )}
 

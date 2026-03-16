@@ -8,6 +8,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 // RecipesPage is on the critical path (home) — keep as eager import
 import RecipesPage from './pages/RecipesPage'
 
@@ -66,8 +67,8 @@ export default function App() {
           <Route path="/auth/signup" element={<SignUpPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Main app */}
-          <Route path="/" element={<Layout />}>
+          {/* Main app — requires authentication */}
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RecipesPage />} />
             <Route path="recipes/new" element={<RecipeFormPage />} />
             <Route path="recipes/import" element={<RecipeImportPage />} />

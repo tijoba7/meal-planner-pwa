@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { ShoppingCart, X, ClipboardList } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
+import { normalizeMealSlot } from '../types'
 import {
   getShoppingLists,
   getShoppingList,
@@ -46,23 +47,26 @@ function aggregateIngredients(
   for (const plan of mealPlans) {
     for (const [dateKey, dayPlan] of Object.entries(plan.days)) {
       if (dateKey < startDate || dateKey > endDate) continue
-      for (const slot of Object.values(dayPlan)) {
-        if (!slot) continue
-        const recipe = recipesById.get(slot.recipeId)
-        if (!recipe) continue
-        const yieldNum = parseFloat(recipe.recipeYield) || 1
-        const scale = slot.servings / yieldNum
-        for (const ing of recipe.recipeIngredient) {
-          const key = `${ing.name.toLowerCase()}|${ing.unit.toLowerCase()}`
-          const existing = merged.get(key)
-          if (existing) {
-            existing.amount += ing.amount * scale
-          } else {
-            merged.set(key, {
-              name: ing.name,
-              amount: ing.amount * scale,
-              unit: ing.unit,
-            })
+      for (const rawSlot of Object.values(dayPlan)) {
+        if (!rawSlot) continue
+        const slot = normalizeMealSlot(rawSlot)
+        for (const entry of slot.recipes) {
+          const recipe = recipesById.get(entry.recipeId)
+          if (!recipe) continue
+          const yieldNum = parseFloat(recipe.recipeYield) || 1
+          const scale = entry.servings / yieldNum
+          for (const ing of recipe.recipeIngredient) {
+            const key = `${ing.name.toLowerCase()}|${ing.unit.toLowerCase()}`
+            const existing = merged.get(key)
+            if (existing) {
+              existing.amount += ing.amount * scale
+            } else {
+              merged.set(key, {
+                name: ing.name,
+                amount: ing.amount * scale,
+                unit: ing.unit,
+              })
+            }
           }
         }
       }

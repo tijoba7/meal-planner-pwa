@@ -20,6 +20,7 @@ export interface Recipe {
   recipeInstructions: HowToStep[]
   keywords: string[]
   image?: string
+  imageThumbnailUrl?: string
   dateCreated: string
   dateModified: string
   // Optional Schema.org fields (no UI yet)
@@ -35,9 +36,21 @@ export interface Recipe {
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
-export interface MealSlot {
+export interface MealRecipe {
   recipeId: string
   servings: number
+}
+
+export interface MealSlot {
+  recipes: MealRecipe[]
+}
+
+/** Normalize a slot that may have been written in the old single-recipe format. */
+export function normalizeMealSlot(slot: MealSlot | Record<string, unknown>): MealSlot {
+  if ('recipeId' in slot && !Array.isArray((slot as unknown as MealSlot).recipes)) {
+    return { recipes: [{ recipeId: slot['recipeId'] as string, servings: (slot['servings'] as number) ?? 2 }] }
+  }
+  return slot as unknown as MealSlot
 }
 
 export type DayPlan = Partial<Record<MealType, MealSlot>>
@@ -63,6 +76,15 @@ export interface ShoppingList {
   name: string
   mealPlanId?: string
   items: ShoppingItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MealPlanTemplate {
+  id: string
+  name: string
+  /** Days keyed by offset from Monday: "0" = Mon, "1" = Tue, …, "6" = Sun */
+  days: Record<string, DayPlan>
   createdAt: string
   updatedAt: string
 }

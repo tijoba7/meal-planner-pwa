@@ -15,6 +15,7 @@ export type Database = {
           bio: string | null
           dietary_preferences: string[]
           notification_muted_types: string[]
+          role: 'user' | 'admin'
           created_at: string
           updated_at: string
         }
@@ -25,6 +26,7 @@ export type Database = {
           bio?: string | null
           dietary_preferences?: string[]
           notification_muted_types?: string[]
+          role?: 'user' | 'admin'
           created_at?: string
           updated_at?: string
         }
@@ -35,6 +37,7 @@ export type Database = {
           bio?: string | null
           dietary_preferences?: string[]
           notification_muted_types?: string[]
+          role?: 'user' | 'admin'
           updated_at?: string
         }
         Relationships: []
@@ -568,13 +571,19 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      is_admin: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
+    }
     Enums: {
       recipe_visibility: 'private' | 'friends' | 'public'
       friendship_status: 'pending' | 'accepted' | 'blocked'
       reaction_type: 'like' | 'bookmark' | 'emoji'
       household_member_role: 'owner' | 'member'
       household_invitation_status: 'pending' | 'accepted' | 'declined' | 'expired'
+      user_role: 'user' | 'admin'
     }
     CompositeTypes: Record<string, never>
   }
@@ -606,6 +615,7 @@ export type FriendshipStatus = Database['public']['Enums']['friendship_status']
 export type ReactionType = Database['public']['Enums']['reaction_type']
 export type HouseholdMemberRole = Database['public']['Enums']['household_member_role']
 export type HouseholdInvitationStatus = Database['public']['Enums']['household_invitation_status']
+export type UserRole = Database['public']['Enums']['user_role']
 
 export type Household = Tables<'households'>
 export type HouseholdMember = Tables<'household_members'>

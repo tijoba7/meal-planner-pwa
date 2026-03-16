@@ -121,7 +121,11 @@ export async function getSharedRecipe(cloudRecipeId: string): Promise<CloudRecip
  *
  * RLS ensures friends-only recipes are gated to accepted friends.
  */
-export async function getFriendsFeed(currentUserId: string): Promise<CloudRecipeWithAuthor[]> {
+export async function getFriendsFeed(
+  currentUserId: string,
+  offset = 0,
+  limit = 20
+): Promise<CloudRecipeWithAuthor[]> {
   if (!supabase) return []
   const { data } = await supabase
     .from('recipes_cloud')
@@ -129,33 +133,22 @@ export async function getFriendsFeed(currentUserId: string): Promise<CloudRecipe
     .neq('author_id', currentUserId)
     .neq('visibility', 'private')
     .order('published_at', { ascending: false })
-    .limit(60)
+    .range(offset, offset + limit - 1)
   return (data as unknown as CloudRecipeWithAuthor[]) ?? []
 }
 
 /**
- * Fetch the public explore feed with optional client-side text search.
- * Only returns `public` recipes from all users.
+ * Fetch the public explore feed. Only returns `public` recipes from all users.
  */
-export async function getPublicFeed(query?: string): Promise<CloudRecipeWithAuthor[]> {
+export async function getPublicFeed(offset = 0, limit = 20): Promise<CloudRecipeWithAuthor[]> {
   if (!supabase) return []
   const { data } = await supabase
     .from('recipes_cloud')
     .select('*, profiles(display_name, avatar_url)')
     .eq('visibility', 'public')
     .order('published_at', { ascending: false })
-    .limit(60)
-  const items = (data as unknown as CloudRecipeWithAuthor[]) ?? []
-  if (!query) return items
-  const q = query.toLowerCase()
-  return items.filter((item) => {
-    const r = item.data
-    return (
-      r.name?.toLowerCase().includes(q) ||
-      r.description?.toLowerCase().includes(q) ||
-      r.keywords?.some((k) => k.toLowerCase().includes(q))
-    )
-  })
+    .range(offset, offset + limit - 1)
+  return (data as unknown as CloudRecipeWithAuthor[]) ?? []
 }
 
 // ─── Fork ─────────────────────────────────────────────────────────────────────

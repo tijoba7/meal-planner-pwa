@@ -165,7 +165,7 @@ function ItemRow({
               <button
                 onClick={() => setEditingCat(true)}
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[cat]} hover:opacity-80 transition-opacity`}
-                title="Tap to change category"
+                aria-label={`Change category for ${item.name}: currently ${cat}`}
               >
                 {cat}
               </button>
@@ -483,7 +483,14 @@ export default function ShoppingListPage() {
         </div>
 
         {total > 0 && (
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-6">
+          <div
+            className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-6"
+            role="progressbar"
+            aria-valuenow={doneCount}
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-label={`${doneCount} of ${total} items checked`}
+          >
             <div
               className="bg-green-500 h-2 rounded-full transition-all"
               style={{ width: `${(doneCount / total) * 100}%` }}
@@ -523,6 +530,7 @@ export default function ShoppingListPage() {
                 onChange={(e) => setNewItemName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem() }}
                 placeholder="Item name (e.g. paper towels)"
+                aria-label="Item name"
                 className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 autoFocus
               />
@@ -532,6 +540,7 @@ export default function ShoppingListPage() {
                   value={newItemAmount}
                   onChange={(e) => setNewItemAmount(e.target.value)}
                   placeholder="Qty"
+                  aria-label="Quantity"
                   min="0"
                   step="any"
                   className="w-20 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -542,6 +551,7 @@ export default function ShoppingListPage() {
                   onChange={(e) => setNewItemUnit(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem() }}
                   placeholder="Unit (e.g. oz)"
+                  aria-label="Unit"
                   className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
@@ -603,15 +613,18 @@ export default function ShoppingListPage() {
             onClick={() => setShowExport(false)}
           >
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="export-dialog-title"
               className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3 className="font-bold text-gray-800 dark:text-gray-100">Share or Export</h3>
+                <h3 id="export-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">Share or Export</h3>
                 <button
                   onClick={() => setShowExport(false)}
                   className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                  aria-label="Close"
+                  aria-label="Close share or export dialog"
                 >
                   <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
@@ -655,6 +668,7 @@ export default function ShoppingListPage() {
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Shopping Lists</h2>
         <button
           onClick={() => setShowCreate(true)}
+          aria-label="New shopping list"
           className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
         >
           + New List
@@ -693,6 +707,7 @@ export default function ShoppingListPage() {
             >
               <button
                 onClick={() => setActiveListId(list.id)}
+                aria-label={`Open ${list.name}: ${total} item${total !== 1 ? 's' : ''}, ${done} checked`}
                 className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <div className="flex items-center justify-between">
@@ -706,7 +721,14 @@ export default function ShoppingListPage() {
                   <span className="text-gray-400 dark:text-gray-500 text-lg ml-2">&rsaquo;</span>
                 </div>
                 {total > 0 && (
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
+                  <div
+                    className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2"
+                    role="progressbar"
+                    aria-valuenow={done}
+                    aria-valuemin={0}
+                    aria-valuemax={total}
+                    aria-label={`${done} of ${total} items checked`}
+                  >
                     <div
                       className="bg-green-500 h-1.5 rounded-full transition-all"
                       style={{ width: `${(done / total) * 100}%` }}
@@ -717,6 +739,7 @@ export default function ShoppingListPage() {
               <div className="px-4 pb-3 flex justify-end">
                 <button
                   onClick={() => handleDelete(list.id)}
+                  aria-label={`Delete ${list.name}`}
                   className="text-xs text-red-400 hover:text-red-600"
                 >
                   Delete
@@ -733,16 +756,19 @@ export default function ShoppingListPage() {
           onClick={() => setShowCreate(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-list-dialog-title"
             className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-gray-800 dark:text-gray-100">New Shopping List</h3>
+                <h3 id="create-list-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">New Shopping List</h3>
                 <button
                   onClick={() => setShowCreate(false)}
                   className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  aria-label="Close"
+                  aria-label="Close new shopping list dialog"
                 >
                   <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
@@ -750,8 +776,9 @@ export default function ShoppingListPage() {
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">List name</label>
+                <label htmlFor="new-list-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">List name</label>
                 <input
+                  id="new-list-name"
                   type="text"
                   value={listName}
                   onChange={(e) => setListName(e.target.value)}
@@ -769,8 +796,9 @@ export default function ShoppingListPage() {
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>
+                    <label htmlFor="new-list-start-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>
                     <input
+                      id="new-list-start-date"
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
@@ -778,8 +806,9 @@ export default function ShoppingListPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End date</label>
+                    <label htmlFor="new-list-end-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End date</label>
                     <input
+                      id="new-list-end-date"
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}

@@ -97,12 +97,14 @@ export default function Layout() {
               <div className="relative">
                 <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
                 {item.to === '/notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none" aria-hidden="true">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </div>
-              {item.label}
+              {item.to === '/notifications' && unreadCount > 0
+                ? <>{item.label}<span className="sr-only"> ({unreadCount} unread)</span></>
+                : item.label}
             </NavLink>
           ))}
         </nav>
@@ -198,12 +200,14 @@ export default function Layout() {
             <div className="relative">
               <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />
               {item.to === '/notifications' && unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none" aria-hidden="true">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </div>
-            {item.label}
+            {item.to === '/notifications' && unreadCount > 0
+              ? <>{item.label}<span className="sr-only"> ({unreadCount} unread)</span></>
+              : item.label}
           </NavLink>
         ))}
       </nav>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Compass, Rss, Search, Globe, Heart, Star } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,6 +7,8 @@ import { getPublicFeed, getFriendsFeed, type CloudRecipeWithAuthor } from '../li
 import { getEngagementStats, type EngagementStats } from '../lib/engagementService'
 import { durationToMinutes } from '../lib/db'
 import Skeleton from '../components/Skeleton'
+
+const PAGE_SIZE = 20
 
 // ─── Recipe card ──────────────────────────────────────────────────────────────
 
@@ -100,6 +102,14 @@ function CardSkeleton() {
   )
 }
 
+function LoadingSpinner() {
+  return (
+    <div className="flex justify-center py-4" aria-label="Loading more recipes">
+      <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type Tab = 'explore' | 'feed'
@@ -110,21 +120,40 @@ export default function DiscoverPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('explore')
   const [query, setQuery] = useState('')
+
+  // Explore state
   const [exploreItems, setExploreItems] = useState<CloudRecipeWithAuthor[]>([])
-  const [feedItems, setFeedItems] = useState<CloudRecipeWithAuthor[]>([])
+  const [exploreOffset, setExploreOffset] = useState(0)
+  const [exploreHasMore, setExploreHasMore] = useState(true)
   const [exploreLoading, setExploreLoading] = useState(true)
-  const [feedLoading, setFeedLoading] = useState(true)
+  const [exploreLoadingMore, setExploreLoadingMore] = useState(false)
   const [exploreError, setExploreError] = useState<string | null>(null)
+
+  // Friends feed state
+  const [feedItems, setFeedItems] = useState<CloudRecipeWithAuthor[]>([])
+  const [feedOffset, setFeedOffset] = useState(0)
+  const [feedHasMore, setFeedHasMore] = useState(true)
+  const [feedLoading, setFeedLoading] = useState(true)
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false)
   const [feedError, setFeedError] = useState<string | null>(null)
+
   const [engagementMap, setEngagementMap] = useState<Record<string, EngagementStats>>({})
+
+  // Sentinel refs for infinite scroll
+  const exploreSentinelRef = useRef<HTMLDivElement>(null)
+  const feedSentinelRef = useRef<HTMLDivElement>(null)
+
+  // ── Initial loads ────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!supAvailable) return
     setExploreLoading(true)
     setExploreError(null)
-    getPublicFeed()
+    getPublicFeed(0, PAGE_SIZE)
       .then((items) => {
         setExploreItems(items)
+        setExploreOffset(items.length)
+        setExploreHasMore(items.length === PAGE_SIZE)
         if (items.length > 0) {
           getEngagementStats(items.map((i) => i.id)).then((stats) =>
             setEngagementMap((m) => ({ ...m, ...stats }))
@@ -139,9 +168,11 @@ export default function DiscoverPage() {
     if (!supAvailable || !user) return
     setFeedLoading(true)
     setFeedError(null)
-    getFriendsFeed(user.id)
+    getFriendsFeed(user.id, 0, PAGE_SIZE)
       .then((items) => {
         setFeedItems(items)
+        setFeedOffset(items.length)
+        setFeedHasMore(items.length === PAGE_SIZE)
         if (items.length > 0) {
           getEngagementStats(items.map((i) => i.id)).then((stats) =>
             setEngagementMap((m) => ({ ...m, ...stats }))
@@ -151,6 +182,68 @@ export default function DiscoverPage() {
       .catch(() => setFeedError('Failed to load friends feed.'))
       .finally(() => setFeedLoading(false))
   }, [supAvailable, user])
+
+  // ── Load more ────────────────────────────────────────────────────────────
+
+  const loadMoreExplore = useCallback(() => {
+    if (exploreLoadingMore || !exploreHasMore) return
+    setExploreLoadingMore(true)
+    getPublicFeed(exploreOffset, PAGE_SIZE)
+      .then((items) => {
+        setExploreItems((prev) => [...prev, ...items])
+        setExploreOffset((o) => o + items.length)
+        setExploreHasMore(items.length === PAGE_SIZE)
+        if (items.length > 0) {
+          getEngagementStats(items.map((i) => i.id)).then((stats) =>
+            setEngagementMap((m) => ({ ...m, ...stats }))
+          )
+        }
+      })
+      .catch(() => {})
+      .finally(() => setExploreLoadingMore(false))
+  }, [exploreOffset, exploreHasMore, exploreLoadingMore])
+
+  const loadMoreFeed = useCallback(() => {
+    if (feedLoadingMore || !feedHasMore || !user) return
+    setFeedLoadingMore(true)
+    getFriendsFeed(user.id, feedOffset, PAGE_SIZE)
+      .then((items) => {
+        setFeedItems((prev) => [...prev, ...items])
+        setFeedOffset((o) => o + items.length)
+        setFeedHasMore(items.length === PAGE_SIZE)
+        if (items.length > 0) {
+          getEngagementStats(items.map((i) => i.id)).then((stats) =>
+            setEngagementMap((m) => ({ ...m, ...stats }))
+          )
+        }
+      })
+      .catch(() => {})
+      .finally(() => setFeedLoadingMore(false))
+  }, [feedOffset, feedHasMore, feedLoadingMore, user])
+
+  // ── Infinite scroll observers ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (activeTab !== 'explore' || !exploreSentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMoreExplore() },
+      { rootMargin: '200px' }
+    )
+    observer.observe(exploreSentinelRef.current)
+    return () => observer.disconnect()
+  }, [loadMoreExplore, activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'feed' || !feedSentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMoreFeed() },
+      { rootMargin: '200px' }
+    )
+    observer.observe(feedSentinelRef.current)
+    return () => observer.disconnect()
+  }, [loadMoreFeed, activeTab])
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   if (!supAvailable) {
     return (
@@ -243,11 +336,24 @@ export default function DiscoverPage() {
               </p>
             </div>
           ) : (
-            <ul className="space-y-3" aria-live="polite">
-              {filteredExplore.map((item) => (
-                <RecipeCard key={item.id} item={item} engagement={engagementMap[item.id]} />
-              ))}
-            </ul>
+            <>
+              <ul className="space-y-3" aria-live="polite">
+                {filteredExplore.map((item) => (
+                  <RecipeCard key={item.id} item={item} engagement={engagementMap[item.id]} />
+                ))}
+              </ul>
+              {/* Infinite scroll sentinel */}
+              {!query && (
+                <div ref={exploreSentinelRef}>
+                  {exploreLoadingMore && <LoadingSpinner />}
+                  {!exploreHasMore && exploreItems.length > 0 && (
+                    <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
+                      All public recipes loaded
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -269,11 +375,22 @@ export default function DiscoverPage() {
               </p>
             </div>
           ) : (
-            <ul className="space-y-3" aria-live="polite">
-              {feedItems.map((item) => (
-                <RecipeCard key={item.id} item={item} engagement={engagementMap[item.id]} />
-              ))}
-            </ul>
+            <>
+              <ul className="space-y-3" aria-live="polite">
+                {feedItems.map((item) => (
+                  <RecipeCard key={item.id} item={item} engagement={engagementMap[item.id]} />
+                ))}
+              </ul>
+              {/* Infinite scroll sentinel */}
+              <div ref={feedSentinelRef}>
+                {feedLoadingMore && <LoadingSpinner />}
+                {!feedHasMore && feedItems.length > 0 && (
+                  <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
+                    All friends' recipes loaded
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}

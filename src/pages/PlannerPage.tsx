@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2 } from 'lucide-react'
+import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2, GripVertical } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -55,6 +55,8 @@ function formatWeekRange(monday: Date): string {
   return `${start} – ${end}`
 }
 
+type DragSource = { date: string; meal: MealType; index: number }
+
 function parseNutritionValue(value: string | number | undefined): number {
   if (value == null) return 0
   if (typeof value === 'number') return value
@@ -79,6 +81,13 @@ export default function PlannerPage() {
   const [templateName, setTemplateName] = useState('')
   const [applyTemplateConfirm, setApplyTemplateConfirm] = useState<MealPlanTemplate | null>(null)
   const [savingTemplate, setSavingTemplate] = useState(false)
+
+  // Drag-and-drop state
+  const [dragSource, setDragSource] = useState<DragSource | null>(null)
+  const [dragOver, setDragOver] = useState<{ date: string; meal: MealType } | null>(null)
+  const isDraggingRef = useRef(false)
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchSourceRef = useRef<DragSource | null>(null)
 
   useEffect(() => {
     getRecipes().then(setRecipes)
@@ -105,6 +114,32 @@ export default function PlannerPage() {
     getMealPlanTemplates().then(setTemplates)
   }, [])
 
+  // Non-passive touchmove listener: prevents page scroll while touch-dragging
+  // and tracks which meal slot is under the finger.
+  useEffect(() => {
+    const onTouchMove = (e: TouchEvent) => {
+      if (isDraggingRef.current) {
+        e.preventDefault()
+        const touch = e.touches[0]
+        const el = document.elementFromPoint(touch.clientX, touch.clientY)
+        const zone = (el as HTMLElement | null)?.closest('[data-drop-date]') as HTMLElement | null
+        if (zone) {
+          const date = zone.dataset.dropDate!
+          const meal = zone.dataset.dropMeal as MealType
+          setDragOver(prev => (prev?.date === date && prev?.meal === meal ? prev : { date, meal }))
+        } else {
+          setDragOver(null)
+        }
+      } else if (touchTimerRef.current) {
+        // Finger moved before long-press threshold — treat as scroll, cancel drag
+        clearTimeout(touchTimerRef.current)
+        touchTimerRef.current = null
+      }
+    }
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => document.removeEventListener('touchmove', onTouchMove)
+  }, [])
+
   const navigateWeek = (delta: number) => {
     setWeekStart(prev => {
       const d = new Date(prev + 'T00:00:00')
@@ -115,7 +150,7 @@ export default function PlannerPage() {
 
   const anyModalOpen = pickerTarget !== null || copyModalOpen || templateGalleryOpen || saveTemplateOpen || applyTemplateConfirm !== null
 
-  const plannerShortcuts = useMemo(() => ({
+  useKeyboardShortcuts({
     ArrowLeft: () => { if (!anyModalOpen) navigateWeek(-1) },
     ArrowRight: () => { if (!anyModalOpen) navigateWeek(1) },
     Escape: () => {
@@ -125,9 +160,7 @@ export default function PlannerPage() {
       else if (saveTemplateOpen) setSaveTemplateOpen(false)
       else if (templateGalleryOpen) setTemplateGalleryOpen(false)
     },
-  }), [anyModalOpen, pickerTarget, copyModalOpen, applyTemplateConfirm, saveTemplateOpen, templateGalleryOpen])
-
-  useKeyboardShortcuts(plannerShortcuts)
+  })
 
   const openCopyModal = () => {
     const nextWeek = toISODate(addDays(new Date(weekStart + 'T00:00:00'), 7))
@@ -197,6 +230,46 @@ export default function PlannerPage() {
     setMealPlan(updated)
   }
 
+  const moveRecipe = async (
+    srcDate: string,
+    srcMeal: MealType,
+    srcIndex: number,
+    tgtDate: string,
+    tgtMeal: MealType,
+  ) => {
+    if (!mealPlan) return
+    if (srcDate === tgtDate && srcMeal === tgtMeal) return
+
+    const days = { ...mealPlan.days }
+
+    const srcSlotRaw = days[srcDate]?.[srcMeal]
+    if (!srcSlotRaw) return
+    const srcSlot = normalizeMealSlot(srcSlotRaw)
+    const recipeToMove = srcSlot.recipes[srcIndex]
+    if (!recipeToMove) return
+
+    // Remove from source slot
+    const newSrcRecipes = srcSlot.recipes.filter((_, i) => i !== srcIndex)
+    const srcDayPlan = { ...(days[srcDate] ?? {}) }
+    if (newSrcRecipes.length === 0) {
+      delete srcDayPlan[srcMeal]
+    } else {
+      srcDayPlan[srcMeal] = { recipes: newSrcRecipes }
+    }
+    days[srcDate] = srcDayPlan
+
+    // Add to target slot
+    const tgtSlotRaw = days[tgtDate]?.[tgtMeal]
+    const tgtSlot = tgtSlotRaw ? normalizeMealSlot(tgtSlotRaw) : { recipes: [] }
+    days[tgtDate] = {
+      ...(days[tgtDate] ?? {}),
+      [tgtMeal]: { recipes: [...tgtSlot.recipes, recipeToMove] },
+    }
+
+    const updated = await updateMealPlan(mealPlan.id, { days })
+    setMealPlan(updated)
+  }
+
   const closePicker = () => {
     setPickerTarget(null)
     setSearch('')
@@ -239,6 +312,87 @@ export default function PlannerPage() {
     await deleteMealPlanTemplate(templateId)
     setTemplates(prev => prev.filter(t => t.id !== templateId))
   }
+
+  // ── HTML5 Drag-and-Drop handlers (desktop) ────────────────────────────────
+
+  const handleDragStart = (e: React.DragEvent, date: string, meal: MealType, index: number) => {
+    setDragSource({ date, meal, index })
+    isDraggingRef.current = true
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragEnd = () => {
+    setDragSource(null)
+    setDragOver(null)
+    isDraggingRef.current = false
+  }
+
+  const handleSlotDragOver = (e: React.DragEvent, date: string, meal: MealType) => {
+    if (!isDraggingRef.current) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOver(prev => (prev?.date === date && prev?.meal === meal ? prev : { date, meal }))
+  }
+
+  const handleSlotDragLeave = (e: React.DragEvent) => {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDragOver(null)
+    }
+  }
+
+  const handleSlotDrop = (e: React.DragEvent, tgtDate: string, tgtMeal: MealType) => {
+    e.preventDefault()
+    if (!dragSource) return
+    void moveRecipe(dragSource.date, dragSource.meal, dragSource.index, tgtDate, tgtMeal)
+    setDragSource(null)
+    setDragOver(null)
+    isDraggingRef.current = false
+  }
+
+  // ── Touch drag handlers (mobile) ──────────────────────────────────────────
+
+  const handleRecipeTouchStart = (
+    _e: React.TouchEvent,
+    date: string,
+    meal: MealType,
+    index: number,
+  ) => {
+    touchSourceRef.current = { date, meal, index }
+    touchTimerRef.current = setTimeout(() => {
+      isDraggingRef.current = true
+      setDragSource({ date, meal, index })
+      if (navigator.vibrate) navigator.vibrate(30)
+    }, 300)
+  }
+
+  const handleRecipeTouchEnd = (e: React.TouchEvent) => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current)
+      touchTimerRef.current = null
+    }
+    if (isDraggingRef.current && touchSourceRef.current) {
+      const touch = e.changedTouches[0]
+      const el = document.elementFromPoint(touch.clientX, touch.clientY)
+      const zone = (el as HTMLElement | null)?.closest('[data-drop-date]') as HTMLElement | null
+      if (zone) {
+        const tgtDate = zone.dataset.dropDate!
+        const tgtMeal = zone.dataset.dropMeal as MealType
+        void moveRecipe(
+          touchSourceRef.current.date,
+          touchSourceRef.current.meal,
+          touchSourceRef.current.index,
+          tgtDate,
+          tgtMeal,
+        )
+      }
+    }
+    isDraggingRef.current = false
+    touchSourceRef.current = null
+    setDragSource(null)
+    setDragOver(null)
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   const weeklyNutrition = useMemo(() => {
     if (!mealPlan) return null
@@ -409,36 +563,66 @@ export default function PlannerPage() {
                   const slot = rawSlot ? normalizeMealSlot(rawSlot) : null
                   const slotRecipes = slot ? slot.recipes.map(r => recipes.find(rec => rec.id === r.recipeId)) : []
 
+                  const isDropTarget = dragOver?.date === date && dragOver?.meal === meal
                   return (
-                    <div key={meal} className="px-4 py-3">
+                    <div
+                      key={meal}
+                      data-drop-date={date}
+                      data-drop-meal={meal}
+                      onDragOver={e => handleSlotDragOver(e, date, meal)}
+                      onDragLeave={handleSlotDragLeave}
+                      onDrop={e => handleSlotDrop(e, date, meal)}
+                      className={`px-4 py-3 transition-colors${isDropTarget ? ' bg-green-50 dark:bg-green-900/20 ring-2 ring-inset ring-green-400 dark:ring-green-500' : ''}`}
+                    >
                       <div className="flex items-start gap-3">
                         <span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-16 shrink-0 pt-0.5">
                           {MEAL_LABELS[meal]}
                         </span>
                         <div className="flex-1 min-w-0 space-y-1">
-                          {slotRecipes.map((recipe, idx) => (
-                            <div key={idx} className="flex items-center justify-between gap-2">
-                              {recipe ? (
-                                <Link
-                                  to={`/recipes/${recipe.id}`}
-                                  className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100 truncate hover:text-green-700 dark:hover:text-green-400"
-                                >
-                                  {recipe.name}
-                                </Link>
-                              ) : (
-                                <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 italic truncate">
-                                  Unknown recipe
-                                </span>
-                              )}
-                              <button
-                                onClick={() => removeRecipeFromSlot(date, meal, idx)}
-                                className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
-                                aria-label={`Remove ${recipe?.name ?? 'recipe'}`}
+                          {slotRecipes.map((recipe, idx) => {
+                            const isDragged =
+                              dragSource?.date === date &&
+                              dragSource?.meal === meal &&
+                              dragSource?.index === idx
+                            return (
+                              <div
+                                key={idx}
+                                draggable
+                                onDragStart={e => handleDragStart(e, date, meal, idx)}
+                                onDragEnd={handleDragEnd}
+                                onTouchStart={e => handleRecipeTouchStart(e, date, meal, idx)}
+                                onTouchEnd={handleRecipeTouchEnd}
+                                className={`flex items-center justify-between gap-2 select-none${isDragged ? ' opacity-40' : ''}`}
                               >
-                                <X size={14} strokeWidth={2} aria-hidden="true" />
-                              </button>
-                            </div>
-                          ))}
+                                <GripVertical
+                                  size={12}
+                                  strokeWidth={2}
+                                  className="shrink-0 text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing"
+                                  aria-hidden="true"
+                                />
+                                {recipe ? (
+                                  <Link
+                                    to={`/recipes/${recipe.id}`}
+                                    draggable={false}
+                                    className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100 truncate hover:text-green-700 dark:hover:text-green-400"
+                                  >
+                                    {recipe.name}
+                                  </Link>
+                                ) : (
+                                  <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 italic truncate">
+                                    Unknown recipe
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => removeRecipeFromSlot(date, meal, idx)}
+                                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+                                  aria-label={`Remove ${recipe?.name ?? 'recipe'}`}
+                                >
+                                  <X size={14} strokeWidth={2} aria-hidden="true" />
+                                </button>
+                              </div>
+                            )
+                          })}
                           <button
                             onClick={() => setPickerTarget({ date, meal })}
                             className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 group"

@@ -31,11 +31,14 @@ export default function CollectionDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    let cancelled = false
     Promise.all([getCollection(id), getRecipes()]).then(([col, recipes]) => {
+      if (cancelled) return
       if (!col) { setNotFound(true); return }
       setCollection(col)
       setAllRecipes(recipes)
     })
+    return () => { cancelled = true }
   }, [id])
 
   if (notFound) {
@@ -348,9 +351,9 @@ export default function CollectionDetailPage() {
 
       {/* Delete confirmation */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="delete-collection-title">
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl">
-            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete collection?</h4>
+            <h4 id="delete-collection-title" className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete collection?</h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               This removes the collection but won't delete any recipes.
             </p>

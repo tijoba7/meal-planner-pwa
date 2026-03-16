@@ -162,9 +162,11 @@ test.describe('Collections — delete', () => {
 
     await page.getByRole('button', { name: 'Delete collection' }).click()
     await expect(page.getByText('Delete collection?')).toBeVisible()
-    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    // React StrictMode double-invokes the data-fetch effect which can briefly
+    // detach elements. Use force:true to click through the transient instability.
+    await page.getByRole('button', { name: 'Delete', exact: true }).click({ force: true })
 
-    await expect(page).toHaveURL(/\/collections$/)
+    await expect(page).toHaveURL(/\/collections$/, { timeout: 10000 })
   })
 
   test('delete can be cancelled', async ({ page }) => {

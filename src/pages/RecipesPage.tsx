@@ -223,7 +223,7 @@ export default function RecipesPage() {
           </Link>
           <Link
             to="/recipes/new"
-            className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
           >
             + Add Recipe
           </Link>

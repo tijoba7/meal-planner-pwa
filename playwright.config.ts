@@ -19,8 +19,8 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
-  /* Use 1 worker on CI to avoid resource contention */
-  workers: process.env.CI ? 1 : undefined,
+  /* Use 1 worker on CI, 2 locally — prevents Vite dev server overload */
+  workers: process.env.CI ? 1 : 2,
 
   /* Reporter */
   reporter: [

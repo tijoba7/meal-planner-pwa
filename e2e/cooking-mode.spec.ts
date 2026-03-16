@@ -39,6 +39,9 @@ async function createRecipeWithSteps(
 
   await page.getByRole('button', { name: 'Add Recipe' }).click()
   await expect(page).toHaveURL(/recipes\/[^/]+$/)
+  // The "Recipe saved!" success toast appears at the bottom and can block the Cook button.
+  // Wait for all toasts to clear (default duration is 3 seconds).
+  await expect(page.locator('[role="alert"]')).toHaveCount(0, { timeout: 8000 })
 }
 
 test.describe('Cooking mode — enter and exit', () => {
@@ -91,7 +94,7 @@ test.describe('Cooking mode — step navigation', () => {
     await expect(dialog.getByText('First step text.')).toBeVisible()
 
     // Navigate to step 2
-    await page.getByRole('button', { name: 'Next step' }).click()
+    await dialog.getByRole('button', { name: 'Next step' }).click()
     await expect(dialog.getByText('Second step text.')).toBeVisible()
   })
 
@@ -103,9 +106,10 @@ test.describe('Cooking mode — step navigation', () => {
     })
 
     await page.getByRole('button', { name: /cook/i }).first().click()
-    await expect(page.getByRole('dialog', { name: 'Cooking mode' })).toBeVisible()
+    const dialog = page.getByRole('dialog', { name: 'Cooking mode' })
+    await expect(dialog).toBeVisible()
 
-    await expect(page.getByRole('button', { name: 'Previous step' })).toBeDisabled()
+    await expect(dialog.getByRole('button', { name: 'Previous step' })).toBeDisabled()
   })
 
   test('can navigate back to a previous step', async ({ page }) => {
@@ -119,10 +123,10 @@ test.describe('Cooking mode — step navigation', () => {
     const dialog = page.getByRole('dialog', { name: 'Cooking mode' })
     await expect(dialog).toBeVisible()
 
-    await page.getByRole('button', { name: 'Next step' }).click()
+    await dialog.getByRole('button', { name: 'Next step' }).click()
     await expect(dialog.getByText('Step two content.')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Previous step' }).click()
+    await dialog.getByRole('button', { name: 'Previous step' }).click()
     await expect(dialog.getByText('Step one content.')).toBeVisible()
   })
 
@@ -134,11 +138,13 @@ test.describe('Cooking mode — step navigation', () => {
     })
 
     await page.getByRole('button', { name: /cook/i }).first().click()
-    await page.getByRole('button', { name: 'Next step' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Cooking mode' })
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: 'Next step' }).click()
 
     // On the last step, "Finish" replaces "Next step"
-    await expect(page.getByRole('button', { name: 'Finish' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Next step' })).not.toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Finish' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Next step' })).not.toBeVisible()
   })
 
   test('Finish button closes cooking mode', async ({ page }) => {
@@ -146,9 +152,10 @@ test.describe('Cooking mode — step navigation', () => {
     await createRecipeWithSteps(page, { name, steps: ['Only one step.'] })
 
     await page.getByRole('button', { name: /cook/i }).first().click()
-    await expect(page.getByRole('dialog', { name: 'Cooking mode' })).toBeVisible()
+    const dialog = page.getByRole('dialog', { name: 'Cooking mode' })
+    await expect(dialog).toBeVisible()
 
-    await page.getByRole('button', { name: 'Finish' }).click()
+    await dialog.getByRole('button', { name: 'Finish' }).click()
     await expect(page.getByRole('dialog', { name: 'Cooking mode' })).not.toBeVisible()
   })
 })

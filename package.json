@@ -17,6 +17,11 @@
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write src",
     "bundle:check": "node scripts/check-bundle-size.mjs",
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
+    "supabase:reset": "npx supabase db reset",
+    "supabase:migrate": "npx supabase db push",
+    "supabase:status": "npx supabase status",
     "supabase:types": "npx supabase gen types typescript --project-id YOUR_PROJECT_ID --schema public > src/types/supabase.ts"
   },
   "packageManager": "pnpm@9.15.4",

@@ -49,3 +49,29 @@ jobs:
           name: bundle-stats
           path: dist/stats.html
           retention-days: 30
+
+  db-migrations:
+    name: Verify DB Migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Apply all migrations (supabase db reset)
+        run: supabase db reset
+
+      - name: Verify schema health
+        run: supabase db lint
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup

@@ -70,8 +70,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Everything in its place.</p>
+          <span className="text-5xl select-none block mb-2" role="img" aria-label="Mise logo">🍲</span>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
+          <p className="text-gray-400 dark:text-gray-500 mt-1 text-sm tracking-wide">Cook. Share. Enjoy.</p>
         </div>
 
         {/* Mode toggle */}

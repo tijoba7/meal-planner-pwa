@@ -54,9 +54,9 @@ const SAMPLE_RECIPE = {
 const STEPS = [
   {
     id: 'welcome',
-    title: 'Welcome to Mise',
-    subtitle: 'Everything in its place.',
-    body: 'Your personal meal planning companion. Save recipes, plan your week, and build shopping lists — all in one place, right on your device.',
+    title: 'Welcome to mise 🍲',
+    subtitle: 'Cook. Share. Enjoy.',
+    body: 'Discover and share recipes with friends, plan your week, and build shopping lists — all in one place.',
     icon: null as null,
   },
   {

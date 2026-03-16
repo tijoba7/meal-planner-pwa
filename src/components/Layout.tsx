@@ -119,7 +119,7 @@ export default function Layout() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-colors ${
       isActive
-        ? 'text-green-600 dark:text-green-400'
+        ? 'text-green-700 dark:text-green-400'
         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
     }`
 
@@ -147,17 +147,12 @@ export default function Layout() {
 
       {/* Sidebar — icon-only on tablet (md), full labels on desktop (lg+) */}
       <aside className="print:hidden hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
-        <div className="flex items-center justify-center lg:block px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
-          <span
-            className="text-xl font-bold text-green-700 dark:text-green-400 lg:hidden"
-            aria-hidden="true"
-          >
-            M
-          </span>
+        <div className="flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+          <span className="text-2xl select-none" role="img" aria-label="Mise logo">🍲</span>
           <div className="hidden lg:block">
-            <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Everything in its place.
+            <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-0.5 tracking-wide uppercase">
+              cook &middot; share &middot; enjoy
             </p>
           </div>
         </div>
@@ -285,7 +280,10 @@ export default function Layout() {
 
       {/* Mobile header */}
       <header className="print:hidden md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-green-700 dark:text-green-400">Mise</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-xl select-none" role="img" aria-label="Mise logo">🍲</span>
+          <h1 className="text-lg font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
+        </div>
         {user ? (
           <Link
             to="/profile"

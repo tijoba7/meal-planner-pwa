@@ -46,9 +46,9 @@ export default defineConfig(({ mode }) => {
       filename: 'sw.ts',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Mise',
-        short_name: 'Mise',
-        description: 'Everything in its place. A social recipe platform for discovering and sharing meals.',
+        name: 'mise',
+        short_name: 'mise',
+        description: 'Cook, share, and enjoy. A social recipe platform for food lovers.',
         theme_color: '#16a34a',
         background_color: '#ffffff',
         display: 'standalone',

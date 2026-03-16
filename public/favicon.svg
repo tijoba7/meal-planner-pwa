@@ -1,4 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#16a34a"/>
-  <text x="256" y="360" font-family="Georgia, serif" font-size="320" font-weight="bold" text-anchor="middle" fill="#ffffff">M</text>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Pot body -->
+  <rect x="126" y="240" width="260" height="160" rx="32" fill="#fff" opacity="0.95"/>
+  <!-- Pot rim -->
+  <rect x="106" y="220" width="300" height="40" rx="20" fill="#fff"/>
+  <!-- Left handle -->
+  <rect x="66" y="228" width="56" height="24" rx="12" fill="#fff" opacity="0.8"/>
+  <!-- Right handle -->
+  <rect x="390" y="228" width="56" height="24" rx="12" fill="#fff" opacity="0.8"/>
+  <!-- Steam wisps -->
+  <path d="M200 200 Q200 170 215 155 Q230 140 220 110" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.6"/>
+  <path d="M260 190 Q260 155 275 140 Q290 125 280 90" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
+  <path d="M320 200 Q320 170 335 155 Q350 140 340 110" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.4"/>
 </svg>

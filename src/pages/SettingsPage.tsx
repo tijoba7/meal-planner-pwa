@@ -750,7 +750,7 @@ export default function SettingsPage() {
               <span className="text-sm text-gray-400 dark:text-gray-500">v0.1.0</span>
             </div>
             <RowDescription>
-              Everything in its place — a local-first meal planner and recipe store.
+              Cook, share, and enjoy — a social recipe platform for food lovers.
             </RowDescription>
           </SettingsRow>
           <SettingsRow>

@@ -1,6 +1,6 @@
-import type { Json } from '../types/supabase'
 import { db } from './db'
 import { supabase } from './supabase'
+import { toJson } from './jsonUtils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,7 +89,7 @@ export async function migrateRecipesToCloud(
       if (localMs > cloudMs) {
         const { error } = await supabase
           .from('recipes_cloud')
-          .update({ data: recipe as unknown as Json, updated_at: new Date().toISOString() })
+          .update({ data: toJson(recipe), updated_at: new Date().toISOString() })
           .eq('id', recipe.id)
 
         if (error) throw new Error(`Failed to update recipe "${recipe.name}": ${error.message}`)
@@ -100,7 +100,7 @@ export async function migrateRecipesToCloud(
       const { error } = await supabase.from('recipes_cloud').insert({
         id: recipe.id,
         author_id: userId,
-        data: recipe as unknown as Json,
+        data: toJson(recipe),
         visibility: 'private',
       })
 

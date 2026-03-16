@@ -8,8 +8,9 @@
  */
 
 import { supabase } from './supabase'
-import type { Json } from '../types/supabase'
 import type { MealPlan } from '../types'
+import type { Json } from '../types/supabase'
+import { toJson } from './jsonUtils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,8 @@ export async function createHousehold(
     .single()
 
   if (error || !data) return null
-  const household = data as unknown as Household
+  // createClient<Database> types this as Tables<'households'>, which matches Household structurally
+  const household = data as Household
 
   // Add creator as owner member
   await supabase
@@ -97,7 +99,9 @@ export async function getHouseholdMembers(
     .order('joined_at', { ascending: true })
 
   if (error || !data) return []
-  return data as unknown as HouseholdMember[]
+  // The join result adds `profile` from profiles; HouseholdMember has this as an optional field.
+  // Supabase returns `profile: T | null`; our type declares `profile?: T` — structurally compatible.
+  return data as HouseholdMember[]
 }
 
 /** Update a household's name (owner only). */
@@ -179,6 +183,7 @@ export async function sendInvitation(
     .single()
 
   if (error || !data) return null
+  // Tables<'household_invitations'> is structurally identical to HouseholdInvitation
   return data as HouseholdInvitation
 }
 
@@ -203,7 +208,8 @@ export async function acceptInvitation(
     .single()
 
   if (invErr || !invData) return null
-  const inv = invData as unknown as HouseholdInvitation
+  // Tables<'household_invitations'> is structurally identical to HouseholdInvitation
+  const inv = invData as HouseholdInvitation
 
   // Add the user as a member
   const { error: memberErr } = await supabase
@@ -225,7 +231,8 @@ export async function acceptInvitation(
     .eq('id', inv.household_id)
     .single()
 
-  return householdData as unknown as Household | null
+  // Tables<'households'> is structurally identical to Household
+  return (householdData as Household) ?? null
 }
 
 /** Decline an invitation by token. */
@@ -305,7 +312,7 @@ export async function pushSharedMealPlanData(plan: MealPlan): Promise<boolean> {
   if (!supabase) return false
   const { error } = await supabase
     .from('meal_plans_cloud')
-    .update({ data: plan as unknown as Json, updated_at: plan.updatedAt })
+    .update({ data: toJson(plan), updated_at: plan.updatedAt })
     .eq('id', plan.id)
   return !error
 }

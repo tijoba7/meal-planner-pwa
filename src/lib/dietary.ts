@@ -121,7 +121,9 @@ export function getDietaryPrefs(): string[] {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed)) return parsed as string[]
     }
-  } catch {}
+  } catch {
+    // ignore JSON parse errors
+  }
   return []
 }
 

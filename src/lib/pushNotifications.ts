@@ -76,6 +76,8 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
 
     return registration.pushManager.subscribe({
       userVisibleOnly: true,
+      // Uint8Array satisfies BufferSource at runtime but TypeScript's DOM types do not
+      // expose this relationship directly — the double cast is the SDK-required workaround.
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as BufferSource,
     })
   } catch {

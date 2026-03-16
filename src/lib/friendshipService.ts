@@ -34,6 +34,43 @@ export interface FriendRelationResult {
   friendshipId: string | null
 }
 
+// ─── Typed query row shapes ───────────────────────────────────────────────────
+// These match the Supabase SDK's inferred join result shapes, providing a
+// typed intermediate representation instead of casting via `unknown`.
+
+type ProfilePick = Pick<Profile, 'id' | 'display_name' | 'avatar_url' | 'bio'>
+
+interface FriendshipJoinRow {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: Friendship['status']
+  created_at: string
+  responded_at: string | null
+  requester: ProfilePick | null
+  addressee: ProfilePick | null
+}
+
+interface PendingRequestRow {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: Friendship['status']
+  created_at: string
+  responded_at: string | null
+  requester: ProfilePick | null
+}
+
+interface SentRequestRow {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: Friendship['status']
+  created_at: string
+  responded_at: string | null
+  addressee: ProfilePick | null
+}
+
 // ─── Friend requests ──────────────────────────────────────────────────────────
 
 /**
@@ -66,6 +103,7 @@ export async function sendFriendRequest(
     .select()
     .single()
 
+  // Supabase SDK infers a narrow type that doesn't overlap with Friendship — cast via unknown
   return { data: (data as unknown as Friendship) ?? null, error: error ? new Error(error.message) : null }
 }
 
@@ -191,18 +229,18 @@ export async function getFriends(currentUserId: string): Promise<FriendshipWithP
 
   if (!data) return []
 
-  return (data as unknown as Record<string, unknown>[]).map((row) => {
-    const isRequester = (row.requester_id as string) === currentUserId
+  return (data as unknown as FriendshipJoinRow[]).map((row) => {
+    const isRequester = row.requester_id === currentUserId
     const profile = isRequester
-      ? (row.addressee as FriendshipWithProfile['profile'])
-      : (row.requester as FriendshipWithProfile['profile'])
+      ? row.addressee as ProfilePick
+      : row.requester as ProfilePick
     return {
-      id: row.id as string,
-      requester_id: row.requester_id as string,
-      addressee_id: row.addressee_id as string,
-      status: row.status as Friendship['status'],
-      created_at: row.created_at as string,
-      responded_at: row.responded_at as string | null,
+      id: row.id,
+      requester_id: row.requester_id,
+      addressee_id: row.addressee_id,
+      status: row.status,
+      created_at: row.created_at,
+      responded_at: row.responded_at,
       profile,
     }
   })
@@ -225,14 +263,14 @@ export async function getPendingRequests(currentUserId: string): Promise<Friends
 
   if (!data) return []
 
-  return (data as unknown as Record<string, unknown>[]).map((row) => ({
-    id: row.id as string,
-    requester_id: row.requester_id as string,
-    addressee_id: row.addressee_id as string,
-    status: row.status as Friendship['status'],
-    created_at: row.created_at as string,
-    responded_at: row.responded_at as string | null,
-    profile: row.requester as FriendshipWithProfile['profile'],
+  return (data as unknown as PendingRequestRow[]).map((row) => ({
+    id: row.id,
+    requester_id: row.requester_id,
+    addressee_id: row.addressee_id,
+    status: row.status,
+    created_at: row.created_at,
+    responded_at: row.responded_at,
+    profile: row.requester as ProfilePick,
   }))
 }
 
@@ -253,14 +291,14 @@ export async function getSentRequests(currentUserId: string): Promise<Friendship
 
   if (!data) return []
 
-  return (data as unknown as Record<string, unknown>[]).map((row) => ({
-    id: row.id as string,
-    requester_id: row.requester_id as string,
-    addressee_id: row.addressee_id as string,
-    status: row.status as Friendship['status'],
-    created_at: row.created_at as string,
-    responded_at: row.responded_at as string | null,
-    profile: row.addressee as FriendshipWithProfile['profile'],
+  return (data as unknown as SentRequestRow[]).map((row) => ({
+    id: row.id,
+    requester_id: row.requester_id,
+    addressee_id: row.addressee_id,
+    status: row.status,
+    created_at: row.created_at,
+    responded_at: row.responded_at,
+    profile: row.addressee as ProfilePick,
   }))
 }
 
@@ -391,10 +429,8 @@ export async function resolveInviteToken(
     .maybeSingle()
 
   if (!data) return null
-  return (data as unknown as Record<string, unknown>).profiles as Pick<
-    Profile,
-    'id' | 'display_name' | 'avatar_url' | 'bio'
-  >
+  // Access the joined profile; the Supabase SDK types the join result with the profile shape
+  return (data as unknown as { profiles: ProfilePick | null }).profiles
 }
 
 /**

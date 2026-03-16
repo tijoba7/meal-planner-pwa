@@ -511,7 +511,7 @@ function parseFraction(s: string): number {
 }
 
 export function parseIngredientString(s: string): Ingredient {
-  const trimmed = s.trim().replace(/^[\*\-•]+\s*/, '')
+  const trimmed = s.trim().replace(/^[*\-•]+\s*/, '')
   if (!trimmed) return { name: '', amount: 0, unit: '' }
 
   const amtMatch = trimmed.match(/^([\d½¼¾⅓⅔⅛⅜⅝⅞\s/]+)/)

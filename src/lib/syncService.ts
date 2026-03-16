@@ -19,11 +19,11 @@
  */
 
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import type { Json } from '../types/supabase'
 import { db } from './db'
 import { supabase } from './supabase'
 import type { MealPlan, Recipe, ShoppingList } from '../types'
 import { getMyHouseholds, pushSharedMealPlanData } from './householdService'
+import { toJson, fromJson } from './jsonUtils'
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export async function pushRecipe(recipe: Recipe, userId: string): Promise<void> 
     {
       id: recipe.id,
       author_id: userId,
-      data: recipe as unknown as Json,
+      data: toJson(recipe),
       updated_at: recipe.dateModified,
     },
     { onConflict: 'id' }
@@ -120,7 +120,7 @@ export async function pushMealPlan(plan: MealPlan, userId: string): Promise<void
   }
 
   const { error } = await supabase.from('meal_plans_cloud').upsert(
-    { id: plan.id, owner_id: userId, data: plan as unknown as Json, updated_at: plan.updatedAt },
+    { id: plan.id, owner_id: userId, data: toJson(plan), updated_at: plan.updatedAt },
     { onConflict: 'id' }
   )
   if (error) addPending({ table: 'meal_plans', id: plan.id, op: 'upsert' })
@@ -140,7 +140,7 @@ export async function pushShoppingList(list: ShoppingList, userId: string): Prom
     {
       id: list.id,
       owner_id: userId,
-      data: list as unknown as Json,
+      data: toJson(list),
       updated_at: list.updatedAt,
     },
     { onConflict: 'id' }
@@ -213,7 +213,7 @@ async function pullHouseholdPlansForId(householdId: string): Promise<void> {
   if (error || !data) return
 
   for (const row of data) {
-    const cloudPlan = row.data as unknown as MealPlan
+    const cloudPlan = fromJson<MealPlan>(row.data)
     const local = await db.mealPlans.get(row.id)
     if (!local || new Date(row.updated_at).getTime() > new Date(local.updatedAt).getTime()) {
       markCloud('meal_plans', row.id)
@@ -235,7 +235,7 @@ async function pullRecipes(userId: string): Promise<void> {
   if (error || !data) return
 
   for (const row of data) {
-    const cloudRecipe = row.data as unknown as Recipe
+    const cloudRecipe = fromJson<Recipe>(row.data)
     const local = await db.recipes.get(row.id)
     if (!local || new Date(row.updated_at).getTime() > new Date(local.dateModified).getTime()) {
       markCloud('recipes', row.id)
@@ -257,7 +257,7 @@ async function pullMealPlans(userId: string): Promise<void> {
   if (error || !data) return
 
   for (const row of data) {
-    const cloudPlan = row.data as unknown as MealPlan
+    const cloudPlan = fromJson<MealPlan>(row.data)
     const local = await db.mealPlans.get(row.id)
     if (!local || new Date(row.updated_at).getTime() > new Date(local.updatedAt).getTime()) {
       markCloud('meal_plans', row.id)
@@ -279,7 +279,7 @@ async function pullShoppingLists(userId: string): Promise<void> {
   if (error || !data) return
 
   for (const row of data) {
-    const cloudList = row.data as unknown as ShoppingList
+    const cloudList = fromJson<ShoppingList>(row.data)
     const local = await db.shoppingLists.get(row.id)
     if (!local || new Date(row.updated_at).getTime() > new Date(local.updatedAt).getTime()) {
       markCloud('shopping_lists', row.id)

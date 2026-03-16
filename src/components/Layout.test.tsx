@@ -78,8 +78,12 @@ function renderLayout(initialPath = '/') {
 
 describe('Layout', () => {
   beforeEach(() => {
-    vi.mocked(AuthContext.useAuth).mockReturnValue({ user: null, signOut: mockSignOut } as any)
-    vi.mocked(ProfileContext.useProfile).mockReturnValue({ profile: null } as any)
+    vi.mocked(AuthContext.useAuth).mockReturnValue(
+      { user: null, signOut: mockSignOut } as unknown as ReturnType<typeof AuthContext.useAuth>,
+    )
+    vi.mocked(ProfileContext.useProfile).mockReturnValue(
+      { profile: null } as unknown as ReturnType<typeof ProfileContext.useProfile>,
+    )
     vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(false)
     vi.mocked(OnboardingWizard.isOnboardingDone).mockReturnValue(true)
     mockNavigate.mockClear()
@@ -238,7 +242,9 @@ describe('Layout', () => {
   describe('when Supabase is available and user is signed out', () => {
     beforeEach(() => {
       vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(true)
-      vi.mocked(AuthContext.useAuth).mockReturnValue({ user: null, signOut: mockSignOut } as any)
+      vi.mocked(AuthContext.useAuth).mockReturnValue(
+        { user: null, signOut: mockSignOut } as unknown as ReturnType<typeof AuthContext.useAuth>,
+      )
     })
 
     it('shows sign in links (sidebar + mobile header)', () => {
@@ -264,11 +270,15 @@ describe('Layout', () => {
   // ── Auth section — authenticated ─────────────────────────────────────────────
 
   describe('when Supabase is available and user is signed in', () => {
-    const mockUser = { id: 'user-1', email: 'test@example.com' } as any
+    const mockUser = { id: 'user-1', email: 'test@example.com' } as ReturnType<
+      typeof AuthContext.useAuth
+    >['user']
 
     beforeEach(() => {
       vi.mocked(supabaseLib.isSupabaseAvailable).mockReturnValue(true)
-      vi.mocked(AuthContext.useAuth).mockReturnValue({ user: mockUser, signOut: mockSignOut } as any)
+      vi.mocked(AuthContext.useAuth).mockReturnValue(
+        { user: mockUser, signOut: mockSignOut } as unknown as ReturnType<typeof AuthContext.useAuth>,
+      )
     })
 
     it('shows the sign out button', () => {
@@ -289,7 +299,7 @@ describe('Layout', () => {
     it('shows the profile display name when profile is loaded', () => {
       vi.mocked(ProfileContext.useProfile).mockReturnValue({
         profile: { display_name: 'Alice', id: 'user-1' },
-      } as any)
+      } as unknown as ReturnType<typeof ProfileContext.useProfile>)
       renderLayout()
       expect(screen.getByText('Alice')).toBeInTheDocument()
     })

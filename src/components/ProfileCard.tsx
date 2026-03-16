@@ -23,6 +23,7 @@ export default function ProfileCard({ profile, linkable = true, size = 'md' }: P
           src={profile.avatar_url}
           alt={profile.display_name}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       ) : (
         <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
@@ -74,6 +75,7 @@ export function Avatar({ profile, size = 'md', className = '' }: AvatarProps) {
           src={profile.avatar_url}
           alt={profile.display_name}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       ) : (
         <User size={iconSizes[size]} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />

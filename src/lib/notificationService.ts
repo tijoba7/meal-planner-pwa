@@ -45,7 +45,9 @@ export async function getNotifications(userId: string): Promise<AppNotification[
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(50)
-  return (data as unknown as AppNotification[]) ?? []
+  // The DB stores notifications with our NotificationType values and Record<string,string> payload.
+  // AppNotification narrows the base Notification type to these concrete shapes.
+  return (data as AppNotification[]) ?? []
 }
 
 /**
@@ -114,8 +116,8 @@ export async function setMutedTypes(
   if (!supabase) return { error: new Error('Supabase not configured') }
   const { error } = await supabase
     .from('profiles')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update({ notification_muted_types: mutedTypes } as any)
+    // NotificationType[] is a subtype of string[]; cast is safe and matches the DB column type.
+    .update({ notification_muted_types: mutedTypes as string[] })
     .eq('id', userId)
   return { error: error ? new Error(error.message) : null }
 }
@@ -146,6 +148,8 @@ export function subscribeToNotifications(
         filter: `user_id=eq.${userId}`,
       },
       (payload) => {
+        // Realtime payload.new is typed as Record<string, unknown>; shape is guaranteed
+        // by the DB trigger that creates notifications with our NotificationType values.
         onNew(payload.new as unknown as AppNotification)
       },
     )

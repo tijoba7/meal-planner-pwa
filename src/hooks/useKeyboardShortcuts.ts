@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 function isEditableTarget(el: EventTarget | null): boolean {
   if (!el || !(el instanceof HTMLElement)) return false
@@ -21,7 +21,9 @@ export function useKeyboardShortcuts(
   enabled = true,
 ) {
   const shortcutsRef = useRef(shortcuts)
-  shortcutsRef.current = shortcuts
+  useLayoutEffect(() => {
+    shortcutsRef.current = shortcuts
+  })
 
   useEffect(() => {
     if (!enabled) return

@@ -287,8 +287,12 @@ describe('sanitizeRecipeData', () => {
   })
 
   it('preserves extra fields from the original recipe object', () => {
-    const result = sanitizeRecipeData({ ...baseRecipe, id: 'recipe-1', dateCreated: '2026-01-01' } as any)
-    expect((result as any).id).toBe('recipe-1')
-    expect((result as any).dateCreated).toBe('2026-01-01')
+    type Extended = ReturnType<typeof sanitizeRecipeData> & { id: string; dateCreated: string }
+    const input = { ...baseRecipe, id: 'recipe-1', dateCreated: '2026-01-01' } as unknown as Parameters<
+      typeof sanitizeRecipeData
+    >[0]
+    const result = sanitizeRecipeData(input) as Extended
+    expect(result.id).toBe('recipe-1')
+    expect(result.dateCreated).toBe('2026-01-01')
   })
 })

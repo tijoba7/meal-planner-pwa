@@ -6,6 +6,7 @@ import {
   formatRetryAfter,
   sanitizeRecipeData,
 } from './validation'
+import { APP_SETTING_KEYS, getAppSettingString } from './appSettingsService'
 
 export interface ExtractedRecipe {
   name: string
@@ -77,6 +78,38 @@ Rules:
 - If you cannot find any recipe in the text, return: {"error": "No recipe found in this text"}
 - Preserve the original ingredient amounts and units as closely as possible.`
 
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
+
+// Cache admin scraping config for 60 s to avoid a Supabase round-trip on every URL in a batch.
+let _adminConfig: { apiKey: string | null; model: string | null } | null = null
+let _adminConfigAt = 0
+const ADMIN_CONFIG_TTL_MS = 60_000
+
+async function loadAdminScrapingConfig(): Promise<{ apiKey: string | null; model: string | null }> {
+  const now = Date.now()
+  if (_adminConfig && now - _adminConfigAt < ADMIN_CONFIG_TTL_MS) return _adminConfig
+  const [apiKey, model] = await Promise.all([
+    getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY),
+    getAppSettingString(APP_SETTING_KEYS.SCRAPING_MODEL),
+  ])
+  _adminConfig = { apiKey, model }
+  _adminConfigAt = now
+  return _adminConfig
+}
+
+async function resolveApiKeyAndModel(
+  userApiKey?: string
+): Promise<{ apiKey: string; model: string } | { error: string }> {
+  const admin = await loadAdminScrapingConfig()
+  const apiKey = admin.apiKey ?? userApiKey
+  if (!apiKey) {
+    return {
+      error: 'AI API key required. Ask your admin to configure a key, or add your own in Settings.',
+    }
+  }
+  return { apiKey, model: admin.model ?? DEFAULT_MODEL }
+}
+
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
   return text.slice(0, maxChars) + '...[truncated]'
@@ -102,7 +135,8 @@ async function fetchPageText(url: string): Promise<string | null> {
 async function callClaude(
   systemPrompt: string,
   userMessage: string,
-  apiKey: string
+  apiKey: string,
+  model = DEFAULT_MODEL
 ): Promise<ScrapeResult> {
   let raw: string
   try {
@@ -115,7 +149,7 @@ async function callClaude(
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model,
         max_tokens: 2048,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
@@ -170,7 +204,10 @@ async function callClaude(
   return { ok: true, recipe: sanitizeRecipeData(recipe) }
 }
 
-export async function extractRecipeFromUrl(url: string, apiKey: string): Promise<ScrapeResult> {
+export async function extractRecipeFromUrl(
+  url: string,
+  userApiKey?: string
+): Promise<ScrapeResult> {
   const urlError = validateImportUrl(url)
   if (urlError) return { ok: false, error: URL_VALIDATION_MESSAGES[urlError] }
 
@@ -183,20 +220,26 @@ export async function extractRecipeFromUrl(url: string, apiKey: string): Promise
     }
   }
 
+  const resolved = await resolveApiKeyAndModel(userApiKey)
+  if ('error' in resolved) return { ok: false, error: resolved.error }
+
   const pageText = await fetchPageText(url)
   const MAX_PAGE_CHARS = 12_000
   const userMessage = pageText
     ? `URL: ${url}\n\nPage content:\n${truncate(pageText, MAX_PAGE_CHARS)}`
     : `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
 
-  const result = await callClaude(SYSTEM_PROMPT, userMessage, apiKey)
+  const result = await callClaude(SYSTEM_PROMPT, userMessage, resolved.apiKey, resolved.model)
   if (result.ok && !result.recipe.url) {
     return { ok: true, recipe: { ...result.recipe, url } }
   }
   return result
 }
 
-export async function extractRecipeFromText(text: string, apiKey: string): Promise<ScrapeResult> {
+export async function extractRecipeFromText(
+  text: string,
+  userApiKey?: string
+): Promise<ScrapeResult> {
   const rateLimit = checkImportRateLimit()
   if (!rateLimit.allowed) {
     const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
@@ -205,13 +248,22 @@ export async function extractRecipeFromText(text: string, apiKey: string): Promi
       error: `Too many import requests. Please wait ${wait} before trying again.`,
     }
   }
+
+  const resolved = await resolveApiKeyAndModel(userApiKey)
+  if ('error' in resolved) return { ok: false, error: resolved.error }
+
   const MAX_TEXT_CHARS = 12_000
-  return callClaude(TEXT_SYSTEM_PROMPT, `Recipe text:\n\n${truncate(text, MAX_TEXT_CHARS)}`, apiKey)
+  return callClaude(
+    TEXT_SYSTEM_PROMPT,
+    `Recipe text:\n\n${truncate(text, MAX_TEXT_CHARS)}`,
+    resolved.apiKey,
+    resolved.model
+  )
 }
 
 export async function extractRecipesFromUrls(
   urls: string[],
-  apiKey: string,
+  userApiKey: string | undefined,
   onProgress: (items: BatchItemState[]) => void
 ): Promise<BatchItemState[]> {
   const items: BatchItemState[] = urls.map((url) => ({ label: url, status: 'pending' as const }))
@@ -221,7 +273,7 @@ export async function extractRecipesFromUrls(
     items[i] = { ...items[i], status: 'loading' }
     onProgress([...items])
 
-    const result = await extractRecipeFromUrl(items[i].label, apiKey)
+    const result = await extractRecipeFromUrl(items[i].label, userApiKey)
 
     if (result.ok) {
       items[i] = { ...items[i], status: 'done', recipe: result.recipe }

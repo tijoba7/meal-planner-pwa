@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Upload, CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
 import { createRecipe } from '../lib/db'
@@ -16,6 +16,7 @@ import {
   type BatchItemState,
   type ScrapeResult,
 } from '../lib/scraper'
+import { APP_SETTING_KEYS, getAppSettingString } from '../lib/appSettingsService'
 import RecipeImage from '../components/RecipeImage'
 import { useToast } from '../contexts/ToastContext'
 
@@ -33,8 +34,17 @@ export default function RecipeImportPage() {
   const [input, setInput] = useState('')
   const [state, setState] = useState<ImportState>({ phase: 'idle' })
   const fileRef = useRef<HTMLInputElement>(null)
+  // null = still checking, true = admin has configured a key, false = no admin key
+  const [adminKeyConfigured, setAdminKeyConfigured] = useState<boolean | null>(null)
 
-  const apiKey = getStoredApiKey()
+  useEffect(() => {
+    getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY).then((key) => {
+      setAdminKeyConfigured(key !== null)
+    })
+  }, [])
+
+  const userApiKey = getStoredApiKey()
+  const hasAnyKey = adminKeyConfigured === true || userApiKey.length > 0
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -107,18 +117,9 @@ export default function RecipeImportPage() {
       return
     }
 
-    if (!apiKey) {
-      setState({
-        phase: 'error',
-        message:
-          'AI API key required for URL and text import. Add your key in Settings, or import a .paprikarecipe / .json file instead.',
-      })
-      return
-    }
-
     if (mode.type === 'single-url') {
       setState({ phase: 'loading', label: 'Extracting recipe from URL…' })
-      const result = await extractRecipeFromUrl(mode.url, apiKey)
+      const result = await extractRecipeFromUrl(mode.url, userApiKey || undefined)
       if (result.ok) {
         setState({ phase: 'review', recipe: result.recipe })
       } else {
@@ -133,7 +134,7 @@ export default function RecipeImportPage() {
         status: 'pending' as const,
       }))
       setState({ phase: 'batch', items: initialItems })
-      await extractRecipesFromUrls(mode.urls, apiKey, (items: BatchItemState[]) => {
+      await extractRecipesFromUrls(mode.urls, userApiKey || undefined, (items: BatchItemState[]) => {
         setState({ phase: 'batch', items })
       })
       return
@@ -141,7 +142,7 @@ export default function RecipeImportPage() {
 
     // Plain text
     setState({ phase: 'loading', label: 'Extracting recipe from text…' })
-    const result = await extractRecipeFromText(raw, apiKey)
+    const result = await extractRecipeFromText(raw, userApiKey || undefined)
     if (result.ok) {
       setState({ phase: 'review', recipe: result.recipe })
     } else {
@@ -212,8 +213,15 @@ export default function RecipeImportPage() {
   }
 
   // ── No API key gate ────────────────────────────────────────────────────────
+  // Show gate only after we know whether an admin key is configured (adminKeyConfigured !== null).
+  // If admin has set a key, users never need to supply their own.
 
-  if (!apiKey && state.phase === 'idle') {
+  if (adminKeyConfigured === null && state.phase === 'idle') {
+    // Still loading admin config — render nothing to avoid flash
+    return null
+  }
+
+  if (!hasAnyKey && state.phase === 'idle') {
     return (
       <div className="p-4 max-w-2xl mx-auto">
         <Link

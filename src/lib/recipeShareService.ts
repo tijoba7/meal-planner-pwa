@@ -113,7 +113,9 @@ export async function getSharedRecipe(cloudRecipeId: string): Promise<CloudRecip
     .select('*, profiles(display_name, avatar_url)')
     .eq('id', cloudRecipeId)
     .maybeSingle()
-  return (data as unknown as CloudRecipeWithAuthor) ?? null
+    // Supabase SDK cannot infer the joined profiles shape — override required
+    .overrideTypes<CloudRecipeWithAuthor | null, { merge: false }>()
+  return data ?? null
 }
 
 /**
@@ -135,7 +137,9 @@ export async function getFriendsFeed(
     .neq('visibility', 'private')
     .order('published_at', { ascending: false })
     .range(offset, offset + limit - 1)
-  return (data as unknown as CloudRecipeWithAuthor[]) ?? []
+    // Supabase SDK cannot infer the joined profiles shape — override required
+    .overrideTypes<CloudRecipeWithAuthor[], { merge: false }>()
+  return data ?? []
 }
 
 /**
@@ -149,7 +153,9 @@ export async function getPublicFeed(offset = 0, limit = 20): Promise<CloudRecipe
     .eq('visibility', 'public')
     .order('published_at', { ascending: false })
     .range(offset, offset + limit - 1)
-  return (data as unknown as CloudRecipeWithAuthor[]) ?? []
+    // Supabase SDK cannot infer the joined profiles shape — override required
+    .overrideTypes<CloudRecipeWithAuthor[], { merge: false }>()
+  return data ?? []
 }
 
 // ─── Fork ─────────────────────────────────────────────────────────────────────

@@ -58,7 +58,7 @@ export async function createGroup(
     .select()
     .single()
 
-  return { data: (data as unknown as Group) ?? null, error: error ? new Error(error.message) : null }
+  return { data: (data as Group | null) ?? null, error: error ? new Error(error.message) : null }
 }
 
 /**
@@ -67,15 +67,18 @@ export async function createGroup(
 export async function getMyGroups(userId: string): Promise<GroupWithMeta[]> {
   if (!supabase) return []
 
+  type MembershipRow = { role: 'admin' | 'member'; group_id: string; groups: Group | null }
   const { data: memberships } = await supabase
     .from('group_members')
     .select('role, group_id, groups(id, name, description, avatar_url, created_by, created_at, updated_at)')
     .eq('user_id', userId)
     .order('joined_at', { ascending: true })
+    // Supabase SDK cannot infer the renamed join shape — override required
+    .overrideTypes<MembershipRow[], { merge: false }>()
 
   if (!memberships || memberships.length === 0) return []
 
-  const rows = memberships as unknown as { role: 'admin' | 'member'; group_id: string; groups: Group | null }[]
+  const rows = memberships
   const groupIds = rows.map((r) => r.group_id)
 
   const { data: allMembers } = await supabase
@@ -107,7 +110,7 @@ export async function getGroup(groupId: string): Promise<Group | null> {
     .select('*')
     .eq('id', groupId)
     .maybeSingle()
-  return (data as unknown as Group) ?? null
+  return (data as Group | null) ?? null
 }
 
 /**
@@ -142,14 +145,17 @@ export async function deleteGroup(groupId: string): Promise<{ error: Error | nul
  */
 export async function getGroupMembers(groupId: string): Promise<GroupMemberWithProfile[]> {
   if (!supabase) return []
+  type MemberRow = GroupMember & { profiles: GroupMemberWithProfile['profile'] }
   const { data } = await supabase
     .from('group_members')
     .select('group_id, user_id, role, joined_at, profiles(id, display_name, avatar_url, bio)')
     .eq('group_id', groupId)
     .order('joined_at', { ascending: true })
+    // Supabase SDK infers a complex join type that doesn't match MemberRow — override required
+    .overrideTypes<MemberRow[], { merge: false }>()
 
   if (!data) return []
-  return (data as unknown as (GroupMember & { profiles: GroupMemberWithProfile['profile'] })[]).map((row) => ({
+  return data.map((row) => ({
     group_id: row.group_id,
     user_id: row.user_id,
     role: row.role,
@@ -263,19 +269,18 @@ export async function shareRecipeToGroup(
  */
 export async function getGroupFeed(groupId: string): Promise<CloudRecipeWithAuthor[]> {
   if (!supabase) return []
+  type GroupRecipeRow = { recipe_id: string; added_at: string; recipes_cloud: CloudRecipeWithAuthor }
   const { data } = await supabase
     .from('group_recipes')
     .select('recipe_id, added_at, recipes_cloud(*, profiles(display_name, avatar_url))')
     .eq('group_id', groupId)
     .order('added_at', { ascending: false })
     .limit(60)
+    // Supabase SDK cannot infer nested join shape — override required
+    .overrideTypes<GroupRecipeRow[], { merge: false }>()
 
   if (!data) return []
-  return (
-    data as unknown as { recipe_id: string; added_at: string; recipes_cloud: CloudRecipeWithAuthor }[]
-  )
-    .map((row) => row.recipes_cloud)
-    .filter(Boolean)
+  return data.map((row) => row.recipes_cloud).filter(Boolean)
 }
 
 /**
@@ -305,5 +310,6 @@ export async function getGroupRecipeIds(groupId: string): Promise<Set<string>> {
     .from('group_recipes')
     .select('recipe_id')
     .eq('group_id', groupId)
-  return new Set((data as unknown as { recipe_id: string }[] | null)?.map((r) => r.recipe_id) ?? [])
+  // data is typed as Pick<GroupRecipe, 'recipe_id'>[] | null by the SDK
+  return new Set(data?.map((r) => r.recipe_id) ?? [])
 }

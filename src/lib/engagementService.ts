@@ -190,10 +190,12 @@ export async function getComments(recipeId: string): Promise<CommentWithAuthor[]
     .select('*, profiles(id, display_name, avatar_url)')
     .eq('recipe_id', recipeId)
     .order('created_at', { ascending: true })
+    // Supabase SDK cannot infer the joined profiles shape — override required
+    .overrideTypes<CommentWithAuthor[], { merge: false }>()
 
   if (!data) return []
 
-  return buildCommentTree(data as unknown as CommentWithAuthor[])
+  return buildCommentTree(data)
 }
 
 function buildCommentTree(flat: CommentWithAuthor[]): CommentWithAuthor[] {
@@ -242,11 +244,13 @@ export async function addComment(
     })
     .select('*, profiles(id, display_name, avatar_url)')
     .single()
+    // Supabase SDK cannot infer joined profile shape — override required
+    .overrideTypes<CommentWithAuthor, { merge: false }>()
 
   if (error || !data) return { data: null, error: error ? new Error(error.message) : null }
 
   return {
-    data: { ...(data as unknown as CommentWithAuthor), replies: [] },
+    data: { ...data, replies: [] },
     error: null,
   }
 }

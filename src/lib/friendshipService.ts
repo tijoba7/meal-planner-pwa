@@ -103,8 +103,7 @@ export async function sendFriendRequest(
     .select()
     .single()
 
-  // Supabase SDK infers a narrow type that doesn't overlap with Friendship — cast via unknown
-  return { data: (data as unknown as Friendship) ?? null, error: error ? new Error(error.message) : null }
+  return { data: (data as Friendship | null) ?? null, error: error ? new Error(error.message) : null }
 }
 
 /**
@@ -226,11 +225,12 @@ export async function getFriends(currentUserId: string): Promise<FriendshipWithP
     )
     .eq('status', 'accepted')
     .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
+    // Supabase SDK cannot infer aliased join shapes (requester:/addressee: rename) — override required
+    .overrideTypes<FriendshipJoinRow[], { merge: false }>()
 
   if (!data) return []
 
-  // Supabase SDK infers a complex join type that doesn't overlap with FriendshipJoinRow — cast via unknown
-  return (data as unknown as FriendshipJoinRow[]).map((row) => {
+  return data.map((row) => {
     const isRequester = row.requester_id === currentUserId
     const profile = isRequester
       ? row.addressee as ProfilePick
@@ -261,11 +261,12 @@ export async function getPendingRequests(currentUserId: string): Promise<Friends
     .eq('status', 'pending')
     .eq('addressee_id', currentUserId)
     .order('created_at', { ascending: false })
+    // Supabase SDK cannot infer aliased join shape (requester: rename) — override required
+    .overrideTypes<PendingRequestRow[], { merge: false }>()
 
   if (!data) return []
 
-  // Supabase SDK infers a complex join type that doesn't overlap with PendingRequestRow — cast via unknown
-  return (data as unknown as PendingRequestRow[]).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     requester_id: row.requester_id,
     addressee_id: row.addressee_id,
@@ -290,11 +291,12 @@ export async function getSentRequests(currentUserId: string): Promise<Friendship
     .eq('status', 'pending')
     .eq('requester_id', currentUserId)
     .order('created_at', { ascending: false })
+    // Supabase SDK cannot infer aliased join shape (addressee: rename) — override required
+    .overrideTypes<SentRequestRow[], { merge: false }>()
 
   if (!data) return []
 
-  // Supabase SDK infers a complex join type that doesn't overlap with SentRequestRow — cast via unknown
-  return (data as unknown as SentRequestRow[]).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     requester_id: row.requester_id,
     addressee_id: row.addressee_id,
@@ -421,6 +423,7 @@ export async function resolveInviteToken(
 ): Promise<Pick<Profile, 'id' | 'display_name' | 'avatar_url' | 'bio'> | null> {
   if (!supabase) return null
 
+  type InviteRow = { user_id: string; expires_at: string; profiles: ProfilePick | null }
   const { data } = await supabase
     .from('friend_invites')
     .select(
@@ -430,10 +433,11 @@ export async function resolveInviteToken(
     .eq('token', token)
     .gt('expires_at', new Date().toISOString())
     .maybeSingle()
+    // Supabase SDK cannot infer the joined profile shape — override required
+    .overrideTypes<InviteRow | null, { merge: false }>()
 
   if (!data) return null
-  // Access the joined profile; the Supabase SDK types the join result with the profile shape
-  return (data as unknown as { profiles: ProfilePick | null }).profiles
+  return data.profiles
 }
 
 /**

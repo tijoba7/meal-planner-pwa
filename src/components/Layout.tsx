@@ -15,8 +15,10 @@ import {
   User,
   Package,
   HelpCircle,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
+import { useAdmin } from '../contexts/AdminContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -73,6 +75,7 @@ const NAV_ITEMS: NavItem[] = [
 export default function Layout() {
   const { user, signOut } = useAuth()
   const { profile } = useProfile()
+  const { isAdmin } = useAdmin()
   const navigate = useNavigate()
   const location = useLocation()
   const supIsAvailable = isSupabaseAvailable()
@@ -203,6 +206,14 @@ export default function Layout() {
             <span className="hidden lg:block">Help</span>
             <span className="sr-only lg:hidden">Help</span>
           </NavLink>
+          {/* Admin — sidebar only, visible to admins */}
+          {isAdmin && (
+            <NavLink to="/admin" end={false} className={sidebarLinkClass} title="Admin">
+              <ShieldCheck size={16} strokeWidth={1.75} aria-hidden="true" />
+              <span className="hidden lg:block">Admin</span>
+              <span className="sr-only lg:hidden">Admin</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* Keyboard shortcuts hint — desktop only */}

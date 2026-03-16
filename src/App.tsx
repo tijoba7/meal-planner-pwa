@@ -8,6 +8,7 @@ import { SyncProvider } from './contexts/SyncContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import AdminRoute from './components/AdminRoute'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 // RecipesPage is on the critical path (home) — keep as eager import
@@ -37,6 +38,10 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const PantryPage = lazy(() => import('./pages/PantryPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
+const AdminLayout = lazy(() => import('./components/AdminLayout'))
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
+const AdminScrapingPage = lazy(() => import('./pages/admin/AdminScrapingPage'))
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'))
 
 function PageLoader() {
   return (
@@ -100,6 +105,22 @@ export default function App() {
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="help" element={<HelpPage />} />
                         <Route path="*" element={<NotFoundPage />} />
+                      </Route>
+
+                      {/* Admin panel — requires auth + admin role */}
+                      <Route
+                        path="/admin"
+                        element={
+                          <ProtectedRoute>
+                            <AdminRoute>
+                              <AdminLayout />
+                            </AdminRoute>
+                          </ProtectedRoute>
+                        }
+                      >
+                        <Route index element={<AdminDashboardPage />} />
+                        <Route path="scraping" element={<AdminScrapingPage />} />
+                        <Route path="settings" element={<AdminSettingsPage />} />
                       </Route>
 
                       {/* Top-level catch-all (e.g. /auth/unknown) */}

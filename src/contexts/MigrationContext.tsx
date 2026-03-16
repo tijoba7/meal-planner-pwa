@@ -70,8 +70,7 @@ export function MigrationProvider({ children }: { children: ReactNode }) {
     try {
       await migrateRecipesToCloud(user.id, (p) => setProgress(p))
       setStatus('done')
-    } catch (err) {
-      console.error('[MigrationContext] Migration failed:', err)
+    } catch {
       setStatus('error')
     }
   }

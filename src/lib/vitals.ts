@@ -1,10 +1,8 @@
 /**
  * Core Web Vitals reporting.
  *
- * In development: logs each metric to the console.
- * In production:  sends metrics to Sentry as a custom measurement on a
- *                 dedicated "web-vitals" span so they show up in the
- *                 performance dashboard.
+ * Sends metrics to Sentry as a custom measurement on a dedicated "web-vitals"
+ * span so they show up in the performance dashboard.
  *
  * Metrics collected: LCP, INP, CLS, TTFB
  */
@@ -21,13 +19,6 @@ function getVitalsSnapshot(): Record<string, Metric> {
 
 function handleMetric(metric: Metric) {
   vitalsStore[metric.name] = metric
-
-  if (import.meta.env.DEV) {
-    console.debug(
-      `[web-vitals] ${metric.name}: ${metric.value.toFixed(2)} ${metric.name === 'CLS' ? '' : 'ms'} (rating: ${metric.rating})`,
-    )
-    return
-  }
 
   // Production: report to Sentry as a custom measurement.
   // Dynamic import so Sentry is not bundled into the vitals module in dev.

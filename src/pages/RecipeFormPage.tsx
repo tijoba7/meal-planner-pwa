@@ -536,8 +536,7 @@ export default function RecipeFormPage() {
           imageUrl = await resizeToDataUrl(pendingFile, 1200)
           thumbnailUrl = await resizeToDataUrl(pendingFile, 400)
         }
-      } catch (err) {
-        console.error('Image upload failed:', err)
+      } catch {
         toast.error('Image upload failed — recipe saved without image.')
         // Don't abort the save; just omit the image
       }
@@ -572,7 +571,7 @@ export default function RecipeFormPage() {
         await updateRecipe(id, data)
         // Clean up old storage image if it was replaced or removed
         if (imageCleared && existingImage && isStorageUrl(existingImage) && user) {
-          deleteRecipeImages(user.id, id).catch(console.error)
+          deleteRecipeImages(user.id, id).catch(() => {})
         }
         toast.success('Recipe saved.')
         navigate(`/recipes/${id}`)

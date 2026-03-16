@@ -176,7 +176,7 @@ export default function RecipesPage() {
 
   // Reset to first page whenever any filter or sort changes
   const filterKey = `${query}|${showFavoritesOnly}|${sort}|${selectedCategories.join(',')}|${selectedCuisines.join(',')}|${selectedTags.join(',')}|${selectedDiets.join(',')}|${ingredientQuery}|${maxCookTime}`
-  useEffect(() => { setDisplayCount(PAGE_SIZE) }, [filterKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setDisplayCount(PAGE_SIZE) }, [filterKey])
 
   const filtered = sortRecipes(
     recipes.filter((r) => {

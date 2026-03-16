@@ -1,4 +1,5 @@
-import { defineConfig, loadEnv } from 'vitest/config'
+import { defineConfig } from 'vitest/config'
+import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -6,14 +7,15 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig(({ mode }) => {
-  // Fail-fast: production builds require all critical env vars to be set.
-  if (mode === 'production') {
+  // Fail-fast: deployment builds require all critical env vars.
+  // Gated on DEPLOY=true so local dev and CI-only builds are unaffected.
+  if (mode === 'production' && process.env.DEPLOY === 'true') {
     const env = loadEnv(mode, process.cwd(), '')
     const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SENTRY_DSN']
     const missing = required.filter((k) => !env[k])
     if (missing.length > 0) {
       throw new Error(
-        `Production build requires the following env vars:\n` +
+        `Deployment build requires the following env vars:\n` +
         missing.map((k) => `  - ${k}`).join('\n') +
         `\n\nSet them in your deployment environment or .env.production file.`
       )

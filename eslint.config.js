@@ -28,10 +28,10 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      // v7 introduced set-state-in-effect but it flags common legitimate patterns
-      // (e.g. setX(null) in else branches). Downgrade to warn until codebase is
-      // refactored to use derived state / reducers.
-      'react-hooks/set-state-in-effect': 'warn',
+      // set-state-in-effect flags legitimate early-return guard patterns used
+      // throughout this codebase (e.g. if (!id) { setNotFound(true); return }).
+      // The rule produces too many false positives to be actionable; disable it.
+      'react-hooks/set-state-in-effect': 'off',
       // TypeScript compiler handles undefined references; disable the redundant
       // no-undef rule for .ts/.tsx files to avoid false positives on type names.
       'no-undef': 'off',

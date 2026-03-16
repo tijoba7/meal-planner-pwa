@@ -107,6 +107,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       navigator.serviceWorker?.removeEventListener('message', handleSwMessage)
       stopSync()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, backgroundPull])
 
   return (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Library, Pencil, Plus, Trash2, X, Check } from 'lucide-react'
 import {
@@ -247,8 +248,8 @@ export default function CollectionDetailPage() {
         </ul>
       )}
 
-      {/* Add recipes modal */}
-      {showAddRecipes && (
+      {/* Add recipes modal — portal to escape flex stacking context on mobile */}
+      {showAddRecipes && createPortal(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh]">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -323,11 +324,12 @@ export default function CollectionDetailPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {/* Edit name/description modal */}
-      {showEditName && (
+      {/* Edit name/description modal — portal to escape flex stacking context on mobile */}
+      {showEditName && createPortal(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -391,11 +393,12 @@ export default function CollectionDetailPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {/* Delete confirmation */}
-      {confirmDelete && (
+      {/* Delete confirmation — portal to escape flex stacking context on mobile */}
+      {confirmDelete && createPortal(
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
           role="dialog"
@@ -427,7 +430,8 @@ export default function CollectionDetailPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

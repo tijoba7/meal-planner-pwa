@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Library, Plus, X } from 'lucide-react'
 import { getCollections, createCollection, deleteCollection } from '../lib/db'
@@ -121,8 +122,8 @@ export default function CollectionsPage() {
         </ul>
       )}
 
-      {/* Create collection modal */}
-      {showCreate && (
+      {/* Create collection modal — portal to document.body to escape flex stacking context */}
+      {showCreate && createPortal(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -196,11 +197,12 @@ export default function CollectionsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {/* Delete confirmation dialog */}
-      {confirmDeleteId && (
+      {/* Delete confirmation dialog — portal to document.body to escape flex stacking context */}
+      {confirmDeleteId && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl">
             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
@@ -224,7 +226,8 @@ export default function CollectionsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

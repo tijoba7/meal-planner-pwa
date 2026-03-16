@@ -43,6 +43,36 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const [clearStep, setClearStep] = useState<0 | 1 | 2>(0)
   const [clearing, setClearing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const [recipes, mealPlans, shoppingLists, mealPlanTemplates] = await Promise.all([
+        db.recipes.toArray(),
+        db.mealPlans.toArray(),
+        db.shoppingLists.toArray(),
+        db.mealPlanTemplates.toArray(),
+      ])
+      const payload = {
+        appVersion: '0.1.0',
+        exportedAt: new Date().toISOString(),
+        recipes,
+        mealPlans,
+        shoppingLists,
+        mealPlanTemplates,
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mise-backup-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function handleSaveKey(e: React.FormEvent) {
     e.preventDefault()
@@ -136,9 +166,13 @@ export default function SettingsPage() {
                 <RowLabel>Export data</RowLabel>
                 <RowDescription>Download all recipes and meal plans as JSON</RowDescription>
               </div>
-              <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                Coming soon
-              </span>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="text-sm font-medium px-4 py-2 rounded-lg border border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-50"
+              >
+                {exporting ? 'Exporting…' : 'Export'}
+              </button>
             </div>
           </SettingsRow>
           <SettingsRow>

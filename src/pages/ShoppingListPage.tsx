@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, ChevronDown, ChevronRight, Share2, Copy, Download, Plus } from 'lucide-react'
+import { X, ChevronDown, ChevronRight, ChevronLeft, Share2, Copy, Download, Plus } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
@@ -458,9 +458,9 @@ export default function ShoppingListPage() {
       <div className="p-4 max-w-2xl mx-auto">
         <button
           onClick={() => setActiveListId(null)}
-          className="text-sm text-green-600 dark:text-green-400 font-medium mb-4 flex items-center gap-1 hover:text-green-700 dark:hover:text-green-300"
+          className="text-sm text-green-600 dark:text-green-400 font-medium mb-4 flex items-center gap-1 hover:text-green-700 dark:hover:text-green-300 transition-colors"
         >
-          <span className="text-lg leading-none">&lsaquo;</span> All lists
+          <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" /> All lists
         </button>
 
         <div className="flex items-start justify-between mb-4">
@@ -740,7 +740,7 @@ export default function ShoppingListPage() {
                 <button
                   onClick={() => handleDelete(list.id)}
                   aria-label={`Delete ${list.name}`}
-                  className="text-xs text-red-400 hover:text-red-600"
+                  className="text-xs text-red-400 hover:text-red-600 transition-colors"
                 >
                   Delete
                 </button>

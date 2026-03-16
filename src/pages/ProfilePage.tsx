@@ -229,37 +229,41 @@ export default function ProfilePage() {
       {editing ? (
         <form onSubmit={handleSave} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Display name <span className="text-red-500">*</span>
+            <label htmlFor="profile-display-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Display name <span className="text-red-500" aria-hidden="true">*</span>
+              <span className="sr-only">(required)</span>
             </label>
             <input
+              id="profile-display-name"
               type="text"
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               maxLength={60}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="Your name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Bio</label>
+            <label htmlFor="profile-bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Bio</label>
             <textarea
+              id="profile-bio"
               value={bio}
               onChange={e => setBio(e.target.value)}
               maxLength={200}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
               placeholder="Tell others a bit about yourself and your cooking style…"
+              aria-describedby="profile-bio-count"
             />
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">{bio.length}/200</p>
+            <p id="profile-bio-count" className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right" aria-live="polite">{bio.length}/200</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <p id="dietary-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Dietary preferences
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </p>
+            <div className="flex flex-wrap gap-2" role="group" aria-labelledby="dietary-label">
               {DIETARY_OPTIONS.map(pref => {
                 const active = dietary.includes(pref)
                 return (
@@ -267,6 +271,7 @@ export default function ProfilePage() {
                     key={pref}
                     type="button"
                     onClick={() => toggleDietary(pref)}
+                    aria-pressed={active}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                       active
                         ? 'bg-green-600 border-green-600 text-white'
@@ -280,7 +285,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <div className="flex gap-3 pt-1">
             <button
@@ -347,7 +352,7 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           {/* Invite link section */}
           <div className="border-t border-gray-100 dark:border-gray-700 pt-5">

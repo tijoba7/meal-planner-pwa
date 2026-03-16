@@ -882,7 +882,7 @@ export default function RecipeFormPage() {
                   <button
                     type="button"
                     onClick={() => removeIngredient(i)}
-                    className="text-gray-400 hover:text-red-400 transition-colors p-1"
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors"
                     aria-label="Remove ingredient"
                   >
                     <X size={14} strokeWidth={2} aria-hidden="true" />
@@ -926,7 +926,7 @@ export default function RecipeFormPage() {
                   <button
                     type="button"
                     onClick={() => removeInstruction(i)}
-                    className="mt-2 text-gray-400 hover:text-red-400 transition-colors p-1"
+                    className="mt-2 shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors"
                     aria-label="Remove step"
                   >
                     <X size={14} strokeWidth={2} aria-hidden="true" />

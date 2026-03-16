@@ -137,7 +137,7 @@ export default function PublicProfilePage() {
     <div className="max-w-lg mx-auto px-4 py-8">
       <Link
         to="/"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-6"
+        className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mb-6"
       >
         <ChevronLeft size={14} />
         Back
@@ -146,7 +146,7 @@ export default function PublicProfilePage() {
       <div className="flex flex-col items-center gap-4 mb-8">
         <Avatar profile={profile} size="xl" />
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{profile.display_name}</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{profile.display_name}</h1>
           {profile.bio && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 max-w-sm">{profile.bio}</p>
           )}

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Check, X } from 'lucide-react'
 import { getStoredApiKey, setStoredApiKey } from '../lib/scraper'
 import { useTheme } from '../contexts/ThemeContext'
 import { db } from '../lib/db'
@@ -364,7 +365,9 @@ export default function SettingsPage() {
               locally and never sent anywhere except Anthropic's API.
             </RowDescription>
             <form onSubmit={handleSaveKey} className="flex gap-2 mt-3">
+              <label htmlFor="api-key-input" className="sr-only">Anthropic API key</label>
               <input
+                id="api-key-input"
                 type="password"
                 value={apiKey}
                 onChange={(e) => {
@@ -525,7 +528,7 @@ export default function SettingsPage() {
 
             {importStep === 'importing' && (
               <div className="p-8 flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">Importing…</p>
               </div>
             )}
@@ -534,15 +537,7 @@ export default function SettingsPage() {
               <div className="p-6 space-y-4">
                 <div className="flex flex-col items-center gap-2 py-2">
                   <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-green-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <Check size={24} strokeWidth={2} className="text-green-600" aria-hidden="true" />
                   </div>
                   <p className="text-base font-semibold text-gray-800 dark:text-gray-100">Import complete</p>
                   {importPreview && (
@@ -566,15 +561,7 @@ export default function SettingsPage() {
               <div className="p-6 space-y-4">
                 <div className="flex flex-col items-center gap-2 py-2">
                   <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                    <svg
-                      className="w-6 h-6 text-red-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X size={24} strokeWidth={2} className="text-red-600" aria-hidden="true" />
                   </div>
                   <p className="text-base font-semibold text-gray-800 dark:text-gray-100">Import failed</p>
                   <p className="text-sm text-gray-400 dark:text-gray-500 text-center">{importError}</p>

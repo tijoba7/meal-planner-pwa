@@ -14,7 +14,7 @@ export class ShoppingPageObject {
   constructor(page: Page) {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'Shopping Lists' })
-    this.newListButton = page.getByRole('button', { name: '+ New List' })
+    this.newListButton = page.getByRole('button', { name: 'New shopping list' })
     this.emptyStateTitle = page.getByText('No shopping lists yet')
   }
 
@@ -37,10 +37,12 @@ export class ShoppingPageObject {
   }
 
   async deleteList(name: string) {
-    // Find the delete button next to the matching list
+    // Find the delete button next to the matching list.
+    // Use exact: true so the "Delete" button isn't confused with the list-card
+    // button whose accessible name starts with the list name (e.g. "Delete Me …").
     const listCard = this.page.locator('button', { hasText: name })
     const row = listCard.locator('..')
-    await row.getByRole('button', { name: 'Delete' }).click()
+    await row.getByRole('button', { name: 'Delete', exact: true }).click()
   }
 
   async checkItem(itemName: string) {

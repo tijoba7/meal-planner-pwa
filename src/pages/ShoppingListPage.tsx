@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ShoppingCart, X, ClipboardList } from 'lucide-react'
+import { X } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
+import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
@@ -204,7 +205,7 @@ export default function ShoppingListPage() {
 
         {total === 0 && (
           <EmptyState
-            icon={ClipboardList}
+            illustration={<ClipboardIllustration />}
             title="No items in this list"
             description="Lists are generated from your meal plan — make sure you have meals planned for the selected dates."
           />
@@ -302,7 +303,7 @@ export default function ShoppingListPage() {
         </div>
       ) : lists.length === 0 && !showCreate ? (
         <EmptyState
-          icon={ShoppingCart}
+          illustration={<ShoppingCartIllustration />}
           title="No shopping lists yet"
           description="Create one from your meal plan to auto-generate your grocery list."
           action={{ label: 'Create a list', onClick: () => setShowCreate(true) }}

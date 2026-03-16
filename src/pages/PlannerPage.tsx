@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { X, BookOpen, Plus, Copy, LayoutTemplate, Trash2 } from 'lucide-react'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import { CalendarIllustration } from '../components/EmptyStateIllustrations'
 import type { MealType, Recipe, MealPlan, MealPlanTemplate } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
@@ -50,6 +53,13 @@ function formatWeekRange(monday: Date): string {
   const start = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const end = sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   return `${start} – ${end}`
+}
+
+function parseNutritionValue(value: string | number | undefined): number {
+  if (value == null) return 0
+  if (typeof value === 'number') return value
+  const match = String(value).match(/^[\d.]+/)
+  return match ? parseFloat(match[0]) : 0
 }
 
 export default function PlannerPage() {
@@ -102,6 +112,22 @@ export default function PlannerPage() {
       return toISODate(d)
     })
   }
+
+  const anyModalOpen = pickerTarget !== null || copyModalOpen || templateGalleryOpen || saveTemplateOpen || applyTemplateConfirm !== null
+
+  const plannerShortcuts = useMemo(() => ({
+    ArrowLeft: () => { if (!anyModalOpen) navigateWeek(-1) },
+    ArrowRight: () => { if (!anyModalOpen) navigateWeek(1) },
+    Escape: () => {
+      if (pickerTarget) { setPickerTarget(null); setSearch('') }
+      else if (copyModalOpen) setCopyModalOpen(false)
+      else if (applyTemplateConfirm) setApplyTemplateConfirm(null)
+      else if (saveTemplateOpen) setSaveTemplateOpen(false)
+      else if (templateGalleryOpen) setTemplateGalleryOpen(false)
+    },
+  }), [anyModalOpen, pickerTarget, copyModalOpen, applyTemplateConfirm, saveTemplateOpen, templateGalleryOpen])
+
+  useKeyboardShortcuts(plannerShortcuts)
 
   const openCopyModal = () => {
     const nextWeek = toISODate(addDays(new Date(weekStart + 'T00:00:00'), 7))
@@ -214,6 +240,59 @@ export default function PlannerPage() {
     setTemplates(prev => prev.filter(t => t.id !== templateId))
   }
 
+  const weeklyNutrition = useMemo(() => {
+    if (!mealPlan) return null
+    const recipeMap = new Map(recipes.map(r => [r.id, r]))
+    const startDate = new Date(weekStart + 'T00:00:00')
+    const weekDates = Array.from({ length: 7 }, (_, i) => toISODate(addDays(startDate, i)))
+
+    let hasData = false
+    let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0
+    let daysWithData = 0
+
+    for (const date of weekDates) {
+      const dayPlan = mealPlan.days[date] ?? {}
+      let dayCal = 0, dayProtein = 0, dayCarbs = 0, dayFat = 0
+
+      for (const slot of Object.values(dayPlan)) {
+        const { recipes: slotRecipes } = normalizeMealSlot(slot)
+        for (const { recipeId, servings } of slotRecipes) {
+          const recipe = recipeMap.get(recipeId)
+          if (!recipe?.nutrition) continue
+          dayCal += parseNutritionValue(recipe.nutrition['calories']) * servings
+          dayProtein += parseNutritionValue(recipe.nutrition['proteinContent']) * servings
+          dayCarbs += parseNutritionValue(recipe.nutrition['carbohydrateContent']) * servings
+          dayFat += parseNutritionValue(recipe.nutrition['fatContent']) * servings
+          hasData = true
+        }
+      }
+
+      if (dayCal > 0 || dayProtein > 0 || dayCarbs > 0 || dayFat > 0) daysWithData++
+      totalCal += dayCal
+      totalProtein += dayProtein
+      totalCarbs += dayCarbs
+      totalFat += dayFat
+    }
+
+    if (!hasData) return null
+
+    return {
+      total: {
+        cal: Math.round(totalCal),
+        protein: Math.round(totalProtein),
+        carbs: Math.round(totalCarbs),
+        fat: Math.round(totalFat),
+      },
+      dailyAvg: daysWithData > 0 ? {
+        cal: Math.round(totalCal / daysWithData),
+        protein: Math.round(totalProtein / daysWithData),
+        carbs: Math.round(totalCarbs / daysWithData),
+        fat: Math.round(totalFat / daysWithData),
+      } : null,
+      daysWithData,
+    }
+  }, [mealPlan, recipes, weekStart])
+
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(new Date(weekStart + 'T00:00:00'), i)
     return { date: toISODate(d), label: formatDayHeader(d) }
@@ -305,6 +384,16 @@ export default function PlannerPage() {
         </button>
       </div>
 
+      {/* Empty state for weeks with no meals */}
+      {!sourceHasMeals && (
+        <EmptyState
+          illustration={<CalendarIllustration />}
+          title="Nothing planned yet"
+          description="Add recipes to any meal slot below, or browse your recipe collection for inspiration."
+          action={{ label: 'Browse recipes', href: '/' }}
+        />
+      )}
+
       {/* Days */}
       <div className="space-y-3">
         {weekDays.map(({ date, label }) => {
@@ -369,6 +458,40 @@ export default function PlannerPage() {
           )
         })}
       </div>
+
+      {/* Weekly nutrition summary */}
+      {weeklyNutrition && (
+        <div className="mt-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Weekly Nutrition</h3>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              {weeklyNutrition.daysWithData} of 7 days tracked
+            </span>
+          </div>
+          <div className="grid grid-cols-4 divide-x divide-gray-100 dark:divide-gray-700">
+            {(
+              [
+                { label: 'Calories', total: weeklyNutrition.total.cal, avg: weeklyNutrition.dailyAvg?.cal, unit: '' },
+                { label: 'Protein', total: weeklyNutrition.total.protein, avg: weeklyNutrition.dailyAvg?.protein, unit: 'g' },
+                { label: 'Carbs', total: weeklyNutrition.total.carbs, avg: weeklyNutrition.dailyAvg?.carbs, unit: 'g' },
+                { label: 'Fat', total: weeklyNutrition.total.fat, avg: weeklyNutrition.dailyAvg?.fat, unit: 'g' },
+              ] as const
+            ).map(({ label, total, avg, unit }) => (
+              <div key={label} className="p-3 text-center">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{label}</p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  {total.toLocaleString()}{unit}
+                </p>
+                {avg != null && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    ~{avg.toLocaleString()}{unit}/day
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Copy week modal */}
       {copyModalOpen && (

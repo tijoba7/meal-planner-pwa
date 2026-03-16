@@ -149,13 +149,19 @@ export default function RecipesPage() {
       </div>
 
       <div className="flex gap-2 mb-3">
-        <input
-          type="search"
-          placeholder="Search recipes..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
+        <div className="relative flex-1">
+          <input
+            ref={searchRef}
+            type="search"
+            placeholder="Search recipes..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full px-3 py-2 pr-10 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-400 dark:text-gray-500 pointer-events-none">
+            /
+          </kbd>
+        </div>
         <button
           onClick={() => setShowFavoritesOnly((v) => !v)}
           aria-pressed={showFavoritesOnly}

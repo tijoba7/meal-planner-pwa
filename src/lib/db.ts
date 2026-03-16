@@ -60,6 +60,12 @@ class MealPlannerDB extends Dexie {
       shoppingLists: '&id, name, mealPlanId, createdAt',
       mealPlanTemplates: '&id, name, createdAt',
     })
+    this.version(4).stores({
+      recipes: '&id, name, *keywords, dateCreated, isFavorite',
+      mealPlans: '&id, weekStartDate, createdAt',
+      shoppingLists: '&id, name, mealPlanId, createdAt',
+      mealPlanTemplates: '&id, name, createdAt',
+    })
   }
 }
 
@@ -126,6 +132,14 @@ export async function updateRecipe(
 
 export async function deleteRecipe(recipeId: string): Promise<void> {
   await db.recipes.delete(recipeId)
+}
+
+export async function toggleFavorite(recipeId: string): Promise<boolean> {
+  const recipe = await db.recipes.get(recipeId)
+  if (!recipe) throw new Error('Recipe not found')
+  const newVal = !recipe.isFavorite
+  await db.recipes.update(recipeId, { isFavorite: newVal, dateModified: now() })
+  return newVal
 }
 
 // ─── MealPlan CRUD ────────────────────────────────────────────────────────────

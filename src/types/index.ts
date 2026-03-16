@@ -23,6 +23,7 @@ export interface Recipe {
   imageThumbnailUrl?: string
   dateCreated: string
   dateModified: string
+  isFavorite?: boolean
   // Optional Schema.org fields (no UI yet)
   author?: string
   url?: string

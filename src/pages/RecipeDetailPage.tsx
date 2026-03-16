@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChefHat } from 'lucide-react'
-import { getRecipe, deleteRecipe, durationToMinutes } from '../lib/db'
+import { ChefHat, Heart, Share2, Globe, Users, Lock, X } from 'lucide-react'
+import { getRecipe, deleteRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
+import { useAuth } from '../contexts/AuthContext'
+import { isSupabaseAvailable } from '../lib/supabase'
+import {
+  publishRecipe,
+  updateVisibility,
+  getCloudRecipeMeta,
+  type RecipeCloudMeta,
+} from '../lib/recipeShareService'
+import type { RecipeVisibility } from '../types/supabase'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
 
@@ -75,12 +84,19 @@ export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const { user } = useAuth()
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [scaledServings, setScaledServings] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
+
+  // Share panel state
+  const [showSharePanel, setShowSharePanel] = useState(false)
+  const [cloudMeta, setCloudMeta] = useState<RecipeCloudMeta | null>(null)
+  const [selectedVisibility, setSelectedVisibility] = useState<RecipeVisibility>('public')
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -92,6 +108,22 @@ export default function RecipeDetailPage() {
     })
   }, [id])
 
+  useEffect(() => {
+    if (!id || !user || !isSupabaseAvailable()) return
+    getCloudRecipeMeta(id).then((meta) => {
+      if (meta) {
+        setCloudMeta(meta)
+        setSelectedVisibility(meta.visibility)
+      }
+    })
+  }, [id, user])
+
+  async function handleToggleFavorite() {
+    if (!id || !recipe) return
+    const newVal = await toggleFavorite(id)
+    setRecipe((r) => (r ? { ...r, isFavorite: newVal } : r))
+  }
+
   async function handleDelete() {
     if (!id) return
     setDeleting(true)
@@ -99,6 +131,24 @@ export default function RecipeDetailPage() {
     await deleteRecipe(id)
     toast.success(`"${name}" deleted.`)
     navigate('/')
+  }
+
+  async function handleShare() {
+    if (!recipe || !user) return
+    setSharing(true)
+    const { error } = cloudMeta
+      ? await updateVisibility(recipe.id, selectedVisibility)
+      : await publishRecipe(recipe, user.id, selectedVisibility)
+    if (error) {
+      toast.error('Failed to update sharing settings.')
+    } else {
+      const newMeta: RecipeCloudMeta = { visibility: selectedVisibility, published: selectedVisibility !== 'private' }
+      setCloudMeta(newMeta)
+      const msg = selectedVisibility === 'private' ? 'Recipe set to private.' : 'Recipe sharing updated!'
+      toast.success(msg)
+      setShowSharePanel(false)
+    }
+    setSharing(false)
   }
 
   if (notFound) {
@@ -175,6 +225,17 @@ export default function RecipeDetailPage() {
       <div className="flex items-start justify-between gap-3 mb-2">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{recipe.name}</h2>
         <div className="flex gap-2 shrink-0">
+          <button
+            onClick={handleToggleFavorite}
+            aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Heart
+              size={16}
+              aria-hidden="true"
+              className={recipe.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-500'}
+            />
+          </button>
           {recipe.recipeInstructions.length > 0 && (
             <button
               onClick={() => setCookingMode(true)}
@@ -182,6 +243,16 @@ export default function RecipeDetailPage() {
             >
               <ChefHat size={14} strokeWidth={2} aria-hidden="true" />
               Cook
+            </button>
+          )}
+          {user && isSupabaseAvailable() && (
+            <button
+              onClick={() => setShowSharePanel(true)}
+              aria-label="Share recipe"
+              className="flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Share2 size={14} strokeWidth={2} aria-hidden="true" />
+              {cloudMeta && cloudMeta.visibility !== 'private' ? 'Shared' : 'Share'}
             </button>
           )}
           <Link
@@ -337,6 +408,72 @@ export default function RecipeDetailPage() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* Share panel */}
+      {showSharePanel && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Share recipe</h4>
+              <button
+                onClick={() => setShowSharePanel(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose who can see this recipe.</p>
+            <div className="space-y-2 mb-5">
+              {(
+                [
+                  { value: 'public', label: 'Public', desc: 'Anyone can discover it', Icon: Globe },
+                  { value: 'friends', label: 'Friends only', desc: 'Only your accepted friends', Icon: Users },
+                  { value: 'private', label: 'Private', desc: 'Only you', Icon: Lock },
+                ] as { value: RecipeVisibility; label: string; desc: string; Icon: typeof Globe }[]
+              ).map(({ value, label, desc, Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedVisibility(value)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                    selectedVisibility === value
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    className={selectedVisibility === value ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className={`text-sm font-medium ${selectedVisibility === value ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                      {label}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSharePanel(false)}
+                className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                disabled={sharing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShare}
+                disabled={sharing}
+                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {sharing ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete confirm dialog */}

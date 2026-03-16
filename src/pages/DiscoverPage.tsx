@@ -250,7 +250,7 @@ function TrendingSection() {
             Trending this week
           </h3>
         </div>
-        <ul className="grid grid-cols-2 gap-3">
+        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <GridSkeleton key={i} />
           ))}
@@ -269,7 +269,7 @@ function TrendingSection() {
           Trending this week
         </h3>
       </div>
-      <ul className="grid grid-cols-2 gap-3" aria-label="Trending recipes">
+      <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-label="Trending recipes">
         {trendingItems.slice(0, 6).map((item) => {
           const eng = engagementMap[item.id]
           return (
@@ -530,7 +530,7 @@ export default function DiscoverPage() {
           ) : exploreLoading ? (
             gridView ? (
               <div role="status" aria-busy="true" aria-label="Loading public recipes">
-                <ul className="grid grid-cols-2 gap-3">
+                <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <GridSkeleton key={i} />
                   ))}
@@ -556,7 +556,7 @@ export default function DiscoverPage() {
             </div>
           ) : gridView ? (
             <>
-              <ul className="grid grid-cols-2 gap-3" aria-live="polite">
+              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-live="polite">
                 {filteredExplore.map((item) => (
                   <RecipeGridCard key={item.id} item={item} />
                 ))}

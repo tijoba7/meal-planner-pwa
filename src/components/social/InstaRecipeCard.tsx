@@ -136,7 +136,7 @@ export default function InstaRecipeCard({
         <button
           onClick={onMoreClick}
           aria-label="More options"
-          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors ml-1"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
           <MoreHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
         </button>
@@ -169,15 +169,15 @@ export default function InstaRecipeCard({
       </Link>
 
       {/* ── Action row ──────────────────────────────────────────────────── */}
-      <div className="flex items-center px-3 py-2">
+      <div className="flex items-center px-2 py-1">
         {/* Left actions: like, comment, share */}
-        <div className="flex items-center gap-0.5 flex-1">
+        <div className="flex items-center gap-0 flex-1">
           {/* Like */}
           <button
             onClick={toggleLike}
             aria-pressed={localLiked}
             aria-label={localLiked ? 'Unlike recipe' : 'Like recipe'}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <Heart
               size={22}
@@ -192,7 +192,7 @@ export default function InstaRecipeCard({
           <button
             onClick={onCommentClick}
             aria-label={`${commentCount} comment${commentCount !== 1 ? 's' : ''}`}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <MessageCircle
               size={22}
@@ -206,7 +206,7 @@ export default function InstaRecipeCard({
           <button
             onClick={onShareClick}
             aria-label="Share recipe"
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <Send
               size={20}
@@ -222,7 +222,7 @@ export default function InstaRecipeCard({
           onClick={toggleBookmark}
           aria-pressed={localBookmarked}
           aria-label={localBookmarked ? 'Remove bookmark' : 'Bookmark recipe'}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <Bookmark
             size={22}
@@ -272,14 +272,14 @@ export default function InstaRecipeCard({
         {commentCount > 0 && (
           <button
             onClick={onCommentClick}
-            className="mt-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            className="mt-1.5 py-0.5 block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             View all {commentCount} comment{commentCount !== 1 ? 's' : ''}
           </button>
         )}
 
         {/* Timestamp */}
-        <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
           {relativeTime(recipe.publishedAt)}
         </p>
       </div>

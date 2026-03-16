@@ -207,12 +207,12 @@ export default function ProfilePage() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingAvatar}
             aria-label="Upload avatar"
-            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+            className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
           >
             {uploadingAvatar ? (
-              <Loader2 size={14} className="animate-spin text-gray-500 dark:text-gray-400" />
+              <Loader2 size={16} className="animate-spin text-gray-500 dark:text-gray-400" />
             ) : (
-              <Camera size={14} strokeWidth={1.75} className="text-gray-600 dark:text-gray-300" />
+              <Camera size={16} strokeWidth={1.75} className="text-gray-600 dark:text-gray-300" />
             )}
           </button>
           <input

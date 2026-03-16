@@ -60,9 +60,9 @@ export default function RepostCard({
           <button
             onClick={onDelete}
             aria-label="Delete repost"
-            className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
+            className="ml-auto min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-gray-400 hover:text-red-500 transition-colors"
           >
-            <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
+            <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -148,11 +148,11 @@ export default function RepostCard({
       )}
 
       {/* ── Action row ────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 px-3 py-2">
+      <div className="flex items-center gap-0 px-2 py-1">
         <button
           onClick={onLike}
           aria-label="Like"
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <Heart
             size={20}
@@ -164,7 +164,7 @@ export default function RepostCard({
         <button
           onClick={onCommentClick}
           aria-label={`${commentCount} comment${commentCount !== 1 ? 's' : ''}`}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <MessageCircle
             size={20}
@@ -182,7 +182,7 @@ export default function RepostCard({
             {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
           </p>
         )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+        <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
           {relativeTime(repost.created_at)}
         </p>
       </div>

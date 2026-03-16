@@ -68,9 +68,9 @@ export default function RepostComposer({
           <button
             onClick={onClose}
             aria-label="Cancel"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
-            <X size={18} strokeWidth={2} aria-hidden="true" />
+            <X size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
 
@@ -127,9 +127,9 @@ export default function RepostComposer({
               <button
                 onClick={removeImage}
                 aria-label="Remove photo"
-                className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900/70 rounded-full flex items-center justify-center text-white"
+                className="absolute -top-2 -right-2 w-7 h-7 bg-gray-900/70 rounded-full flex items-center justify-center text-white hover:bg-gray-900 transition-colors"
               >
-                <X size={12} strokeWidth={2.5} aria-hidden="true" />
+                <X size={14} strokeWidth={2.5} aria-hidden="true" />
               </button>
             </div>
           ) : (

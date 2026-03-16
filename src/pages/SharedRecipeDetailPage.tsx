@@ -650,7 +650,7 @@ export default function SharedRecipeDetailPage() {
               onClick={handleToggleLike}
               disabled={!user || reactionPending}
               aria-label={reactions.userLiked ? 'Unlike' : 'Like'}
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+              className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-full border transition-colors disabled:opacity-50 ${
                 reactions.userLiked
                   ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400'
                   : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500 dark:hover:text-red-400'
@@ -669,7 +669,7 @@ export default function SharedRecipeDetailPage() {
               onClick={handleToggleBookmark}
               disabled={!user || reactionPending}
               aria-label={reactions.userBookmarked ? 'Remove bookmark' : 'Bookmark'}
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+              className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-full border transition-colors disabled:opacity-50 ${
                 reactions.userBookmarked
                   ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400'
                   : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-yellow-300 hover:text-yellow-600 dark:hover:text-yellow-400'
@@ -689,7 +689,7 @@ export default function SharedRecipeDetailPage() {
                 onClick={() => setEmojiPickerOpen((o) => !o)}
                 disabled={!user}
                 aria-label="Add emoji reaction"
-                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-full border transition-colors disabled:opacity-50 ${
                   reactions.userEmojiCode
                     ? 'border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
                     : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-green-300'
@@ -704,7 +704,7 @@ export default function SharedRecipeDetailPage() {
                     <button
                       key={em}
                       onClick={() => handleEmojiSelect(em)}
-                      className={`text-xl p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${reactions.userEmojiCode === em ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
+                      className={`text-xl p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${reactions.userEmojiCode === em ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
                     >
                       {em}
                     </button>
@@ -716,7 +716,7 @@ export default function SharedRecipeDetailPage() {
             {/* Comment count (scroll anchor) */}
             <button
               onClick={() => commentInputRef.current?.scrollIntoView({ behavior: 'smooth' })}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 transition-colors"
+              className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-full border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 transition-colors"
             >
               <MessageCircle size={14} aria-hidden="true" />
               <span>{comments.length}</span>
@@ -732,14 +732,14 @@ export default function SharedRecipeDetailPage() {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {user ? 'Your rating:' : 'Rating:'}
             </span>
-            <div className="flex gap-0.5">
+            <div className="flex gap-0">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   onClick={() => handleRatingClick(star)}
                   disabled={!user}
                   aria-label={`Rate ${star} star${star !== 1 ? 's' : ''}`}
-                  className="p-0.5 transition-transform hover:scale-110 disabled:cursor-default"
+                  className="p-2 transition-transform hover:scale-110 disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded"
                 >
                   <Star
                     size={20}

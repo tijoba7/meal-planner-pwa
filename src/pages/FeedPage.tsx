@@ -181,9 +181,9 @@ function CommentSheet({ recipeId, onClose }: CommentSheetProps) {
           <button
             onClick={onClose}
             aria-label="Close comments"
-            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
-            <X size={18} strokeWidth={2} aria-hidden="true" />
+            <X size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
         <div className="overflow-y-auto flex-1 px-4">

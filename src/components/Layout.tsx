@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, CalendarDays, Library, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, CalendarDays, Library, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, Package, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/collections', label: 'Collections', icon: Library, end: false },
   { to: '/meal-plan', label: 'Meal Plan', icon: CalendarDays, end: false },
   { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
+  { to: '/pantry', label: 'Pantry', icon: Package, end: false },
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
   { to: '/friends', label: 'Friends', icon: Users, end: false },
   { to: '/groups', label: 'Groups', icon: UsersRound, end: false },
@@ -92,7 +93,7 @@ export default function Layout() {
           <span className="text-xl font-bold text-green-700 dark:text-green-400 lg:hidden" aria-hidden="true">M</span>
           <div className="hidden lg:block">
             <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Everything in its place.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Everything in its place.</p>
           </div>
         </div>
         <nav aria-label="Main navigation" className="flex flex-col gap-1 p-2 lg:p-3 flex-1">
@@ -125,7 +126,7 @@ export default function Layout() {
         <div className="hidden lg:block px-3 pb-2">
           <button
             onClick={() => setShowShortcuts(true)}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             title="Keyboard shortcuts (?)"
           >
             <kbd className="inline-flex items-center justify-center w-5 h-5 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400">?</kbd>

@@ -714,7 +714,7 @@ export default function PlannerPage() {
                       className={`px-4 py-3 transition-colors${isDropTarget ? ' bg-green-50 dark:bg-green-900/20 ring-2 ring-inset ring-green-400 dark:ring-green-500' : ''}`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-16 shrink-0 pt-0.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 shrink-0 pt-0.5">
                           {MEAL_LABELS[meal]}
                         </span>
                         <div className="flex-1 min-w-0 space-y-1">
@@ -765,7 +765,7 @@ export default function PlannerPage() {
                           <button
                             onClick={() => setPickerTarget({ date, meal })}
                             aria-label={`Add recipe to ${meal} on ${date}`}
-                            className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 group"
+                            className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 group"
                           >
                             <span className="w-4 h-4 flex items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-gray-600 group-hover:border-green-400">
                               <Plus size={10} strokeWidth={2.5} aria-hidden="true" />

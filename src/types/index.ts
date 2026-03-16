@@ -110,3 +110,14 @@ export interface Collection {
   createdAt: string
   updatedAt: string
 }
+
+export interface PantryItem {
+  id: string
+  name: string
+  quantity: number
+  unit: string
+  expiryDate?: string // ISO date "YYYY-MM-DD"
+  category?: IngredientCategory
+  createdAt: string
+  updatedAt: string
+}

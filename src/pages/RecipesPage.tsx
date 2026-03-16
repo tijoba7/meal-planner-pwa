@@ -200,13 +200,13 @@ export default function RecipesPage() {
         <div className="flex gap-2">
           <Link
             to="/recipes/import"
-            className="border border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+            className="border border-green-700 dark:border-green-500 text-green-700 dark:text-green-400 text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
           >
             Import URL
           </Link>
           <Link
             to="/recipes/new"
-            className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
           >
             + Add Recipe
           </Link>

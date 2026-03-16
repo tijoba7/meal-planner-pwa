@@ -513,7 +513,6 @@ export default function ShoppingListPage() {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([])
-  const [excludePantry, setExcludePantry] = useState(true)
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
@@ -551,7 +550,9 @@ export default function ShoppingListPage() {
   const handleCreate = async () => {
     if (!listName.trim()) return
     setCreating(true)
-    const { items: aggregated, excludedCount } = aggregateIngredients(startDate, endDate, mealPlans, recipesById, pantryItems)
+    const { items: aggregated, excludedCount } = aggregateIngredients(
+      startDate, endDate, mealPlans, recipesById, pantryItems
+    )
     const itemsWithIds: ShoppingItem[] = aggregated.map((item) => ({
       ...item,
       id: crypto.randomUUID(),

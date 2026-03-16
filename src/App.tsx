@@ -28,6 +28,7 @@ import GroupDetailPage from './pages/GroupDetailPage'
 import CollectionsPage from './pages/CollectionsPage'
 import CollectionDetailPage from './pages/CollectionDetailPage'
 import NotificationsPage from './pages/NotificationsPage'
+import PantryPage from './pages/PantryPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
             <Route path="meal-plan" element={<PlannerPage />} />
             <Route path="shopping" element={<ShoppingListPage />} />
+            <Route path="pantry" element={<PantryPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="users/:userId" element={<PublicProfilePage />} />

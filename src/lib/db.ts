@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Recipe, MealPlan, ShoppingList, ShoppingItem, MealPlanTemplate, Collection } from '../types'
+import type { Recipe, MealPlan, ShoppingList, ShoppingItem, MealPlanTemplate, Collection, PantryItem } from '../types'
 
 // ─── Database ────────────────────────────────────────────────────────────────
 
@@ -9,6 +9,7 @@ class MealPlannerDB extends Dexie {
   shoppingLists!: Table<ShoppingList>
   mealPlanTemplates!: Table<MealPlanTemplate>
   collections!: Table<Collection>
+  pantryItems!: Table<PantryItem>
 
   constructor() {
     super('meal-planner')
@@ -73,6 +74,14 @@ class MealPlannerDB extends Dexie {
       shoppingLists: '&id, name, mealPlanId, createdAt',
       mealPlanTemplates: '&id, name, createdAt',
       collections: '&id, name, createdAt',
+    })
+    this.version(6).stores({
+      recipes: '&id, name, *keywords, dateCreated, isFavorite',
+      mealPlans: '&id, weekStartDate, createdAt',
+      shoppingLists: '&id, name, mealPlanId, createdAt',
+      mealPlanTemplates: '&id, name, createdAt',
+      collections: '&id, name, createdAt',
+      pantryItems: '&id, name, expiryDate, createdAt',
     })
   }
 }
@@ -295,6 +304,36 @@ export async function removeRecipeFromCollection(collectionId: string, recipeId:
     recipeIds: collection.recipeIds.filter((id) => id !== recipeId),
     updatedAt: now(),
   })
+}
+
+// ─── PantryItem CRUD ──────────────────────────────────────────────────────────
+
+export async function getPantryItems(): Promise<PantryItem[]> {
+  return db.pantryItems.orderBy('name').toArray()
+}
+
+export async function getPantryItem(itemId: string): Promise<PantryItem | undefined> {
+  return db.pantryItems.get(itemId)
+}
+
+export async function createPantryItem(
+  data: Omit<PantryItem, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<PantryItem> {
+  const item: PantryItem = { ...data, id: id(), createdAt: now(), updatedAt: now() }
+  await db.pantryItems.add(item)
+  return item
+}
+
+export async function updatePantryItem(
+  itemId: string,
+  data: Partial<Omit<PantryItem, 'id' | 'createdAt'>>
+): Promise<PantryItem> {
+  await db.pantryItems.update(itemId, { ...data, updatedAt: now() })
+  return (await db.pantryItems.get(itemId))!
+}
+
+export async function deletePantryItem(itemId: string): Promise<void> {
+  await db.pantryItems.delete(itemId)
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────

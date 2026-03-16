@@ -26,21 +26,21 @@ export default function EmptyState({ icon, illustration, title, description, act
       </div>
       <p className="text-base font-semibold text-gray-700 dark:text-gray-200">{title}</p>
       {description && (
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 max-w-xs">{description}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xs">{description}</p>
       )}
       {action && (
         <div className="mt-5">
           {action.href ? (
             <Link
               to={action.href}
-              className="bg-green-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+              className="bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors"
             >
               {action.label}
             </Link>
           ) : (
             <button
               onClick={action.onClick}
-              className="bg-green-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+              className="bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors"
             >
               {action.label}
             </button>

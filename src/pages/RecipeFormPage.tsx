@@ -631,7 +631,7 @@ export default function RecipeFormPage() {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
         <p className="text-gray-500">Recipe not found.</p>
-        <Link to="/" className="text-green-600 text-sm mt-2 inline-block">
+        <Link to="/" className="text-green-700 text-sm mt-2 inline-block">
           ← Back to recipes
         </Link>
       </div>
@@ -640,7 +640,7 @@ export default function RecipeFormPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-10">
-      <Link to={isEdit && id ? `/recipes/${id}` : '/'} className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
+      <Link to={isEdit && id ? `/recipes/${id}` : '/'} className="text-sm text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 inline-block mb-4">
         ← {isEdit ? 'Back to recipe' : 'Recipes'}
       </Link>
 
@@ -722,7 +722,7 @@ export default function RecipeFormPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500 hover:border-green-500 dark:hover:border-green-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+              className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400 hover:border-green-500 dark:hover:border-green-500 hover:text-green-700 dark:hover:text-green-400 transition-colors"
             >
               <Camera size={24} strokeWidth={1.5} />
               <span className="text-sm">Add a photo</span>
@@ -734,8 +734,9 @@ export default function RecipeFormPage() {
         {/* Times + Servings */}
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Prep (min)</label>
+            <label htmlFor="prep-time-minutes" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Prep (min)</label>
             <input
+              id="prep-time-minutes"
               type="number"
               min="0"
               value={form.prepTimeMinutes}
@@ -747,8 +748,9 @@ export default function RecipeFormPage() {
             {errors.prepTimeMinutes && <p className="text-red-500 text-xs mt-1" role="alert">{errors.prepTimeMinutes}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cook (min)</label>
+            <label htmlFor="cook-time-minutes" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cook (min)</label>
             <input
+              id="cook-time-minutes"
               type="number"
               min="0"
               value={form.cookTimeMinutes}
@@ -780,7 +782,7 @@ export default function RecipeFormPage() {
             suggestions={keywordSuggestions}
             placeholder="Add tags… (e.g. italian, pasta)"
           />
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Press Enter or comma to add · Backspace to remove last</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Press Enter or comma to add · Backspace to remove last</p>
         </div>
 
         {/* Category & Cuisine */}
@@ -818,7 +820,7 @@ export default function RecipeFormPage() {
         {/* Nutrition */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-            Nutrition <span className="text-xs font-normal text-gray-400">(per serving, optional)</span>
+            Nutrition <span className="text-xs font-normal text-gray-500">(per serving, optional)</span>
           </label>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
@@ -829,10 +831,11 @@ export default function RecipeFormPage() {
               { field: 'nutritionFiber' as const, label: 'Fiber', unit: 'g' },
             ].map(({ field, label, unit }) => (
               <div key={field}>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {label} <span className="text-gray-400">({unit})</span>
+                <label htmlFor={`nutrition-${field}`} className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {label} <span className="text-gray-500">({unit})</span>
                 </label>
                 <input
+                  id={`nutrition-${field}`}
                   type="number"
                   min="0"
                   step="any"
@@ -899,7 +902,7 @@ export default function RecipeFormPage() {
           <button
             type="button"
             onClick={addIngredient}
-            className="mt-2 text-sm text-green-600 hover:text-green-700 font-medium"
+            className="mt-2 text-sm text-green-700 hover:text-green-800 font-medium"
           >
             + Add ingredient
           </button>
@@ -943,7 +946,7 @@ export default function RecipeFormPage() {
           <button
             type="button"
             onClick={addInstruction}
-            className="mt-2 text-sm text-green-600 hover:text-green-700 font-medium"
+            className="mt-2 text-sm text-green-700 hover:text-green-800 font-medium"
           >
             + Add step
           </button>
@@ -953,7 +956,7 @@ export default function RecipeFormPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+          className="w-full bg-green-700 text-white font-semibold py-3 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
         >
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Recipe'}
         </button>

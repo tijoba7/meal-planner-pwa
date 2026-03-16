@@ -23,6 +23,8 @@ import FriendsPage from './pages/FriendsPage'
 import InvitePage from './pages/InvitePage'
 import DiscoverPage from './pages/DiscoverPage'
 import SharedRecipeDetailPage from './pages/SharedRecipeDetailPage'
+import GroupsPage from './pages/GroupsPage'
+import GroupDetailPage from './pages/GroupDetailPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -56,6 +58,8 @@ export default function App() {
             <Route path="invite/:token" element={<InvitePage />} />
             <Route path="discover" element={<DiscoverPage />} />
             <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
+            <Route path="groups" element={<GroupsPage />} />
+            <Route path="groups/:id" element={<GroupDetailPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 

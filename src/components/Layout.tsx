@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
   { to: '/friends', label: 'Friends', icon: Users, end: false },
+  { to: '/groups', label: 'Groups', icon: UsersRound, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
@@ -64,8 +65,16 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
+      {/* Skip to main content — keyboard-only visible */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-green-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium focus:shadow-lg"
+      >
+        Skip to content
+      </a>
+
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
+      <aside className="print:hidden hidden md:flex flex-col w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
         <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-700">
           <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Everything in its place.</p>
@@ -130,7 +139,7 @@ export default function Layout() {
       </aside>
 
       {/* Mobile header */}
-      <header className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+      <header className="print:hidden md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-green-700 dark:text-green-400">Mise</h1>
         {supIsAvailable && (
           user ? (
@@ -157,12 +166,12 @@ export default function Layout() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto pb-20 md:pb-0">
+      <main id="main-content" className="flex-1 overflow-auto pb-20 md:pb-0 print:pb-0 print:overflow-visible">
         <Outlet />
       </main>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
+      <nav className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
             <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />

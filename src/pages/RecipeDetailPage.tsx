@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChefHat, Copy, Heart, Share2, Globe, Users, Lock, X } from 'lucide-react'
+import { ChefHat, Copy, Heart, Printer, Share2, Globe, Users, Lock, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
-import { getRecipe, createRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
+import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
@@ -17,6 +17,13 @@ import {
   type RecipeCloudMeta,
 } from '../lib/recipeShareService'
 import type { RecipeVisibility } from '../types/supabase'
+import {
+  getMyGroups,
+  getGroupRecipeIds,
+  shareRecipeToGroup,
+  removeRecipeFromGroup,
+  type GroupWithMeta,
+} from '../lib/groupService'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
 
@@ -99,6 +106,10 @@ export default function RecipeDetailPage() {
   const [cloudMeta, setCloudMeta] = useState<RecipeCloudMeta | null>(null)
   const [selectedVisibility, setSelectedVisibility] = useState<RecipeVisibility>('public')
   const [sharing, setSharing] = useState(false)
+  // Group sharing state
+  const [userGroups, setUserGroups] = useState<GroupWithMeta[]>([])
+  const [sharedGroupIds, setSharedGroupIds] = useState<Set<string>>(new Set())
+  const [groupTogglingId, setGroupTogglingId] = useState<string | null>(null)
 
   useKeyboardShortcuts({
     Escape: () => {
@@ -129,6 +140,30 @@ export default function RecipeDetailPage() {
     })
   }, [id, user])
 
+  useEffect(() => {
+    if (!user || !isSupabaseAvailable() || !showSharePanel) return
+    Promise.all([
+      getMyGroups(user.id),
+      id ? getGroupRecipeIds(id) : Promise.resolve(new Set<string>()),
+    ]).then(([groups, sharedIds]) => {
+      setUserGroups(groups)
+      setSharedGroupIds(sharedIds)
+    })
+  }, [id, user, showSharePanel])
+
+  async function handleGroupToggle(groupId: string, currentlyShared: boolean) {
+    if (!id || !user) return
+    setGroupTogglingId(groupId)
+    if (currentlyShared) {
+      await removeRecipeFromGroup(groupId, id)
+      setSharedGroupIds((prev) => { const next = new Set(prev); next.delete(groupId); return next })
+    } else {
+      await shareRecipeToGroup(groupId, id, user.id)
+      setSharedGroupIds((prev) => new Set([...prev, groupId]))
+    }
+    setGroupTogglingId(null)
+  }
+
   async function handleToggleFavorite() {
     if (!id || !recipe) return
     const newVal = await toggleFavorite(id)
@@ -149,17 +184,7 @@ export default function RecipeDetailPage() {
     const deletedRecipe = { ...recipe }
     await deleteRecipe(id)
     navigate('/')
-    toast.success(`"${deletedRecipe.name}" deleted.`, {
-      duration: 5000,
-      action: {
-        label: 'Undo',
-        onClick: async () => {
-          const { id: _id, dateCreated: _dc, dateModified: _dm, ...restData } = deletedRecipe
-          await createRecipe(restData, deletedRecipe.id)
-          navigate(`/recipes/${deletedRecipe.id}`)
-        },
-      },
-    })
+    toast.success(`"${deletedRecipe.name}" deleted.`)
   }
 
   async function handleShare() {
@@ -197,7 +222,7 @@ export default function RecipeDetailPage() {
         <Skeleton className="h-4 w-20 mb-4" />
         <div className="flex items-start justify-between gap-3 mb-4">
           <Skeleton className="h-8 w-2/3" />
-          <div className="flex gap-2 shrink-0">
+          <div className="print:hidden flex gap-2 shrink-0">
             <Skeleton className="h-8 w-16" />
             <Skeleton className="h-8 w-12" />
           </div>
@@ -233,7 +258,7 @@ export default function RecipeDetailPage() {
       )}
 
       {/* Back link */}
-      <Link to="/" className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
+      <Link to="/" className="print:hidden text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 inline-block mb-4">
         ← Recipes
       </Link>
 
@@ -253,7 +278,7 @@ export default function RecipeDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{recipe.name}</h2>
-        <div className="flex gap-2 shrink-0">
+        <div className="print:hidden flex gap-2 shrink-0">
           <button
             onClick={handleToggleFavorite}
             aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
@@ -284,6 +309,14 @@ export default function RecipeDetailPage() {
               {cloudMeta && cloudMeta.visibility !== 'private' ? 'Shared' : 'Share'}
             </button>
           )}
+          <button
+            onClick={() => window.print()}
+            aria-label="Print recipe"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Printer size={14} strokeWidth={2} aria-hidden="true" />
+            Print
+          </button>
           <Link
             to={`/recipes/${recipe.id}/edit`}
             className="text-sm font-medium text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 px-3 py-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
@@ -315,7 +348,7 @@ export default function RecipeDetailPage() {
             onClick={() => setScaledServings((s) => Math.max(1, s - 1))}
             disabled={scaledServings <= 1}
             aria-label="Decrease servings"
-            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors leading-none select-none"
+            className="print:hidden w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors leading-none select-none"
           >
             −
           </button>
@@ -326,7 +359,7 @@ export default function RecipeDetailPage() {
           <button
             onClick={() => setScaledServings((s) => s + 1)}
             aria-label="Increase servings"
-            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors leading-none select-none"
+            className="print:hidden w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors leading-none select-none"
           >
             +
           </button>
@@ -374,7 +407,7 @@ export default function RecipeDetailPage() {
           {isScaled && (
             <button
               onClick={() => setScaledServings(originalServings)}
-              className="text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
+              className="print:hidden text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
             >
               Reset to {originalServings}
             </button>
@@ -450,10 +483,15 @@ export default function RecipeDetailPage() {
 
       {/* Share panel */}
       {showSharePanel && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm shadow-xl">
+        <div className="print:hidden fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 z-50">
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-panel-title"
+          >
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Share recipe</h4>
+              <h4 id="share-panel-title" className="text-base font-semibold text-gray-800 dark:text-gray-100">Share recipe</h4>
               <button
                 onClick={() => setShowSharePanel(false)}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -494,6 +532,44 @@ export default function RecipeDetailPage() {
                 </button>
               ))}
             </div>
+            {/* Groups section — visible when non-private and user has groups */}
+            {selectedVisibility !== 'private' && userGroups.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  Also share to groups
+                </p>
+                <div className="space-y-1.5">
+                  {userGroups.map((group) => {
+                    const shared = sharedGroupIds.has(group.id)
+                    const busy = groupTogglingId === group.id
+                    return (
+                      <button
+                        key={group.id}
+                        onClick={() => handleGroupToggle(group.id, shared)}
+                        disabled={busy || sharing}
+                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-colors disabled:opacity-50 ${
+                          shared
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                            : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                          shared ? 'bg-green-600 border-green-600' : 'border-gray-300 dark:border-gray-500'
+                        }`}>
+                          {shared && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                        </div>
+                        <span className={`text-sm truncate ${shared ? 'text-green-700 dark:text-green-300 font-medium' : 'text-gray-700 dark:text-gray-200'}`}>
+                          {group.name}
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">
+                          {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSharePanel(false)}
@@ -516,7 +592,7 @@ export default function RecipeDetailPage() {
 
       {/* Delete confirm dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="print:hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl">
             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Delete recipe?</h4>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">

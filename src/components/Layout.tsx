@@ -10,6 +10,7 @@ import AppUpdateBanner from './AppUpdateBanner'
 import PWAInstallBanner from './PWAInstallBanner'
 import ToastContainer from './ToastContainer'
 import OnboardingWizard, { isOnboardingDone } from './OnboardingWizard'
+import OfflineBanner from './OfflineBanner'
 
 interface NavItem {
   to: string
@@ -157,6 +158,12 @@ export default function Layout() {
 
       {/* PWA install prompt — shown on 2nd+ visit when browser signals installability */}
       <PWAInstallBanner />
+
+      {/* Offline connectivity indicator */}
+      <OfflineBanner />
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   )
 }

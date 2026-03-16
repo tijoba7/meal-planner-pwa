@@ -4,14 +4,22 @@
 
 -- ─── Enums ───────────────────────────────────────────────────────────────────
 
-create type public.recipe_visibility as enum ('private', 'friends', 'public');
-create type public.friendship_status as enum ('pending', 'accepted', 'blocked');
-create type public.reaction_type as enum ('like', 'bookmark', 'emoji');
+do $$ begin
+  create type public.recipe_visibility as enum ('private', 'friends', 'public');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.friendship_status as enum ('pending', 'accepted', 'blocked');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.reaction_type as enum ('like', 'bookmark', 'emoji');
+exception when duplicate_object then null; end $$;
 
 -- ─── profiles ────────────────────────────────────────────────────────────────
 -- Extends auth.users. One row per authenticated user.
 
-create table public.profiles (
+create table if not exists public.profiles (
   id             uuid primary key references auth.users (id) on delete cascade,
   display_name   text not null,
   avatar_url     text,
@@ -40,6 +48,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
@@ -47,7 +56,7 @@ create trigger on_auth_user_created
 -- ─── recipes_cloud ────────────────────────────────────────────────────────────
 -- Cloud copy of a user's recipe (Schema.org format stored as jsonb).
 
-create table public.recipes_cloud (
+create table if not exists public.recipes_cloud (
   id           uuid primary key default gen_random_uuid(),
   author_id    uuid not null references public.profiles (id) on delete cascade,
   data         jsonb not null,
@@ -60,12 +69,12 @@ create table public.recipes_cloud (
 comment on table public.recipes_cloud is
   'Cloud-synced recipes. data column stores Schema.org Recipe JSON.';
 
-create index recipes_cloud_author_id_idx on public.recipes_cloud (author_id);
-create index recipes_cloud_visibility_idx on public.recipes_cloud (visibility);
+create index if not exists recipes_cloud_author_id_idx on public.recipes_cloud (author_id);
+create index if not exists recipes_cloud_visibility_idx on public.recipes_cloud (visibility);
 
 -- ─── friendships ─────────────────────────────────────────────────────────────
 
-create table public.friendships (
+create table if not exists public.friendships (
   id           uuid primary key default gen_random_uuid(),
   requester_id uuid not null references public.profiles (id) on delete cascade,
   addressee_id uuid not null references public.profiles (id) on delete cascade,
@@ -79,12 +88,12 @@ create table public.friendships (
 comment on table public.friendships is
   'Directed friendship/follow requests. Mutual acceptance = friends.';
 
-create index friendships_requester_idx on public.friendships (requester_id);
-create index friendships_addressee_idx on public.friendships (addressee_id);
+create index if not exists friendships_requester_idx on public.friendships (requester_id);
+create index if not exists friendships_addressee_idx on public.friendships (addressee_id);
 
 -- ─── reactions ───────────────────────────────────────────────────────────────
 
-create table public.reactions (
+create table if not exists public.reactions (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles (id) on delete cascade,
   recipe_id  uuid not null references public.recipes_cloud (id) on delete cascade,
@@ -98,11 +107,11 @@ create table public.reactions (
 comment on table public.reactions is
   'User reactions on cloud recipes: like, bookmark, or named emoji.';
 
-create index reactions_recipe_id_idx on public.reactions (recipe_id);
+create index if not exists reactions_recipe_id_idx on public.reactions (recipe_id);
 
 -- ─── comments ────────────────────────────────────────────────────────────────
 
-create table public.comments (
+create table if not exists public.comments (
   id                uuid primary key default gen_random_uuid(),
   user_id           uuid not null references public.profiles (id) on delete cascade,
   recipe_id         uuid not null references public.recipes_cloud (id) on delete cascade,
@@ -116,12 +125,12 @@ create table public.comments (
 comment on table public.comments is
   'Threaded comments on cloud recipes. Soft-delete via deleted_at.';
 
-create index comments_recipe_id_idx on public.comments (recipe_id);
-create index comments_parent_id_idx on public.comments (parent_comment_id);
+create index if not exists comments_recipe_id_idx on public.comments (recipe_id);
+create index if not exists comments_parent_id_idx on public.comments (parent_comment_id);
 
 -- ─── ratings ─────────────────────────────────────────────────────────────────
 
-create table public.ratings (
+create table if not exists public.ratings (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles (id) on delete cascade,
   recipe_id  uuid not null references public.recipes_cloud (id) on delete cascade,
@@ -133,11 +142,11 @@ create table public.ratings (
 comment on table public.ratings is
   'Star ratings (1-5) on cloud recipes, one per user per recipe.';
 
-create index ratings_recipe_id_idx on public.ratings (recipe_id);
+create index if not exists ratings_recipe_id_idx on public.ratings (recipe_id);
 
 -- ─── notifications ────────────────────────────────────────────────────────────
 
-create table public.notifications (
+create table if not exists public.notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles (id) on delete cascade,
   type       text not null,
@@ -149,7 +158,7 @@ create table public.notifications (
 comment on table public.notifications is
   'In-app notifications. type examples: friend_request, recipe_reaction, comment.';
 
-create index notifications_user_id_unread_idx
+create index if not exists notifications_user_id_unread_idx
   on public.notifications (user_id, created_at desc)
   where read_at is null;
 
@@ -165,14 +174,17 @@ begin
 end;
 $$;
 
+drop trigger if exists set_profiles_updated_at on public.profiles;
 create trigger set_profiles_updated_at
   before update on public.profiles
   for each row execute procedure public.set_updated_at();
 
+drop trigger if exists set_recipes_cloud_updated_at on public.recipes_cloud;
 create trigger set_recipes_cloud_updated_at
   before update on public.recipes_cloud
   for each row execute procedure public.set_updated_at();
 
+drop trigger if exists set_comments_updated_at on public.comments;
 create trigger set_comments_updated_at
   before update on public.comments
   for each row execute procedure public.set_updated_at();
@@ -211,17 +223,20 @@ $$;
 -- ─── profiles ────────────────────────────────────────────────────────────────
 
 -- Any signed-in user can read any profile (needed for friend search).
+drop policy if exists "profiles: authenticated users can read" on public.profiles;
 create policy "profiles: authenticated users can read"
   on public.profiles for select
   to authenticated
   using (true);
 
 -- Users can only write their own profile.
+drop policy if exists "profiles: owner can insert" on public.profiles;
 create policy "profiles: owner can insert"
   on public.profiles for insert
   to authenticated
   with check (id = auth.uid());
 
+drop policy if exists "profiles: owner can update" on public.profiles;
 create policy "profiles: owner can update"
   on public.profiles for update
   to authenticated
@@ -233,6 +248,7 @@ create policy "profiles: owner can update"
 -- Public recipes visible to everyone authenticated.
 -- Friends-only recipes visible to the author + their accepted friends.
 -- Private recipes visible to the author only.
+drop policy if exists "recipes_cloud: visibility select" on public.recipes_cloud;
 create policy "recipes_cloud: visibility select"
   on public.recipes_cloud for select
   to authenticated
@@ -242,17 +258,20 @@ create policy "recipes_cloud: visibility select"
     or (visibility = 'friends' and public.are_friends(author_id, auth.uid()))
   );
 
+drop policy if exists "recipes_cloud: owner can insert" on public.recipes_cloud;
 create policy "recipes_cloud: owner can insert"
   on public.recipes_cloud for insert
   to authenticated
   with check (author_id = auth.uid());
 
+drop policy if exists "recipes_cloud: owner can update" on public.recipes_cloud;
 create policy "recipes_cloud: owner can update"
   on public.recipes_cloud for update
   to authenticated
   using (author_id = auth.uid())
   with check (author_id = auth.uid());
 
+drop policy if exists "recipes_cloud: owner can delete" on public.recipes_cloud;
 create policy "recipes_cloud: owner can delete"
   on public.recipes_cloud for delete
   to authenticated
@@ -261,24 +280,28 @@ create policy "recipes_cloud: owner can delete"
 -- ─── friendships ─────────────────────────────────────────────────────────────
 
 -- Users can see requests they sent or received.
+drop policy if exists "friendships: parties can select" on public.friendships;
 create policy "friendships: parties can select"
   on public.friendships for select
   to authenticated
   using (requester_id = auth.uid() or addressee_id = auth.uid());
 
 -- Only the requester initiates.
+drop policy if exists "friendships: requester can insert" on public.friendships;
 create policy "friendships: requester can insert"
   on public.friendships for insert
   to authenticated
   with check (requester_id = auth.uid());
 
 -- Only the addressee can accept/block; the requester can cancel (delete).
+drop policy if exists "friendships: addressee can update" on public.friendships;
 create policy "friendships: addressee can update"
   on public.friendships for update
   to authenticated
   using (addressee_id = auth.uid())
   with check (addressee_id = auth.uid());
 
+drop policy if exists "friendships: requester can delete" on public.friendships;
 create policy "friendships: requester can delete"
   on public.friendships for delete
   to authenticated
@@ -288,6 +311,7 @@ create policy "friendships: requester can delete"
 
 -- Reactions on a recipe are visible if the underlying recipe is visible.
 -- We re-use the visibility logic via a join.
+drop policy if exists "reactions: visible with recipe" on public.reactions;
 create policy "reactions: visible with recipe"
   on public.reactions for select
   to authenticated
@@ -303,11 +327,13 @@ create policy "reactions: visible with recipe"
     )
   );
 
+drop policy if exists "reactions: user can insert own" on public.reactions;
 create policy "reactions: user can insert own"
   on public.reactions for insert
   to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "reactions: user can delete own" on public.reactions;
 create policy "reactions: user can delete own"
   on public.reactions for delete
   to authenticated
@@ -315,6 +341,7 @@ create policy "reactions: user can delete own"
 
 -- ─── comments ────────────────────────────────────────────────────────────────
 
+drop policy if exists "comments: visible with recipe" on public.comments;
 create policy "comments: visible with recipe"
   on public.comments for select
   to authenticated
@@ -330,6 +357,7 @@ create policy "comments: visible with recipe"
     )
   );
 
+drop policy if exists "comments: user can insert own" on public.comments;
 create policy "comments: user can insert own"
   on public.comments for insert
   to authenticated
@@ -337,6 +365,7 @@ create policy "comments: user can insert own"
 
 -- Authors can soft-delete their own comments (set deleted_at).
 -- Recipe owners can also soft-delete comments on their recipes.
+drop policy if exists "comments: user can update own" on public.comments;
 create policy "comments: user can update own"
   on public.comments for update
   to authenticated
@@ -345,6 +374,7 @@ create policy "comments: user can update own"
 
 -- ─── ratings ─────────────────────────────────────────────────────────────────
 
+drop policy if exists "ratings: visible with recipe" on public.ratings;
 create policy "ratings: visible with recipe"
   on public.ratings for select
   to authenticated
@@ -360,17 +390,20 @@ create policy "ratings: visible with recipe"
     )
   );
 
+drop policy if exists "ratings: user can insert own" on public.ratings;
 create policy "ratings: user can insert own"
   on public.ratings for insert
   to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "ratings: user can update own" on public.ratings;
 create policy "ratings: user can update own"
   on public.ratings for update
   to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+drop policy if exists "ratings: user can delete own" on public.ratings;
 create policy "ratings: user can delete own"
   on public.ratings for delete
   to authenticated
@@ -379,6 +412,7 @@ create policy "ratings: user can delete own"
 -- ─── notifications ────────────────────────────────────────────────────────────
 
 -- Users can only see their own notifications.
+drop policy if exists "notifications: owner can select" on public.notifications;
 create policy "notifications: owner can select"
   on public.notifications for select
   to authenticated
@@ -387,6 +421,7 @@ create policy "notifications: owner can select"
 -- Only the backend (service role) inserts notifications.
 -- No insert policy for the anon/authenticated role.
 
+drop policy if exists "notifications: owner can update (mark read)" on public.notifications;
 create policy "notifications: owner can update (mark read)"
   on public.notifications for update
   to authenticated
@@ -398,7 +433,7 @@ create policy "notifications: owner can update (mark read)"
 
 -- ─── meal_plans_cloud ─────────────────────────────────────────────────────────
 
-create table public.meal_plans_cloud (
+create table if not exists public.meal_plans_cloud (
   id         uuid primary key,
   owner_id   uuid not null references public.profiles (id) on delete cascade,
   data       jsonb not null,
@@ -409,15 +444,16 @@ create table public.meal_plans_cloud (
 comment on table public.meal_plans_cloud is
   'Cloud-synced meal plans. data column stores the full MealPlan JSON.';
 
-create index meal_plans_cloud_owner_idx on public.meal_plans_cloud (owner_id);
+create index if not exists meal_plans_cloud_owner_idx on public.meal_plans_cloud (owner_id);
 
+drop trigger if exists set_meal_plans_cloud_updated_at on public.meal_plans_cloud;
 create trigger set_meal_plans_cloud_updated_at
   before update on public.meal_plans_cloud
   for each row execute procedure public.set_updated_at();
 
 -- ─── shopping_lists_cloud ─────────────────────────────────────────────────────
 
-create table public.shopping_lists_cloud (
+create table if not exists public.shopping_lists_cloud (
   id         uuid primary key,
   owner_id   uuid not null references public.profiles (id) on delete cascade,
   data       jsonb not null,
@@ -428,8 +464,9 @@ create table public.shopping_lists_cloud (
 comment on table public.shopping_lists_cloud is
   'Cloud-synced shopping lists. data column stores the full ShoppingList JSON.';
 
-create index shopping_lists_cloud_owner_idx on public.shopping_lists_cloud (owner_id);
+create index if not exists shopping_lists_cloud_owner_idx on public.shopping_lists_cloud (owner_id);
 
+drop trigger if exists set_shopping_lists_cloud_updated_at on public.shopping_lists_cloud;
 create trigger set_shopping_lists_cloud_updated_at
   before update on public.shopping_lists_cloud
   for each row execute procedure public.set_updated_at();
@@ -438,6 +475,7 @@ create trigger set_shopping_lists_cloud_updated_at
 
 alter table public.meal_plans_cloud enable row level security;
 
+drop policy if exists "Users can manage their own meal plans" on public.meal_plans_cloud;
 create policy "Users can manage their own meal plans"
   on public.meal_plans_cloud
   for all
@@ -446,6 +484,7 @@ create policy "Users can manage their own meal plans"
 
 alter table public.shopping_lists_cloud enable row level security;
 
+drop policy if exists "Users can manage their own shopping lists" on public.shopping_lists_cloud;
 create policy "Users can manage their own shopping lists"
   on public.shopping_lists_cloud
   for all
@@ -479,6 +518,7 @@ on conflict (id) do nothing;
 -- ─── Storage policies ─────────────────────────────────────────────────────────
 
 -- Public read (the bucket is public, but be explicit).
+drop policy if exists "recipe-images: public read" on storage.objects;
 create policy "recipe-images: public read"
   on storage.objects for select
   to public
@@ -486,6 +526,7 @@ create policy "recipe-images: public read"
 
 -- Authenticated users can upload to their own folder only.
 -- Path must start with the caller's user ID.
+drop policy if exists "recipe-images: owner can upload" on storage.objects;
 create policy "recipe-images: owner can upload"
   on storage.objects for insert
   to authenticated
@@ -495,6 +536,7 @@ create policy "recipe-images: owner can upload"
   );
 
 -- Owner can replace (upsert) their own images.
+drop policy if exists "recipe-images: owner can update" on storage.objects;
 create policy "recipe-images: owner can update"
   on storage.objects for update
   to authenticated
@@ -504,6 +546,7 @@ create policy "recipe-images: owner can update"
   );
 
 -- Owner can delete their own images.
+drop policy if exists "recipe-images: owner can delete" on storage.objects;
 create policy "recipe-images: owner can delete"
   on storage.objects for delete
   to authenticated
@@ -518,12 +561,17 @@ create policy "recipe-images: owner can delete"
 
 -- ─── Enums ───────────────────────────────────────────────────────────────────
 
-create type public.household_member_role as enum ('owner', 'member');
-create type public.household_invitation_status as enum ('pending', 'accepted', 'declined', 'expired');
+do $$ begin
+  create type public.household_member_role as enum ('owner', 'member');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.household_invitation_status as enum ('pending', 'accepted', 'declined', 'expired');
+exception when duplicate_object then null; end $$;
 
 -- ─── households ───────────────────────────────────────────────────────────────
 
-create table public.households (
+create table if not exists public.households (
   id         uuid primary key default gen_random_uuid(),
   name       text not null check (char_length(name) between 1 and 100),
   created_by uuid not null references public.profiles (id) on delete cascade,
@@ -534,15 +582,16 @@ create table public.households (
 comment on table public.households is
   'A named group of users (household) who share meal plans.';
 
-create index households_created_by_idx on public.households (created_by);
+create index if not exists households_created_by_idx on public.households (created_by);
 
+drop trigger if exists set_households_updated_at on public.households;
 create trigger set_households_updated_at
   before update on public.households
   for each row execute procedure public.set_updated_at();
 
 -- ─── household_members ────────────────────────────────────────────────────────
 
-create table public.household_members (
+create table if not exists public.household_members (
   household_id uuid not null references public.households (id) on delete cascade,
   user_id      uuid not null references public.profiles (id) on delete cascade,
   role         public.household_member_role not null default 'member',
@@ -553,11 +602,11 @@ create table public.household_members (
 comment on table public.household_members is
   'Membership of users in households. role=owner can invite/remove; role=member can view and co-edit.';
 
-create index household_members_user_id_idx on public.household_members (user_id);
+create index if not exists household_members_user_id_idx on public.household_members (user_id);
 
 -- ─── household_invitations ────────────────────────────────────────────────────
 
-create table public.household_invitations (
+create table if not exists public.household_invitations (
   id           uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households (id) on delete cascade,
   invited_by   uuid not null references public.profiles (id) on delete cascade,
@@ -571,16 +620,16 @@ create table public.household_invitations (
 comment on table public.household_invitations is
   'Pending household invitations. Token is sent to invitee; expires after 7 days.';
 
-create index household_invitations_household_id_idx on public.household_invitations (household_id);
-create index household_invitations_invitee_email_idx on public.household_invitations (invitee_email);
-create index household_invitations_token_idx on public.household_invitations (token);
+create index if not exists household_invitations_household_id_idx on public.household_invitations (household_id);
+create index if not exists household_invitations_invitee_email_idx on public.household_invitations (invitee_email);
+create index if not exists household_invitations_token_idx on public.household_invitations (token);
 
 -- ─── meal_plans_cloud: add household_id ───────────────────────────────────────
 
 alter table public.meal_plans_cloud
-  add column household_id uuid references public.households (id) on delete set null;
+  add column if not exists household_id uuid references public.households (id) on delete set null;
 
-create index meal_plans_cloud_household_id_idx
+create index if not exists meal_plans_cloud_household_id_idx
   on public.meal_plans_cloud (household_id)
   where household_id is not null;
 
@@ -606,28 +655,33 @@ alter table public.household_members enable row level security;
 alter table public.household_invitations enable row level security;
 
 -- households: any member can read; only creator can write/delete
+drop policy if exists "households: members can select" on public.households;
 create policy "households: members can select"
   on public.households for select
   to authenticated
   using (public.is_household_member(id, auth.uid()));
 
+drop policy if exists "households: creator can insert" on public.households;
 create policy "households: creator can insert"
   on public.households for insert
   to authenticated
   with check (created_by = auth.uid());
 
+drop policy if exists "households: creator can update" on public.households;
 create policy "households: creator can update"
   on public.households for update
   to authenticated
   using (created_by = auth.uid())
   with check (created_by = auth.uid());
 
+drop policy if exists "households: creator can delete" on public.households;
 create policy "households: creator can delete"
   on public.households for delete
   to authenticated
   using (created_by = auth.uid());
 
 -- household_members: any member can see the full member list
+drop policy if exists "household_members: members can select" on public.household_members;
 create policy "household_members: members can select"
   on public.household_members for select
   to authenticated
@@ -636,6 +690,7 @@ create policy "household_members: members can select"
 -- Insert allowed for:
 --   • owner adding someone else
 --   • the user adding themselves (via invitation acceptance)
+drop policy if exists "household_members: owner or self can insert" on public.household_members;
 create policy "household_members: owner or self can insert"
   on public.household_members for insert
   to authenticated
@@ -651,6 +706,7 @@ create policy "household_members: owner or self can insert"
 -- Delete allowed for:
 --   • a member leaving themselves
 --   • the household owner removing someone
+drop policy if exists "household_members: owner or self can delete" on public.household_members;
 create policy "household_members: owner or self can delete"
   on public.household_members for delete
   to authenticated
@@ -664,6 +720,7 @@ create policy "household_members: owner or self can delete"
   );
 
 -- household_invitations: household members and the invited (by email) can read
+drop policy if exists "household_invitations: members can select" on public.household_invitations;
 create policy "household_invitations: members can select"
   on public.household_invitations for select
   to authenticated
@@ -673,6 +730,7 @@ create policy "household_invitations: members can select"
   );
 
 -- Only the household owner (creator) can send invitations
+drop policy if exists "household_invitations: owner can insert" on public.household_invitations;
 create policy "household_invitations: owner can insert"
   on public.household_invitations for insert
   to authenticated
@@ -687,6 +745,7 @@ create policy "household_invitations: owner can insert"
 
 -- Inviter can cancel (update); acceptee/decliner updates happen via service role
 -- Allow the invitee (matched by email from their profile) to update status
+drop policy if exists "household_invitations: invited_by or invitee can update" on public.household_invitations;
 create policy "household_invitations: invited_by or invitee can update"
   on public.household_invitations for update
   to authenticated
@@ -700,9 +759,10 @@ create policy "household_invitations: invited_by or invitee can update"
 -- Replace the broad "all" policy with fine-grained policies that let household
 -- members read and co-edit shared plans.
 
-drop policy "Users can manage their own meal plans" on public.meal_plans_cloud;
+drop policy if exists "Users can manage their own meal plans" on public.meal_plans_cloud;
 
 -- SELECT: owner always; household members when a household_id is set
+drop policy if exists "meal_plans_cloud: owner or household member can select" on public.meal_plans_cloud;
 create policy "meal_plans_cloud: owner or household member can select"
   on public.meal_plans_cloud for select
   to authenticated
@@ -715,12 +775,14 @@ create policy "meal_plans_cloud: owner or household member can select"
   );
 
 -- INSERT: only owner
+drop policy if exists "meal_plans_cloud: owner can insert" on public.meal_plans_cloud;
 create policy "meal_plans_cloud: owner can insert"
   on public.meal_plans_cloud for insert
   to authenticated
   with check (owner_id = auth.uid());
 
 -- UPDATE: owner always; any household member for shared plans
+drop policy if exists "meal_plans_cloud: owner or household member can update" on public.meal_plans_cloud;
 create policy "meal_plans_cloud: owner or household member can update"
   on public.meal_plans_cloud for update
   to authenticated
@@ -740,6 +802,7 @@ create policy "meal_plans_cloud: owner or household member can update"
   );
 
 -- DELETE: only owner
+drop policy if exists "meal_plans_cloud: owner can delete" on public.meal_plans_cloud;
 create policy "meal_plans_cloud: owner can delete"
   on public.meal_plans_cloud for delete
   to authenticated
@@ -755,7 +818,7 @@ alter publication supabase_realtime add table public.household_invitations;
 -- Shareable tokens that auto-send a friend request when a signed-in user visits
 -- /invite/:token, or queue a request on sign-up if not yet authenticated.
 
-create table public.friend_invites (
+create table if not exists public.friend_invites (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles (id) on delete cascade,
   token      text not null unique default encode(gen_random_bytes(24), 'base64url'),
@@ -766,23 +829,26 @@ create table public.friend_invites (
 comment on table public.friend_invites is
   'Shareable invite tokens. Visiting /invite/:token auto-sends a friend request.';
 
-create index friend_invites_user_id_idx on public.friend_invites (user_id);
+create index if not exists friend_invites_user_id_idx on public.friend_invites (user_id);
 
 alter table public.friend_invites enable row level security;
 
 -- Any authenticated user can look up a token (required to process incoming invites).
+drop policy if exists "friend_invites: authenticated can select" on public.friend_invites;
 create policy "friend_invites: authenticated can select"
   on public.friend_invites for select
   to authenticated
   using (true);
 
 -- Users can only create invites for themselves.
+drop policy if exists "friend_invites: owner can insert" on public.friend_invites;
 create policy "friend_invites: owner can insert"
   on public.friend_invites for insert
   to authenticated
   with check (user_id = auth.uid());
 
 -- Users can revoke their own invite links.
+drop policy if exists "friend_invites: owner can delete" on public.friend_invites;
 create policy "friend_invites: owner can delete"
   on public.friend_invites for delete
   to authenticated
@@ -792,6 +858,7 @@ create policy "friend_invites: owner can delete"
 -- The initial schema only allowed the requester to delete (cancel).
 -- The addressee also needs to be able to delete to decline/reject a request.
 
+drop policy if exists "friendships: addressee can delete (reject)" on public.friendships;
 create policy "friendships: addressee can delete (reject)"
   on public.friendships for delete
   to authenticated
@@ -803,11 +870,11 @@ create policy "friendships: addressee can delete (reject)"
 -- ─── profiles ────────────────────────────────────────────────────────────────
 
 alter table public.profiles
-  add constraint profiles_display_name_length
+  add constraint if not exists profiles_display_name_length
     check (char_length(display_name) between 1 and 100),
-  add constraint profiles_bio_length
+  add constraint if not exists profiles_bio_length
     check (bio is null or char_length(bio) <= 500),
-  add constraint profiles_avatar_url_length
+  add constraint if not exists profiles_avatar_url_length
     check (avatar_url is null or char_length(avatar_url) <= 2048);
 
 -- ─── recipes_cloud ────────────────────────────────────────────────────────────
@@ -815,7 +882,7 @@ alter table public.profiles
 -- oversized payloads from being stored (protects storage and query perf).
 
 alter table public.recipes_cloud
-  add constraint recipes_cloud_data_size
+  add constraint if not exists recipes_cloud_data_size
     check (octet_length(data::text) <= 524288); -- 512 KiB per recipe
 
 -- ─── friendships ─────────────────────────────────────────────────────────────
@@ -824,7 +891,7 @@ alter table public.recipes_cloud
 -- ─── reactions ───────────────────────────────────────────────────────────────
 
 alter table public.reactions
-  add constraint reactions_emoji_code_length
+  add constraint if not exists reactions_emoji_code_length
     check (emoji_code is null or char_length(emoji_code) <= 20);
 
 -- ─── comments ────────────────────────────────────────────────────────────────
@@ -833,9 +900,9 @@ alter table public.reactions
 -- ─── notifications ───────────────────────────────────────────────────────────
 
 alter table public.notifications
-  add constraint notifications_type_length
+  add constraint if not exists notifications_type_length
     check (char_length(type) between 1 and 100),
-  add constraint notifications_payload_size
+  add constraint if not exists notifications_payload_size
     check (octet_length(payload::text) <= 65536); -- 64 KiB per notification
 
 -- ─── households (from migration 20260316000006) ───────────────────────────────
@@ -849,6 +916,7 @@ alter table public.notifications
 
 -- ─── Comment moderation: recipe owner can soft-delete any comment ─────────────
 
+drop policy if exists "comments: recipe owner can moderate" on public.comments;
 create policy "comments: recipe owner can moderate"
   on public.comments for update
   to authenticated
@@ -901,6 +969,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_reaction_created on public.reactions;
 create trigger on_reaction_created
   after insert on public.reactions
   for each row execute procedure public.notify_on_reaction();
@@ -968,6 +1037,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_comment_created on public.comments;
 create trigger on_comment_created
   after insert on public.comments
   for each row execute procedure public.notify_on_comment();
@@ -978,7 +1048,7 @@ create trigger on_comment_created
 
 -- ─── groups ──────────────────────────────────────────────────────────────────
 
-create table public.groups (
+create table if not exists public.groups (
   id          uuid primary key default gen_random_uuid(),
   name        text not null check (char_length(name) between 1 and 100),
   description text check (char_length(description) <= 500),
@@ -991,15 +1061,16 @@ create table public.groups (
 comment on table public.groups is
   'Named recipe-sharing circles. Members are tracked in group_members.';
 
-create index groups_created_by_idx on public.groups (created_by);
+create index if not exists groups_created_by_idx on public.groups (created_by);
 
+drop trigger if exists set_groups_updated_at on public.groups;
 create trigger set_groups_updated_at
   before update on public.groups
   for each row execute procedure public.set_updated_at();
 
 -- ─── group_members ────────────────────────────────────────────────────────────
 
-create table public.group_members (
+create table if not exists public.group_members (
   group_id  uuid not null references public.groups (id) on delete cascade,
   user_id   uuid not null references public.profiles (id) on delete cascade,
   role      text not null default 'member' check (role in ('admin', 'member')),
@@ -1010,11 +1081,11 @@ create table public.group_members (
 comment on table public.group_members is
   'Membership roster for groups. role = admin | member.';
 
-create index group_members_user_id_idx on public.group_members (user_id);
+create index if not exists group_members_user_id_idx on public.group_members (user_id);
 
 -- ─── group_recipes ────────────────────────────────────────────────────────────
 
-create table public.group_recipes (
+create table if not exists public.group_recipes (
   id        uuid primary key default gen_random_uuid(),
   group_id  uuid not null references public.groups (id) on delete cascade,
   recipe_id uuid not null references public.recipes_cloud (id) on delete cascade,
@@ -1026,7 +1097,7 @@ create table public.group_recipes (
 comment on table public.group_recipes is
   'Recipes shared into a group. One row per (group, recipe) pair.';
 
-create index group_recipes_group_id_idx on public.group_recipes (group_id);
+create index if not exists group_recipes_group_id_idx on public.group_recipes (group_id);
 
 -- ─── Auto-add creator as admin ───────────────────────────────────────────────
 -- Fires after a group is inserted; adds the creator as the first admin.
@@ -1044,6 +1115,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_group_created on public.groups;
 create trigger on_group_created
   after insert on public.groups
   for each row execute procedure public.handle_group_created();
@@ -1079,18 +1151,21 @@ $$;
 alter table public.groups enable row level security;
 
 -- Only members can see a group.
+drop policy if exists "groups: members can select" on public.groups;
 create policy "groups: members can select"
   on public.groups for select
   to authenticated
   using (public.is_group_member(id, auth.uid()));
 
 -- Any authenticated user can create a group.
+drop policy if exists "groups: authenticated can insert" on public.groups;
 create policy "groups: authenticated can insert"
   on public.groups for insert
   to authenticated
   with check (created_by = auth.uid());
 
 -- Only admins can update group details.
+drop policy if exists "groups: admins can update" on public.groups;
 create policy "groups: admins can update"
   on public.groups for update
   to authenticated
@@ -1098,6 +1173,7 @@ create policy "groups: admins can update"
   with check (public.is_group_admin(id, auth.uid()));
 
 -- Only admins can delete the group.
+drop policy if exists "groups: admins can delete" on public.groups;
 create policy "groups: admins can delete"
   on public.groups for delete
   to authenticated
@@ -1108,6 +1184,7 @@ create policy "groups: admins can delete"
 alter table public.group_members enable row level security;
 
 -- Members can see who else is in the group.
+drop policy if exists "group_members: members can select" on public.group_members;
 create policy "group_members: members can select"
   on public.group_members for select
   to authenticated
@@ -1115,12 +1192,14 @@ create policy "group_members: members can select"
 
 -- Only group admins can add new members.
 -- (The creator auto-join trigger runs security definer and bypasses this.)
+drop policy if exists "group_members: admins can insert" on public.group_members;
 create policy "group_members: admins can insert"
   on public.group_members for insert
   to authenticated
   with check (public.is_group_admin(group_id, auth.uid()));
 
 -- Only admins can change member roles.
+drop policy if exists "group_members: admins can update" on public.group_members;
 create policy "group_members: admins can update"
   on public.group_members for update
   to authenticated
@@ -1128,11 +1207,13 @@ create policy "group_members: admins can update"
   with check (public.is_group_admin(group_id, auth.uid()));
 
 -- Members can remove themselves (leave); admins can remove anyone.
+drop policy if exists "group_members: self can delete (leave)" on public.group_members;
 create policy "group_members: self can delete (leave)"
   on public.group_members for delete
   to authenticated
   using (user_id = auth.uid());
 
+drop policy if exists "group_members: admins can delete (remove)" on public.group_members;
 create policy "group_members: admins can delete (remove)"
   on public.group_members for delete
   to authenticated
@@ -1143,12 +1224,14 @@ create policy "group_members: admins can delete (remove)"
 alter table public.group_recipes enable row level security;
 
 -- Only group members can see group recipes.
+drop policy if exists "group_recipes: members can select" on public.group_recipes;
 create policy "group_recipes: members can select"
   on public.group_recipes for select
   to authenticated
   using (public.is_group_member(group_id, auth.uid()));
 
 -- Any group member can share a recipe into the group.
+drop policy if exists "group_recipes: members can insert" on public.group_recipes;
 create policy "group_recipes: members can insert"
   on public.group_recipes for insert
   to authenticated
@@ -1158,11 +1241,13 @@ create policy "group_recipes: members can insert"
   );
 
 -- The adder or a group admin can remove a recipe from the group.
+drop policy if exists "group_recipes: adder can delete" on public.group_recipes;
 create policy "group_recipes: adder can delete"
   on public.group_recipes for delete
   to authenticated
   using (added_by = auth.uid());
 
+drop policy if exists "group_recipes: admins can delete" on public.group_recipes;
 create policy "group_recipes: admins can delete"
   on public.group_recipes for delete
   to authenticated
@@ -1222,6 +1307,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_friend_request_sent on public.friendships;
 create trigger on_friend_request_sent
   after insert on public.friendships
   for each row
@@ -1259,6 +1345,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_friend_request_accepted on public.friendships;
 create trigger on_friend_request_accepted
   after update on public.friendships
   for each row
@@ -1307,6 +1394,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_group_member_added on public.group_members;
 create trigger on_group_member_added
   after insert on public.group_members
   for each row execute procedure public.notify_on_group_invite();
@@ -1317,12 +1405,14 @@ create trigger on_group_member_added
 
 -- ─── Enum ────────────────────────────────────────────────────────────────────
 
-create type public.user_role as enum ('user', 'admin');
+do $$ begin
+  create type public.user_role as enum ('user', 'admin');
+exception when duplicate_object then null; end $$;
 
 -- ─── profiles.role column ─────────────────────────────────────────────────────
 
 alter table public.profiles
-  add column role public.user_role not null default 'user';
+  add column if not exists role public.user_role not null default 'user';
 
 comment on column public.profiles.role is
   'Authorization role. ''admin'' grants access to the admin panel and gated RLS operations. Promote via SQL (see bootstrap note below).';
@@ -1353,6 +1443,7 @@ comment on function public.is_admin() is
 
 -- Admins can update any profile (e.g. to promote/demote roles).
 -- Deliberately scoped to UPDATE so admins cannot delete other users' profiles.
+drop policy if exists "profiles: admin can update any" on public.profiles;
 create policy "profiles: admin can update any"
   on public.profiles for update
   to authenticated
@@ -1379,7 +1470,7 @@ create policy "profiles: admin can update any"
 
 -- ─── Table ────────────────────────────────────────────────────────────────────
 
-create table public.app_settings (
+create table if not exists public.app_settings (
   key          text        primary key,
   value        jsonb       not null default 'null'::jsonb,
   sensitive    boolean     not null default false,
@@ -1412,6 +1503,7 @@ begin
 end;
 $$;
 
+drop trigger if exists app_settings_updated_at on public.app_settings;
 create trigger app_settings_updated_at
   before update on public.app_settings
   for each row execute function public.app_settings_set_updated_at();
@@ -1421,24 +1513,28 @@ create trigger app_settings_updated_at
 alter table public.app_settings enable row level security;
 
 -- Admins can read every key (sensitive or not).
+drop policy if exists "app_settings: admin read all" on public.app_settings;
 create policy "app_settings: admin read all"
   on public.app_settings for select
   to authenticated
   using (public.is_admin());
 
 -- Regular authenticated users can read non-sensitive keys only.
+drop policy if exists "app_settings: user read non-sensitive" on public.app_settings;
 create policy "app_settings: user read non-sensitive"
   on public.app_settings for select
   to authenticated
   using (not sensitive);
 
 -- Only admins can insert new settings.
+drop policy if exists "app_settings: admin insert" on public.app_settings;
 create policy "app_settings: admin insert"
   on public.app_settings for insert
   to authenticated
   with check (public.is_admin());
 
 -- Only admins can update settings.
+drop policy if exists "app_settings: admin update" on public.app_settings;
 create policy "app_settings: admin update"
   on public.app_settings for update
   to authenticated
@@ -1446,6 +1542,7 @@ create policy "app_settings: admin update"
   with check (public.is_admin());
 
 -- Only admins can delete settings.
+drop policy if exists "app_settings: admin delete" on public.app_settings;
 create policy "app_settings: admin delete"
   on public.app_settings for delete
   to authenticated
@@ -1461,7 +1558,6 @@ insert into public.app_settings (key, value, sensitive) values
   ('scraping.model',      '"claude-haiku-4-5-20251001"'::jsonb, false),
   ('scraping.rate_limit', '10'::jsonb, false)
 on conflict (key) do nothing;
--- Storage bucket and auth config
 -- ─── Auth configuration notes ────────────────────────────────────────────────
 -- These settings are managed via the Supabase Dashboard:
 --   Authentication > Providers > Email
@@ -1490,33 +1586,9 @@ on conflict (key) do nothing;
 --   Password resets      : 3 per hour per email
 
 -- ─── Storage bucket for recipe images ────────────────────────────────────────
--- Create a public bucket called "recipe-images" in Storage > Buckets.
--- Then run the policies below.
+-- Bucket and storage policies are defined above in the storage section.
+-- The insert below is kept for compatibility; on conflict is a no-op.
 
 insert into storage.buckets (id, name, public)
 values ('recipe-images', 'recipe-images', true)
-on conflict do nothing;
-
--- Authenticated users can upload to their own folder (user_id/filename).
-create policy "recipe-images: authenticated upload"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'recipe-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  );
-
--- Anyone can read public recipe images.
-create policy "recipe-images: public read"
-  on storage.objects for select
-  to public
-  using (bucket_id = 'recipe-images');
-
--- Users can delete their own uploads.
-create policy "recipe-images: owner delete"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'recipe-images'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  );
+on conflict (id) do nothing;

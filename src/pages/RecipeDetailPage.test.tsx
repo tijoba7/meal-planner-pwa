@@ -123,7 +123,7 @@ describe('RecipeDetailPage', () => {
     it('shows a loading skeleton while the recipe is being fetched', () => {
       mockUseRecipe.mockReturnValue(makeResult(undefined, true) as ReturnType<typeof useRecipe>)
       renderPage()
-      expect(screen.getByRole('generic', { busy: true })).toBeInTheDocument()
+      expect(screen.getByRole('status', { busy: true })).toBeInTheDocument()
     })
   })
 

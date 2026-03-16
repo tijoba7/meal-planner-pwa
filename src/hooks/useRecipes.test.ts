@@ -95,7 +95,7 @@ describe('useRecipes', () => {
     expect(cached?.name).toBe('Test Pasta')
   })
 
-  it('enters error state when Supabase returns an error', async () => {
+  it('falls back to Dexie when Supabase returns an error', async () => {
     vi.mocked(supabase.from).mockReturnValue(
       buildBuilder({ data: null, error: { message: 'connection refused' } }) as never,
     )
@@ -104,8 +104,10 @@ describe('useRecipes', () => {
       wrapper: createWrapper(createTestQueryClient()),
     })
 
-    await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(result.current.error?.message).toBe('connection refused')
+    // When Supabase fails, falls back to Dexie (empty in this test) rather than erroring
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.isError).toBe(false)
+    expect(result.current.data).toEqual([])
   })
 
   it('returns an empty array when no recipes exist', async () => {

@@ -129,7 +129,7 @@ describe('ShoppingListPage', () => {
         isLoading: true,
       } as unknown as ReturnType<typeof useShoppingLists>)
       renderPage()
-      expect(screen.getByRole('generic', { busy: true })).toBeInTheDocument()
+      expect(screen.getByRole('status', { busy: true })).toBeInTheDocument()
     })
   })
 

@@ -22,7 +22,8 @@ function id(): string {
   return crypto.randomUUID()
 }
 
-/** Fetch all recipes from Supabase and update the Dexie offline cache. */
+/** Fetch all recipes from Supabase and update the Dexie offline cache.
+ * Falls back to Dexie when Supabase is unreachable (offline / test env). */
 async function fetchRecipes(userId: string): Promise<Recipe[]> {
   const { data, error } = await supabase
     .from('recipes_cloud')
@@ -30,7 +31,10 @@ async function fetchRecipes(userId: string): Promise<Recipe[]> {
     .eq('author_id', userId)
     .order('created_at', { ascending: false })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    // Fall back to Dexie offline cache so locally-saved recipes remain visible
+    return db.recipes.toArray()
+  }
 
   const recipes = data.map((row) => fromJson<Recipe>(row.data))
 

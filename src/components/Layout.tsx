@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, CalendarDays, Library, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, Package, type LucideIcon } from 'lucide-react'
+import { Bell, BookOpen, CalendarDays, Library, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, UsersRound, User, Package, HelpCircle, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
@@ -14,6 +14,24 @@ import OfflineBanner from './OfflineBanner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
+
+// Prefetch map — warming the chunk cache on hover/focus avoids a loading flash
+// when the user navigates to a lazy-loaded route.
+const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
+  '/collections': () => import('../pages/CollectionsPage'),
+  '/meal-plan': () => import('../pages/PlannerPage'),
+  '/shopping': () => import('../pages/ShoppingListPage'),
+  '/pantry': () => import('../pages/PantryPage'),
+  '/discover': () => import('../pages/DiscoverPage'),
+  '/friends': () => import('../pages/FriendsPage'),
+  '/groups': () => import('../pages/GroupsPage'),
+  '/notifications': () => import('../pages/NotificationsPage'),
+  '/settings': () => import('../pages/SettingsPage'),
+}
+
+function prefetch(to: string) {
+  PREFETCH_MAP[to]?.()
+}
 
 interface NavItem {
   to: string
@@ -98,7 +116,7 @@ export default function Layout() {
         </div>
         <nav aria-label="Main navigation" className="flex flex-col gap-1 p-2 lg:p-3 flex-1">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass} title={item.label}>
+            <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass} title={item.label} onMouseEnter={() => prefetch(item.to)} onFocus={() => prefetch(item.to)}>
               <div className="relative">
                 <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
                 {item.to === '/notifications' && unreadCount > 0 && (
@@ -120,6 +138,12 @@ export default function Layout() {
               </span>
             </NavLink>
           ))}
+          {/* Help — sidebar only (not in mobile tab bar) */}
+          <NavLink to="/help" end={false} className={sidebarLinkClass} title="Help">
+            <HelpCircle size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span className="hidden lg:block">Help</span>
+            <span className="sr-only lg:hidden">Help</span>
+          </NavLink>
         </nav>
 
         {/* Keyboard shortcuts hint — desktop only */}
@@ -215,7 +239,7 @@ export default function Layout() {
       {/* Mobile bottom tab bar — pb handles iOS home indicator safe area */}
       <nav aria-label="Mobile navigation" className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10 pb-[env(safe-area-inset-bottom)]">
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
+          <NavLink key={item.to} to={item.to} end={item.end} className={linkClass} onMouseEnter={() => prefetch(item.to)} onFocus={() => prefetch(item.to)}>
             <div className="relative">
               <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />
               {item.to === '/notifications' && unreadCount > 0 && (

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { MigrationProvider } from './contexts/MigrationContext'
@@ -7,29 +8,47 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
+// RecipesPage is on the critical path (home) — keep as eager import
 import RecipesPage from './pages/RecipesPage'
-import RecipeDetailPage from './pages/RecipeDetailPage'
-import RecipeFormPage from './pages/RecipeFormPage'
-import RecipeImportPage from './pages/RecipeImportPage'
-import PlannerPage from './pages/PlannerPage'
-import ShoppingListPage from './pages/ShoppingListPage'
-import SettingsPage from './pages/SettingsPage'
-import LoginPage from './pages/LoginPage'
-import SignUpPage from './pages/SignUpPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import ProfilePage from './pages/ProfilePage'
-import PublicProfilePage from './pages/PublicProfilePage'
-import FriendsPage from './pages/FriendsPage'
-import InvitePage from './pages/InvitePage'
-import DiscoverPage from './pages/DiscoverPage'
-import SharedRecipeDetailPage from './pages/SharedRecipeDetailPage'
-import GroupsPage from './pages/GroupsPage'
-import GroupDetailPage from './pages/GroupDetailPage'
-import CollectionsPage from './pages/CollectionsPage'
-import CollectionDetailPage from './pages/CollectionDetailPage'
-import NotificationsPage from './pages/NotificationsPage'
-import PantryPage from './pages/PantryPage'
-import NotFoundPage from './pages/NotFoundPage'
+
+// All other routes are lazy-loaded
+const RecipeDetailPage = lazy(() => import('./pages/RecipeDetailPage'))
+const RecipeFormPage = lazy(() => import('./pages/RecipeFormPage'))
+const RecipeImportPage = lazy(() => import('./pages/RecipeImportPage'))
+const PlannerPage = lazy(() => import('./pages/PlannerPage'))
+const ShoppingListPage = lazy(() => import('./pages/ShoppingListPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const SignUpPage = lazy(() => import('./pages/SignUpPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage'))
+const FriendsPage = lazy(() => import('./pages/FriendsPage'))
+const InvitePage = lazy(() => import('./pages/InvitePage'))
+const DiscoverPage = lazy(() => import('./pages/DiscoverPage'))
+const SharedRecipeDetailPage = lazy(() => import('./pages/SharedRecipeDetailPage'))
+const GroupsPage = lazy(() => import('./pages/GroupsPage'))
+const GroupDetailPage = lazy(() => import('./pages/GroupDetailPage'))
+const CollectionsPage = lazy(() => import('./pages/CollectionsPage'))
+const CollectionDetailPage = lazy(() => import('./pages/CollectionDetailPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const PantryPage = lazy(() => import('./pages/PantryPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const HelpPage = lazy(() => import('./pages/HelpPage'))
+
+function PageLoader() {
+  return (
+    <div className="flex flex-col gap-4 p-4 animate-pulse">
+      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-lg w-1/3" />
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-40 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   return (
@@ -40,6 +59,7 @@ export default function App() {
       <MigrationProvider>
       <ProfileProvider>
         <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Auth pages — full-screen, outside the main Layout */}
           <Route path="/auth/login" element={<LoginPage />} />
@@ -68,12 +88,14 @@ export default function App() {
             <Route path="collections" element={<CollectionsPage />} />
             <Route path="collections/:id" element={<CollectionDetailPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="help" element={<HelpPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 
           {/* Top-level catch-all (e.g. /auth/unknown) */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </Suspense>
         </ErrorBoundary>
       </ProfileProvider>
       </MigrationProvider>

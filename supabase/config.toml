@@ -2,6 +2,8 @@
 # Generated for Mise (meal-planner-pwa)
 # Docs: https://supabase.com/docs/guides/cli/config
 
+# Local project identifier. For remote operations, link via:
+#   npx supabase link --project-ref txzfcjialeueemrcmyxu
 project_id = "meal-planner-pwa"
 
 [api]

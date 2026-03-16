@@ -49,11 +49,13 @@ for (const file of files) {
   if (!statSync(filePath).isFile()) continue
 
   const gz = gzippedSize(filePath)
+  const isWorkbox = file.includes('workbox')
 
-  if (ext === 'js') totalJs += gz
+  // Workbox service worker files are tracked but excluded from the JS budget
+  if (ext === 'js' && !isWorkbox) totalJs += gz
   if (ext === 'css') totalCss += gz
 
-  rows.push({ file, gz, ext })
+  rows.push({ file, gz, ext, isWorkbox })
 }
 
 // Print report table
@@ -62,24 +64,27 @@ console.log('\nBundle size report (gzipped)\n')
 console.log('File'.padEnd(colWidth) + 'Gzipped')
 console.log('─'.repeat(colWidth + 12))
 for (const row of rows.sort((a, b) => b.gz - a.gz)) {
-  console.log(row.file.padEnd(colWidth) + formatKB(row.gz))
+  const note = row.isWorkbox ? ' (workbox — excluded from budget)' : ''
+  console.log(row.file.padEnd(colWidth) + formatKB(row.gz) + note)
 }
 console.log('─'.repeat(colWidth + 12))
-console.log(`${'Total JS'.padEnd(colWidth)}${formatKB(totalJs)}  (budget: ${formatKB(BUDGETS.js)})`)
+console.log(`${'Total JS (excl. workbox)'.padEnd(colWidth)}${formatKB(totalJs)}  (budget: ${formatKB(BUDGETS.js)})`)
 console.log(`${'Total CSS'.padEnd(colWidth)}${formatKB(totalCss)}  (budget: ${formatKB(BUDGETS.css)})`)
 console.log()
 
 let failed = false
 
 if (totalJs > BUDGETS.js) {
-  console.error(`FAIL  JS budget exceeded: ${formatKB(totalJs)} > ${formatKB(BUDGETS.js)}`)
+  console.error(`FAIL  JS budget exceeded: ${formatKB(totalJs)} > ${formatKB(BUDGETS.js)} (+${formatKB(totalJs - BUDGETS.js)} over)`)
+  console.error('      Tip: check for large deps (lucide-react, @supabase/supabase-js, react-router-dom).')
+  console.error('           Consider lazy-loading routes or importing icons individually.')
   failed = true
 } else {
   console.log(`PASS  JS: ${formatKB(totalJs)} / ${formatKB(BUDGETS.js)}`)
 }
 
 if (totalCss > BUDGETS.css) {
-  console.error(`FAIL  CSS budget exceeded: ${formatKB(totalCss)} > ${formatKB(BUDGETS.css)}`)
+  console.error(`FAIL  CSS budget exceeded: ${formatKB(totalCss)} > ${formatKB(BUDGETS.css)} (+${formatKB(totalCss - BUDGETS.css)} over)`)
   failed = true
 } else {
   console.log(`PASS  CSS: ${formatKB(totalCss)} / ${formatKB(BUDGETS.css)}`)

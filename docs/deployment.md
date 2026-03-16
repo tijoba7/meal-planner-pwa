@@ -68,8 +68,20 @@ The CI workflow (`.github/workflows/ci.yml`) runs on every PR and push to `main`
 2. **Typecheck** — `tsc --noEmit`
 3. **Test** — Vitest unit tests
 4. **Build** — Vite production build
+5. **Bundle size check** — fails if JS > 150 KB or CSS > 20 KB (gzipped)
+6. **Bundle report** — `dist/stats.html` uploaded as a GitHub Actions artifact
 
 All steps must pass before the deploy workflow runs.
+
+### Bundle size budgets
+
+| Asset | Budget (gzipped) |
+|-------|-----------------|
+| Total JS (excl. workbox) | 150 KB |
+| Total CSS | 20 KB |
+
+Run locally with `pnpm bundle:check`. The build also generates `dist/stats.html` — an
+interactive treemap of the bundle via `rollup-plugin-visualizer`.
 
 ## Lighthouse CI
 

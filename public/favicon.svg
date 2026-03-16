@@ -5,17 +5,29 @@
       <stop offset="100%" stop-color="#059669"/>
     </linearGradient>
   </defs>
+  <!-- Background -->
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
   <!-- Pot body -->
-  <rect x="126" y="240" width="260" height="160" rx="32" fill="#fff" opacity="0.95"/>
+  <rect x="126" y="250" width="260" height="150" rx="40" fill="#fff"/>
   <!-- Pot rim -->
-  <rect x="106" y="220" width="300" height="40" rx="20" fill="#fff"/>
+  <rect x="106" y="230" width="300" height="40" rx="20" fill="#fff"/>
   <!-- Left handle -->
-  <rect x="66" y="228" width="56" height="24" rx="12" fill="#fff" opacity="0.8"/>
+  <rect x="66" y="238" width="56" height="24" rx="12" fill="#fff" opacity="0.85"/>
   <!-- Right handle -->
-  <rect x="390" y="228" width="56" height="24" rx="12" fill="#fff" opacity="0.8"/>
+  <rect x="390" y="238" width="56" height="24" rx="12" fill="#fff" opacity="0.85"/>
+  <!-- Face: eyes -->
+  <circle cx="206" cy="320" r="16" fill="#1e293b"/>
+  <circle cx="306" cy="320" r="16" fill="#1e293b"/>
+  <!-- Eye highlights -->
+  <circle cx="212" cy="314" r="5" fill="#fff"/>
+  <circle cx="312" cy="314" r="5" fill="#fff"/>
+  <!-- Face: smile -->
+  <path d="M216 360 Q256 400 296 360" stroke="#1e293b" stroke-width="12" fill="none" stroke-linecap="round"/>
   <!-- Steam wisps -->
-  <path d="M200 200 Q200 170 215 155 Q230 140 220 110" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.6"/>
-  <path d="M260 190 Q260 155 275 140 Q290 125 280 90" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
-  <path d="M320 200 Q320 170 335 155 Q350 140 340 110" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.4"/>
+  <path d="M200 210 Q200 170 220 150 Q240 130 225 95" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.5"/>
+  <path d="M260 200 Q260 155 280 135 Q300 115 285 75" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.4"/>
+  <path d="M320 210 Q320 170 340 150 Q360 130 345 95" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.3"/>
+  <!-- Blush -->
+  <circle cx="176" cy="345" r="20" fill="#fda4af" opacity="0.3"/>
+  <circle cx="336" cy="345" r="20" fill="#fda4af" opacity="0.3"/>
 </svg>

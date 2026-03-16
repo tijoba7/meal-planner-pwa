@@ -1,33 +1,14 @@
 /**
- * Deterministic SVG avatar generator.
+ * Deterministic SVG face avatar generator.
  *
- * Generates unique, fun geometric avatars from a display name — similar to
- * GitHub identicons or Notion's default avatars. Each user gets a consistent
- * pattern with warm, food-inspired colors.
+ * Creates cute, unique face characters from a display name. Each user gets
+ * a consistent avatar with different face colors, eye styles, mouth
+ * expressions, and accessories. ~10,000+ unique combinations.
  *
  * Returns a data URI string suitable for use as an <img> src.
  */
 
-// ─── Color palettes ──────────────────────────────────────────────────────────
-// Pairs of [foreground, background] — warm, food-inspired tones.
-
-const PALETTES: [string, string][] = [
-  ['#f43f5e', '#fff1f2'], // rose
-  ['#f97316', '#fff7ed'], // orange
-  ['#eab308', '#fefce8'], // yellow
-  ['#22c55e', '#f0fdf4'], // green
-  ['#14b8a6', '#f0fdfa'], // teal
-  ['#3b82f6', '#eff6ff'], // blue
-  ['#8b5cf6', '#f5f3ff'], // violet
-  ['#ec4899', '#fdf2f8'], // pink
-  ['#d946ef', '#fdf4ff'], // fuchsia
-  ['#6366f1', '#eef2ff'], // indigo
-  ['#0ea5e9', '#f0f9ff'], // sky
-  ['#a855f7', '#faf5ff'], // purple
-]
-
-// ─── Hash ────────────────────────────────────────────────────────────────────
-// Simple but effective string hash — produces enough entropy for our needs.
+// ─── Hash + PRNG ─────────────────────────────────────────────────────────────
 
 function hash(str: string): number {
   let h = 0
@@ -37,7 +18,6 @@ function hash(str: string): number {
   return Math.abs(h)
 }
 
-/** Derive multiple pseudo-random values from one seed. */
 function prng(seed: number): () => number {
   let s = seed | 0
   return () => {
@@ -46,81 +26,135 @@ function prng(seed: number): () => number {
   }
 }
 
-// ─── SVG generation ──────────────────────────────────────────────────────────
+function pick<T>(arr: T[], rand: () => number): T {
+  return arr[Math.floor(rand() * arr.length)]
+}
 
-const SIZE = 80 // viewBox size
-const GRID = 5  // 5×5 grid, mirrored horizontally → 3 unique columns
+// ─── Face parts ──────────────────────────────────────────────────────────────
 
-/**
- * Generate a deterministic avatar SVG as a data URI.
- *
- * @param name — the user's display name (or any stable string)
- * @returns a `data:image/svg+xml,...` URI
- */
+const FACE_COLORS = [
+  '#fbbf24', // amber
+  '#f87171', // red
+  '#fb923c', // orange
+  '#a78bfa', // violet
+  '#60a5fa', // blue
+  '#34d399', // emerald
+  '#f472b6', // pink
+  '#38bdf8', // sky
+  '#c084fc', // purple
+  '#4ade80', // green
+  '#fb7185', // rose
+  '#fcd34d', // yellow
+]
+
+const BG_COLORS = [
+  '#fef3c7', '#fce7f3', '#fff7ed', '#f5f3ff', '#eff6ff',
+  '#ecfdf5', '#fdf2f8', '#f0f9ff', '#faf5ff', '#f0fdf4',
+  '#fff1f2', '#fefce8',
+]
+
+// Eye generators: return SVG string for both eyes
+const EYES = [
+  // Simple dots
+  (c: string) =>
+    `<circle cx="34" cy="42" r="3.5" fill="${c}"/><circle cx="56" cy="42" r="3.5" fill="${c}"/>`,
+  // Ovals
+  (c: string) =>
+    `<ellipse cx="34" cy="42" rx="4" ry="5" fill="${c}"/><ellipse cx="56" cy="42" rx="4" ry="5" fill="${c}"/>`,
+  // Wink (left eye closed)
+  (c: string) =>
+    `<path d="M30 42 Q34 38 38 42" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="56" cy="42" r="3.5" fill="${c}"/>`,
+  // Happy squint
+  (c: string) =>
+    `<path d="M30 42 Q34 38 38 42" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M52 42 Q56 38 60 42" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+  // Big round eyes with pupils
+  (c: string) =>
+    `<circle cx="34" cy="42" r="5" fill="white" stroke="${c}" stroke-width="1.5"/><circle cx="35.5" cy="41.5" r="2.5" fill="${c}"/><circle cx="56" cy="42" r="5" fill="white" stroke="${c}" stroke-width="1.5"/><circle cx="57.5" cy="41.5" r="2.5" fill="${c}"/>`,
+  // Star eyes
+  (c: string) =>
+    `<text x="34" y="46" text-anchor="middle" font-size="12" fill="${c}">★</text><text x="56" y="46" text-anchor="middle" font-size="12" fill="${c}">★</text>`,
+  // Sleepy / relaxed
+  (c: string) =>
+    `<path d="M30 43 Q34 40 38 43" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M52 43 Q56 40 60 43" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+]
+
+// Mouth generators
+const MOUTHS = [
+  // Smile
+  (c: string) => `<path d="M37 56 Q45 64 53 56" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+  // Big grin
+  (c: string) => `<path d="M35 55 Q45 67 55 55" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+  // Open mouth (surprised)
+  (c: string) => `<ellipse cx="45" cy="58" rx="5" ry="6" fill="${c}" opacity="0.8"/>`,
+  // Straight / neutral
+  (c: string) => `<line x1="38" y1="57" x2="52" y2="57" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`,
+  // Smirk
+  (c: string) => `<path d="M38 57 Q46 63 54 55" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+  // Cat mouth
+  (c: string) => `<path d="M37 56 L45 60 L53 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+  // Tongue out
+  (c: string) => `<path d="M37 56 Q45 64 53 56" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="45" cy="62" rx="3" ry="4" fill="#f87171" opacity="0.7"/>`,
+  // Tiny smile
+  (c: string) => `<path d="M41 57 Q45 61 49 57" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+]
+
+// Accessory generators (optional — some are "none")
+const ACCESSORIES = [
+  // None
+  () => '',
+  () => '',
+  () => '',
+  // Chef hat
+  (_fc: string) =>
+    `<ellipse cx="45" cy="18" rx="16" ry="10" fill="white" stroke="#e5e7eb" stroke-width="1"/><rect x="30" y="16" width="30" height="8" rx="2" fill="white" stroke="#e5e7eb" stroke-width="1"/>`,
+  // Round glasses
+  (fc: string) =>
+    `<circle cx="34" cy="42" r="8" fill="none" stroke="${fc}" stroke-width="1.5" opacity="0.5"/><circle cx="56" cy="42" r="8" fill="none" stroke="${fc}" stroke-width="1.5" opacity="0.5"/><line x1="42" y1="42" x2="48" y2="42" stroke="${fc}" stroke-width="1.5" opacity="0.5"/>`,
+  // Blush
+  (_fc: string) =>
+    `<circle cx="28" cy="52" r="5" fill="#fda4af" opacity="0.4"/><circle cx="62" cy="52" r="5" fill="#fda4af" opacity="0.4"/>`,
+  // Headband
+  (fc: string) =>
+    `<path d="M22 32 Q45 22 68 32" stroke="${fc}" stroke-width="3" fill="none" opacity="0.4" stroke-linecap="round"/>`,
+  // Freckles
+  (_fc: string) =>
+    `<circle cx="32" cy="50" r="1.2" fill="#92400e" opacity="0.3"/><circle cx="36" cy="52" r="1.2" fill="#92400e" opacity="0.3"/><circle cx="54" cy="50" r="1.2" fill="#92400e" opacity="0.3"/><circle cx="58" cy="52" r="1.2" fill="#92400e" opacity="0.3"/>`,
+  // Rosy nose
+  (_fc: string) =>
+    `<circle cx="45" cy="49" r="3" fill="#fda4af" opacity="0.5"/>`,
+]
+
+// ─── Generator ───────────────────────────────────────────────────────────────
+
+const SIZE = 90
+
 export function generateAvatar(name: string): string {
   const seed = hash(name)
   const rand = prng(seed)
 
-  // Pick palette
-  const [fg, bg] = PALETTES[seed % PALETTES.length]
+  const faceColor = pick(FACE_COLORS, rand)
+  const bgColor = pick(BG_COLORS, rand)
+  const eyeFn = pick(EYES, rand)
+  const mouthFn = pick(MOUTHS, rand)
+  const accessoryFn = pick(ACCESSORIES, rand)
 
-  // Generate the 5×5 symmetric grid (only need first 3 cols, mirror the rest)
-  const cellSize = SIZE / GRID
-  const cells: string[] = []
+  // Feature color (eyes, mouth) — darker shade
+  const featureColor = '#1e293b'
 
-  for (let row = 0; row < GRID; row++) {
-    for (let col = 0; col < Math.ceil(GRID / 2) + 1; col++) {
-      if (rand() > 0.5) {
-        // Fill this cell and its mirror
-        const x = col * cellSize
-        const y = row * cellSize
-        cells.push(`<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${fg}"/>`)
-
-        // Mirror (skip center column since it mirrors onto itself)
-        const mirrorCol = GRID - 1 - col
-        if (mirrorCol !== col) {
-          const mx = mirrorCol * cellSize
-          cells.push(`<rect x="${mx}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${fg}"/>`)
-        }
-      }
-    }
-  }
-
-  // Ensure at least some cells are filled (avoid blank avatars)
-  if (cells.length === 0) {
-    const cx = SIZE / 2
-    const cy = SIZE / 2
-    cells.push(`<circle cx="${cx}" cy="${cy}" r="${SIZE * 0.3}" fill="${fg}"/>`)
-  }
-
-  const svg = [
+  const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}">`,
-    `<rect width="${SIZE}" height="${SIZE}" fill="${bg}"/>`,
-    ...cells,
+    // Background
+    `<rect width="${SIZE}" height="${SIZE}" fill="${bgColor}"/>`,
+    // Face circle
+    `<circle cx="45" cy="45" r="28" fill="${faceColor}"/>`,
+    // Eyes
+    eyeFn(featureColor),
+    // Mouth
+    mouthFn(featureColor),
+    // Accessory
+    accessoryFn(faceColor),
     '</svg>',
-  ].join('')
-
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`
-}
-
-/**
- * Get a background color class for when the avatar is used alongside
- * Tailwind containers (e.g. as a ring behind the generated image).
- */
-export function getAvatarBgClass(name: string): string {
-  const BG_CLASSES = [
-    'bg-rose-100 dark:bg-rose-900/40',
-    'bg-orange-100 dark:bg-orange-900/40',
-    'bg-amber-100 dark:bg-amber-900/40',
-    'bg-emerald-100 dark:bg-emerald-900/40',
-    'bg-teal-100 dark:bg-teal-900/40',
-    'bg-cyan-100 dark:bg-cyan-900/40',
-    'bg-blue-100 dark:bg-blue-900/40',
-    'bg-violet-100 dark:bg-violet-900/40',
-    'bg-purple-100 dark:bg-purple-900/40',
-    'bg-pink-100 dark:bg-pink-900/40',
-    'bg-fuchsia-100 dark:bg-fuchsia-900/40',
-    'bg-indigo-100 dark:bg-indigo-900/40',
   ]
-  return BG_CLASSES[hash(name) % BG_CLASSES.length]
+
+  return `data:image/svg+xml,${encodeURIComponent(parts.join(''))}`
 }

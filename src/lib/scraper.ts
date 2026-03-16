@@ -171,7 +171,12 @@ function parseAiResponseText(raw: string): ScrapeResult {
     const cleaned = extractJsonFromResponse(raw)
     parsed = JSON.parse(cleaned) as Record<string, unknown>
   } catch {
-    return { ok: false, error: 'Could not parse AI response as JSON.' }
+    const preview = raw.length > 200 ? raw.slice(0, 200) + '…' : raw
+    console.error('[scraper] Failed to parse AI response:', preview)
+    return {
+      ok: false,
+      error: `Could not parse AI response as JSON. Response preview: ${preview}`,
+    }
   }
 
   if (parsed.error) return { ok: false, error: parsed.error as string }
@@ -255,6 +260,7 @@ async function callOpenAI(
       body: JSON.stringify({
         model,
         max_tokens: 2048,
+        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
@@ -297,7 +303,7 @@ async function callGemini(
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: 2048 },
+        generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' },
       }),
     })
 

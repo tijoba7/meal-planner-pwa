@@ -259,7 +259,7 @@ describe('extractRecipeFromUrl', () => {
 
       expect(result.ok).toBe(false)
       if (result.ok) return
-      expect(result.error).toBe('Could not parse AI response as JSON.')
+      expect(result.error).toContain('Could not parse AI response as JSON.')
     })
 
     it('strips markdown code fences before parsing the JSON', async () => {

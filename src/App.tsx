@@ -5,6 +5,7 @@ import { ProfileProvider } from './contexts/ProfileContext'
 import { SyncProvider } from './contexts/SyncContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
+import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import RecipesPage from './pages/RecipesPage'
 import RecipeDetailPage from './pages/RecipeDetailPage'
@@ -18,6 +19,9 @@ import SignUpPage from './pages/SignUpPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import ProfilePage from './pages/ProfilePage'
 import PublicProfilePage from './pages/PublicProfilePage'
+import DiscoverPage from './pages/DiscoverPage'
+import SharedRecipeDetailPage from './pages/SharedRecipeDetailPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -27,6 +31,7 @@ export default function App() {
       <SyncProvider>
       <MigrationProvider>
       <ProfileProvider>
+        <ErrorBoundary>
         <Routes>
           {/* Auth pages — full-screen, outside the main Layout */}
           <Route path="/auth/login" element={<LoginPage />} />
@@ -45,8 +50,15 @@ export default function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="users/:userId" element={<PublicProfilePage />} />
+            <Route path="discover" element={<DiscoverPage />} />
+            <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
+
+          {/* Top-level catch-all (e.g. /auth/unknown) */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </ErrorBoundary>
       </ProfileProvider>
       </MigrationProvider>
       </SyncProvider>

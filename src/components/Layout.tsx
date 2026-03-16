@@ -8,6 +8,7 @@ import { Avatar } from './ProfileCard'
 import MigrationPrompt from './MigrationPrompt'
 import AppUpdateBanner from './AppUpdateBanner'
 import PWAInstallBanner from './PWAInstallBanner'
+import ToastContainer from './ToastContainer'
 import OnboardingWizard, { isOnboardingDone } from './OnboardingWizard'
 
 interface NavItem {

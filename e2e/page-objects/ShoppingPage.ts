@@ -29,20 +29,24 @@ export class ShoppingPageObject {
   async createList(name: string) {
     await this.openNewListForm()
     await this.page.getByPlaceholder("e.g. This week's groceries").fill(name)
-    await this.page.getByRole('button', { name: 'Create List' }).click()
+    // force:true bypasses Playwright's stability check on the modal's slide-up
+    // animation (260ms on mobile / 200ms scale-in on desktop), which otherwise
+    // causes a "not stable" timeout waiting for the button to stop moving.
+    // eslint-disable-next-line playwright/no-force-option
+    await this.page.getByRole('button', { name: 'Create List' }).click({ force: true })
+    // Wait until the detail view is rendered before returning to the caller
+    await this.page.getByRole('heading', { name }).waitFor()
   }
 
   async openList(name: string) {
-    await this.page.getByRole('button', { name: new RegExp(name) }).click()
+    await this.page.getByRole('button', { name: new RegExp(`Open ${name}`) }).click()
   }
 
   async deleteList(name: string) {
-    // Find the delete button next to the matching list.
-    // Use exact: true so the "Delete" button isn't confused with the list-card
-    // button whose accessible name starts with the list name (e.g. "Delete Me …").
-    const listCard = this.page.locator('button', { hasText: name })
-    const row = listCard.locator('..')
-    await row.getByRole('button', { name: 'Delete', exact: true }).click()
+    // The delete button's aria-label is "Delete {name}" (set in ShoppingListPage.tsx).
+    // Matching the full aria-label avoids the strict-mode violation that occurred
+    // when using exact:'Delete' — the list-card open button also matches /Delete/.
+    await this.page.getByRole('button', { name: `Delete ${name}` }).click()
   }
 
   async checkItem(itemName: string) {

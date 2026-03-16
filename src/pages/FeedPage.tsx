@@ -249,6 +249,7 @@ export default function FeedPage() {
   const { data: storyGroups = [] } = useFriendsStories()
   const barItems = storyGroupsToBarItems(storyGroups)
   const markViewed = useMarkStoriesViewedMutation()
+  const handleStoryViewed = useCallback((id: string) => markViewed.mutate([id]), [markViewed])
 
   function handleStoryClick(userId: string) {
     const idx = storyGroups.findIndex((g) => g.userId === userId)
@@ -395,7 +396,7 @@ export default function FeedPage() {
           groups={storyGroups}
           initialGroupIndex={viewerGroupIdx}
           onClose={() => setViewerGroupIdx(null)}
-          onStoryViewed={(id) => markViewed.mutate([id])}
+          onStoryViewed={handleStoryViewed}
         />
       )}
 

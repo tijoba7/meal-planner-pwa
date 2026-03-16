@@ -40,6 +40,9 @@ export default function StoryViewer({
   const isSwiping = useRef(false)
   // Prevent container onClick from double-firing after a touch event
   const touchHandled = useRef(false)
+  // Stable ref for onStoryViewed to avoid re-render loops from parent callback changes
+  const onStoryViewedRef = useRef(onStoryViewed)
+  onStoryViewedRef.current = onStoryViewed
 
   const group = groups[groupIdx]
   const story = group?.stories[storyIdx]
@@ -142,11 +145,11 @@ export default function StoryViewer({
     return () => clearInterval(interval)
   }, [story, goNext, imageLoaded])
 
-  // ── Notify viewed ─────────────────────────────────────────────────────────
+  // ── Notify viewed (uses ref to avoid infinite re-render from callback) ───
 
   useEffect(() => {
-    if (story?.id) onStoryViewed?.(story.id)
-  }, [story?.id, onStoryViewed])
+    if (story?.id) onStoryViewedRef.current?.(story.id)
+  }, [story?.id])
 
   // ── Keyboard ─────────────────────────────────────────────────────────────
 

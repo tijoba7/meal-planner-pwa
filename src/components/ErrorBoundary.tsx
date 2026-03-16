@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { Sentry } from '../lib/sentry'
 
 interface Props {
   children: ReactNode
@@ -19,6 +20,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[ErrorBoundary] Uncaught error:', error, info.componentStack)
+    Sentry.captureException(error, { extra: { componentStack: info.componentStack } })
   }
 
   componentDidMount() {
@@ -31,6 +33,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   private handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     console.error('[ErrorBoundary] Unhandled async error:', event.reason)
+    Sentry.captureException(event.reason instanceof Error ? event.reason : new Error(String(event.reason)))
   }
 
   private reset = () => {

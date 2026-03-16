@@ -4,8 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { seedIfEmpty } from './lib/db'
+import { initSentry } from './lib/sentry'
 import './index.css'
 
+initSentry()
 seedIfEmpty()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

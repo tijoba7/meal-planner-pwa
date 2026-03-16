@@ -10,6 +10,7 @@ import {
   LogIn,
   LogOut,
   Compass,
+  Rss,
   Users,
   UsersRound,
   User,
@@ -21,7 +22,6 @@ import {
 import { useAdmin } from '../contexts/AdminContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
-import { isSupabaseAvailable } from '../lib/supabase'
 import { Avatar } from './ProfileCard'
 import MigrationPrompt from './MigrationPrompt'
 import AppUpdateBanner from './AppUpdateBanner'
@@ -41,6 +41,7 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/meal-plan': () => import('../pages/PlannerPage'),
   '/shopping': () => import('../pages/ShoppingListPage'),
   '/pantry': () => import('../pages/PantryPage'),
+  '/feed': () => import('../pages/FeedPage'),
   '/discover': () => import('../pages/DiscoverPage'),
   '/friends': () => import('../pages/FriendsPage'),
   '/groups': () => import('../pages/GroupsPage'),
@@ -65,6 +66,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/meal-plan', label: 'Meal Plan', icon: CalendarDays, end: false },
   { to: '/shopping', label: 'Shopping', icon: ShoppingCart, end: false },
   { to: '/pantry', label: 'Pantry', icon: Package, end: false },
+  { to: '/feed', label: 'Feed', icon: Rss, end: false },
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
   { to: '/friends', label: 'Friends', icon: Users, end: false },
   { to: '/groups', label: 'Groups', icon: UsersRound, end: false },
@@ -78,20 +80,19 @@ export default function Layout() {
   const { isAdmin } = useAdmin()
   const navigate = useNavigate()
   const location = useLocation()
-  const supIsAvailable = isSupabaseAvailable()
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
-    if (!user || !supIsAvailable) return
+    if (!user) return
     getUnreadCount(user.id).then(setUnreadCount)
     const unsub = subscribeToNotifications(user.id, () => {
       setUnreadCount((c) => c + 1)
     })
     return unsub
-  }, [user, supIsAvailable])
+  }, [user])
 
   // Cmd+K / Ctrl+K opens search — useKeyboardShortcuts skips metaKey/ctrlKey combos
   useEffect(() => {
@@ -231,84 +232,81 @@ export default function Layout() {
         </div>
 
         {/* Auth section at bottom of sidebar */}
-        {supIsAvailable && (
-          <div className="p-2 lg:p-3 border-t border-gray-100 dark:border-gray-700">
-            {user ? (
-              <div className="space-y-1">
-                <Link
-                  to="/profile"
-                  aria-label="View profile"
-                  className="flex items-center justify-center lg:justify-start gap-2 p-2 lg:px-3 lg:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  {profile ? (
-                    <Avatar profile={profile} size="sm" />
-                  ) : (
-                    <User
-                      size={16}
-                      strokeWidth={1.75}
-                      className="text-gray-400 dark:text-gray-500"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <div className="min-w-0 hidden lg:block">
-                    {profile && (
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
-                        {profile.display_name}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
-                      {user.email}
-                    </p>
-                  </div>
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  aria-label="Sign out"
-                  className="flex items-center justify-center lg:justify-start gap-3 w-full p-2 lg:px-3 lg:py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
-                >
-                  <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
-                  <span className="hidden lg:block">Sign out</span>
-                </button>
-              </div>
-            ) : (
+        <div className="p-2 lg:p-3 border-t border-gray-100 dark:border-gray-700">
+          {user ? (
+            <div className="space-y-1">
               <Link
-                to="/auth/login"
-                aria-label="Sign in"
+                to="/profile"
+                aria-label="View profile"
+                className="flex items-center justify-center lg:justify-start gap-2 p-2 lg:px-3 lg:py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {profile ? (
+                  <Avatar profile={profile} size="sm" />
+                ) : (
+                  <User
+                    size={16}
+                    strokeWidth={1.75}
+                    className="text-gray-400 dark:text-gray-500"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="min-w-0 hidden lg:block">
+                  {profile && (
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
+                      {profile.display_name}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </Link>
+              <button
+                onClick={handleSignOut}
+                aria-label="Sign out"
                 className="flex items-center justify-center lg:justify-start gap-3 w-full p-2 lg:px-3 lg:py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
               >
-                <LogIn size={16} strokeWidth={1.75} aria-hidden="true" />
-                <span className="hidden lg:block">Sign in</span>
-              </Link>
-            )}
-          </div>
-        )}
+                <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
+                <span className="hidden lg:block">Sign out</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/auth/login"
+              aria-label="Sign in"
+              className="flex items-center justify-center lg:justify-start gap-3 w-full p-2 lg:px-3 lg:py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+            >
+              <LogIn size={16} strokeWidth={1.75} aria-hidden="true" />
+              <span className="hidden lg:block">Sign in</span>
+            </Link>
+          )}
+        </div>
       </aside>
 
       {/* Mobile header */}
       <header className="print:hidden md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-green-700 dark:text-green-400">Mise</h1>
-        {supIsAvailable &&
-          (user ? (
-            <Link
-              to="/profile"
-              aria-label="View profile"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              {profile ? (
-                <Avatar profile={profile} size="sm" />
-              ) : (
-                <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
-              )}
-            </Link>
-          ) : (
-            <Link
-              to="/auth/login"
-              aria-label="Sign in"
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <LogIn size={18} strokeWidth={1.75} />
-            </Link>
-          ))}
+        {user ? (
+          <Link
+            to="/profile"
+            aria-label="View profile"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            {profile ? (
+              <Avatar profile={profile} size="sm" />
+            ) : (
+              <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
+            )}
+          </Link>
+        ) : (
+          <Link
+            to="/auth/login"
+            aria-label="Sign in"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <LogIn size={18} strokeWidth={1.75} />
+          </Link>
+        )}
       </header>
 
       {/* Main content — pb accounts for bottom tab bar + iOS safe area inset */}

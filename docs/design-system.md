@@ -689,7 +689,136 @@ Card for a cooking group with member count and contextual membership action.
 
 ---
 
-## 9. Audit Changes (MEA-21)
+---
+
+## 9. Instagram-Like Feed Patterns (MEA-179)
+
+All feed-specific components live in `src/components/social/`. Import via the barrel.
+
+---
+
+### StoriesBar
+
+Horizontal scrollable row of story/avatar tiles at the top of the feed. The current user's tile comes first with a `+` badge. Other users' tiles show a green gradient ring when they have unseen stories.
+
+```tsx
+<StoriesBar
+  stories={[{ userId: 'u1', profile, hasNew: true }]}
+  currentUserProfile={profile}
+  onAddStory={() => openStoryComposer()}
+  onStoryClick={(userId) => openStoryViewer(userId)}
+/>
+```
+
+- Container: `bg-white border-b border-gray-200`, horizontally scrollable with hidden scrollbar
+- Story ring (new): `bg-gradient-to-tr from-green-400 to-green-600`, white inner gap
+- Story ring (seen): `bg-gray-200`
+- Username: `text-[10px] w-14 truncate text-center`
+
+---
+
+### InstaRecipeCard
+
+Instagram-style recipe card. Full-width `aspect-square` hero image, with an action bar (Heart, Comment, Share, Bookmark) below. No card border — designed to go edge-to-edge inside a feed container separated by a `border-b`.
+
+```tsx
+<InstaRecipeCard
+  recipe={{ id: 'r1', name: 'Pasta', publishedAt: new Date().toISOString() }}
+  author={profile}
+  likeCount={42}
+  commentCount={7}
+  hasLiked={false}
+  isFollowing={true}
+  onLike={() => like(recipe.id)}
+  onUnlike={() => unlike(recipe.id)}
+  onCommentClick={() => openComments(recipe.id)}
+  onShareClick={() => openShareDialog(recipe.id)}
+/>
+```
+
+**Structure:**
+1. **Author row:** `Avatar (sm)` + bold name + optional `Follow` text button + `MoreHorizontal` icon
+2. **Hero image:** `aspect-square w-full object-cover` — no border radius (edge-to-edge)
+3. **Placeholder (no image):** green gradient with 🍽️ emoji
+4. **Action row:** `Heart` (red when liked), `MessageCircle`, `Send` on left; `Bookmark` on right
+5. **Like count:** `"42 likes"` in `text-sm font-semibold`
+6. **Caption:** `**author** Recipe name — description`
+7. **Comment count:** `"View all 7 comments"` subtle button
+8. **Timestamp:** `text-[10px] uppercase tracking-wide text-gray-400`
+
+**Key classes:**
+- Card separator: `border-b border-gray-100 dark:border-gray-800` (not card border)
+- Like active: `fill="#ef4444"` + `text-red-500`
+- Bookmark active: `fill="currentColor"` + `text-gray-900 dark:text-gray-100`
+
+---
+
+### FeedPage (`/feed`)
+
+Social feed page: stories bar + vertical InstaRecipeCard list with infinite scroll.
+
+```
+max-w-lg mx-auto
+└── StoriesBar (horizontal)
+└── InstaRecipeCard × N
+└── "You're all caught up" sentinel
+```
+
+- Stories are derived from feed authors (stub) — engineers: wire real story service
+- Like/comment/share handlers are stubs — engineers: wire to `engagementService`
+
+---
+
+### DiscoverPage — Category Chips + Grid View
+
+The Explore tab now includes:
+
+**Category chips** — horizontal scrollable filter row above the search bar:
+
+```tsx
+// Active chip
+<button className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-green-600 border-green-600 text-white" />
+// Inactive chip
+<button className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-white border-gray-200 text-gray-600 hover:border-green-500 hover:text-green-600" />
+```
+
+**View toggle** — list / grid toggle buttons with green active state (right side of search row).
+
+**Grid view** — 2-column card grid with square images:
+
+```tsx
+<ul className="grid grid-cols-2 gap-3">
+  {items.map(item => <RecipeGridCard key={item.id} item={item} />)}
+</ul>
+```
+
+`RecipeGridCard`: `aspect-square` image + `p-3` info section with `line-clamp-2` title.
+
+---
+
+### SocialProfilePage — Instagram Profile Layout
+
+The public profile page (`/users/:userId`) has been redesigned:
+
+**Header:**
+```
+Avatar (xl, left) + stats row (right):
+  [12] Recipes  |  [340] Followers  |  [218] Following
+```
+
+**Action buttons (full-width, below header):**
+- Not following: green `Follow` + gray `Message` buttons
+- Following: gray `Following` + gray `Message` buttons
+- Pending: gray `Requested` button
+
+**Recipe grid:**
+- `grid-cols-3 gap-0.5` — square image tiles, edge-to-edge (Instagram style)
+- Hover: `scale-[1.04]` on image
+- Empty state: `Grid3x3` icon + "No public recipes yet."
+
+---
+
+## 11. Audit Changes (MEA-21)
 
 Changes applied during the initial design system establishment pass:
 

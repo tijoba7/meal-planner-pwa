@@ -38,6 +38,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const PantryPage = lazy(() => import('./pages/PantryPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
+const FeedPage = lazy(() => import('./pages/FeedPage'))
 const AdminLayout = lazy(() => import('./components/AdminLayout'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminScrapingPage = lazy(() => import('./pages/admin/AdminScrapingPage'))
@@ -97,6 +98,7 @@ export default function App() {
                         <Route path="friends" element={<FriendsPage />} />
                         <Route path="invite/:token" element={<InvitePage />} />
                         <Route path="discover" element={<DiscoverPage />} />
+                        <Route path="feed" element={<FeedPage />} />
                         <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
                         <Route path="groups" element={<GroupsPage />} />
                         <Route path="groups/:id" element={<GroupDetailPage />} />

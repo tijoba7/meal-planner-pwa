@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Compass, Rss, Search, Globe, Heart, Star } from 'lucide-react'
+import { Compass, Rss, Search, Globe, Heart, Star, LayoutGrid, List } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseAvailable } from '../lib/supabase'
 import {
@@ -13,6 +13,55 @@ import { durationToMinutes } from '../lib/db'
 import Skeleton from '../components/Skeleton'
 
 const PAGE_SIZE = 20
+
+// ─── Category chips ────────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  { label: 'All', value: '' },
+  { label: '🍝 Pasta', value: 'pasta' },
+  { label: '🥗 Salads', value: 'salad' },
+  { label: '🍜 Soups', value: 'soup' },
+  { label: '🍖 Meat', value: 'meat' },
+  { label: '🐟 Seafood', value: 'seafood' },
+  { label: '🥩 Grilling', value: 'grilling' },
+  { label: '🧁 Desserts', value: 'desserts' },
+  { label: '🥞 Breakfast', value: 'breakfast' },
+  { label: '🌮 Mexican', value: 'mexican' },
+  { label: '🍣 Asian', value: 'asian' },
+  { label: '🍕 Italian', value: 'italian' },
+]
+
+function CategoryChips({
+  selected,
+  onChange,
+}: {
+  selected: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div
+      className="flex gap-2 overflow-x-auto pb-1"
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      role="group"
+      aria-label="Filter by category"
+    >
+      {CATEGORIES.map((cat) => (
+        <button
+          key={cat.value}
+          onClick={() => onChange(cat.value)}
+          aria-pressed={selected === cat.value}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+            selected === cat.value
+              ? 'bg-green-600 border-green-600 text-white'
+              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-green-500 hover:text-green-600 dark:hover:text-green-400'
+          }`}
+        >
+          {cat.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // ─── Recipe card ──────────────────────────────────────────────────────────────
 
@@ -111,6 +160,47 @@ function RecipeCard({
   )
 }
 
+/** 2-column grid card for the trending/grid view. */
+function RecipeGridCard({ item }: { item: CloudRecipeWithAuthor }) {
+  const recipe = item.data
+  const authorName = item.profiles?.display_name ?? 'Unknown'
+
+  return (
+    <li>
+      <Link
+        to={`/shared/${item.id}`}
+        className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
+      >
+        {/* Square image */}
+        <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">
+          {recipe.image ? (
+            <img
+              src={recipe.imageThumbnailUrl ?? recipe.image}
+              alt={recipe.name}
+              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-200"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+              <span className="text-3xl" role="img" aria-label="Recipe">🍽️</span>
+            </div>
+          )}
+        </div>
+        {/* Card info */}
+        <div className="p-3">
+          <h3 className="text-xs font-semibold text-gray-800 dark:text-gray-100 leading-tight line-clamp-2">
+            {recipe.name}
+          </h3>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-0.5 truncate">
+            by {authorName}
+          </p>
+        </div>
+      </Link>
+    </li>
+  )
+}
+
 function CardSkeleton() {
   return (
     <li className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
@@ -123,6 +213,18 @@ function CardSkeleton() {
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-4/5" />
+      </div>
+    </li>
+  )
+}
+
+function GridSkeleton() {
+  return (
+    <li className="rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <Skeleton className="aspect-square w-full rounded-none" />
+      <div className="p-3 space-y-1.5">
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
       </div>
     </li>
   )
@@ -146,6 +248,8 @@ export default function DiscoverPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('explore')
   const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('')
+  const [gridView, setGridView] = useState(false)
 
   // Explore state
   const [exploreItems, setExploreItems] = useState<CloudRecipeWithAuthor[]>([])
@@ -286,17 +390,22 @@ export default function DiscoverPage() {
     )
   }
 
-  const filteredExplore = query.trim()
-    ? exploreItems.filter((item) => {
-        const r = item.data
-        const q = query.toLowerCase()
-        return (
-          r.name?.toLowerCase().includes(q) ||
-          r.description?.toLowerCase().includes(q) ||
-          r.keywords?.some((k) => k.toLowerCase().includes(q))
-        )
-      })
-    : exploreItems
+  const filteredExplore = exploreItems.filter((item) => {
+    const r = item.data
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      const matchesSearch =
+        r.name?.toLowerCase().includes(q) ||
+        r.description?.toLowerCase().includes(q) ||
+        r.keywords?.some((k) => k.toLowerCase().includes(q))
+      if (!matchesSearch) return false
+    }
+    if (category) {
+      const matchesCategory = r.keywords?.some((k) => k.toLowerCase().includes(category))
+      if (!matchesCategory) return false
+    }
+    return true
+  })
 
   const tabClass = (tab: Tab) =>
     `flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -344,37 +453,100 @@ export default function DiscoverPage() {
       {/* Explore tab */}
       {activeTab === 'explore' && (
         <div id="discover-tab-explore" role="tabpanel" aria-labelledby="discover-tab-btn-explore">
-          <div className="relative mb-4">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              placeholder="Search public recipes..."
-              aria-label="Search public recipes"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+          {/* Category chips */}
+          <div className="mb-3">
+            <CategoryChips selected={category} onChange={(v) => { setCategory(v); setQuery('') }} />
+          </div>
+
+          {/* Search bar + view toggle row */}
+          <div className="flex gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                placeholder="Search public recipes..."
+                aria-label="Search public recipes"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            {/* View toggle */}
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden shrink-0">
+              <button
+                onClick={() => setGridView(false)}
+                aria-pressed={!gridView}
+                aria-label="List view"
+                className={`p-2 transition-colors ${
+                  !gridView
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <List size={16} aria-hidden="true" />
+              </button>
+              <button
+                onClick={() => setGridView(true)}
+                aria-pressed={gridView}
+                aria-label="Grid view"
+                className={`p-2 transition-colors border-l border-gray-200 dark:border-gray-600 ${
+                  gridView
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <LayoutGrid size={16} aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
           {exploreError ? (
             <p className="text-sm text-red-500 text-center py-8">{exploreError}</p>
           ) : exploreLoading ? (
-            <ul className="space-y-3" aria-busy="true" aria-label="Loading public recipes">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </ul>
+            gridView ? (
+              <ul className="grid grid-cols-2 gap-3" aria-busy="true" aria-label="Loading public recipes">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <GridSkeleton key={i} />
+                ))}
+              </ul>
+            ) : (
+              <ul className="space-y-3" aria-busy="true" aria-label="Loading public recipes">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </ul>
+            )
           ) : filteredExplore.length === 0 ? (
             <div className="text-center py-16">
               <Compass size={36} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {query ? `No public recipes match "${query}".` : 'No public recipes yet.'}
+                {query || category
+                  ? `No public recipes match your filters.`
+                  : 'No public recipes yet.'}
               </p>
             </div>
+          ) : gridView ? (
+            <>
+              <ul className="grid grid-cols-2 gap-3" aria-live="polite">
+                {filteredExplore.map((item) => (
+                  <RecipeGridCard key={item.id} item={item} />
+                ))}
+              </ul>
+              {!query && !category && (
+                <div ref={exploreSentinelRef}>
+                  {exploreLoadingMore && <LoadingSpinner />}
+                  {!exploreHasMore && exploreItems.length > 0 && (
+                    <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
+                      All public recipes loaded
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <>
               <ul className="space-y-3" aria-live="polite">
@@ -383,7 +555,7 @@ export default function DiscoverPage() {
                 ))}
               </ul>
               {/* Infinite scroll sentinel */}
-              {!query && (
+              {!query && !category && (
                 <div ref={exploreSentinelRef}>
                   {exploreLoadingMore && <LoadingSpinner />}
                   {!exploreHasMore && exploreItems.length > 0 && (

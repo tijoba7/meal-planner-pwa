@@ -19,3 +19,9 @@ export type { NotificationData } from './NotificationItem'
 
 export { default as GroupCard } from './GroupCard'
 export type { GroupCardData, GroupMembership } from './GroupCard'
+
+export { default as StoriesBar } from './StoriesBar'
+export type { StoryItem } from './StoriesBar'
+
+export { default as InstaRecipeCard } from './InstaRecipeCard'
+export type { InstaRecipe } from './InstaRecipeCard'

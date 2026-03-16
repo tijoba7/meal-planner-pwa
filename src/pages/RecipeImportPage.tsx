@@ -307,7 +307,7 @@ export default function RecipeImportPage() {
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="flex-1 bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-40"
+                className="flex-1 bg-green-700 text-white font-semibold py-3 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-40"
               >
                 Import
               </button>
@@ -477,7 +477,7 @@ function RecipeReview({
         <button
           onClick={onSave}
           disabled={saving}
-          className="flex-1 bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+          className="flex-1 bg-green-700 text-white font-semibold py-3 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save Recipe'}
         </button>

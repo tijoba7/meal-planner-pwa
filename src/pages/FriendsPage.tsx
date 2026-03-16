@@ -117,7 +117,7 @@ function RequestCard({
           onClick={handleAccept}
           disabled={busy !== null}
           title="Accept"
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-700 text-white text-xs font-medium hover:bg-green-800 transition-colors disabled:opacity-50"
         >
           {busy === 'accept' ? (
             <Loader2 size={12} className="animate-spin" />
@@ -231,7 +231,7 @@ function SearchResultCard({
         className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
           status === 'sent'
             ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
-            : 'bg-green-600 text-white hover:bg-green-700'
+            : 'bg-green-700 text-white hover:bg-green-800'
         }`}
       >
         {status === 'sending' ? (

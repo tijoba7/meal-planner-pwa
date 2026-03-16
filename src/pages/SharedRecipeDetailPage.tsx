@@ -466,7 +466,7 @@ export default function SharedRecipeDetailPage() {
           {recipe.recipeInstructions.length > 0 && (
             <button
               onClick={() => setCookingMode(true)}
-              className="flex items-center gap-1.5 text-sm font-medium bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center gap-1.5 text-sm font-medium bg-green-700 text-white px-3 py-1.5 rounded-lg hover:bg-green-800 transition-colors"
             >
               <ChefHat size={14} strokeWidth={2} aria-hidden="true" />
               Cook
@@ -602,7 +602,7 @@ export default function SharedRecipeDetailPage() {
         <ol className="space-y-3">
           {recipe.recipeInstructions.map((step, i) => (
             <li key={i} className="flex gap-3 text-sm">
-              <span className="shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <span className="shrink-0 w-6 h-6 bg-green-700 text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {i + 1}
               </span>
               <p className="text-gray-700 dark:text-gray-200 leading-relaxed pt-0.5">{step.text}</p>
@@ -814,7 +814,7 @@ export default function SharedRecipeDetailPage() {
                 type="submit"
                 disabled={!commentBody.trim() || submittingComment}
                 aria-label="Post comment"
-                className="self-end bg-green-600 text-white p-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="self-end bg-green-700 text-white p-2 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
               >
                 <Send size={16} aria-hidden="true" />
               </button>
@@ -836,7 +836,7 @@ export default function SharedRecipeDetailPage() {
           <button
             onClick={handleFork}
             disabled={forking}
-            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white text-sm font-medium py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-green-700 text-white text-sm font-medium py-3 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
           >
             <GitFork size={16} aria-hidden="true" />
             {forking ? 'Saving to your collection…' : 'Fork to My Collection'}
@@ -854,7 +854,7 @@ export default function SharedRecipeDetailPage() {
           </p>
           <Link
             to="/auth/login"
-            className="inline-block bg-green-600 text-white text-sm font-medium px-6 py-2 rounded-xl hover:bg-green-700 transition-colors"
+            className="inline-block bg-green-700 text-white text-sm font-medium px-6 py-2 rounded-xl hover:bg-green-800 transition-colors"
           >
             Sign in
           </Link>

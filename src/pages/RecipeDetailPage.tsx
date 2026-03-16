@@ -385,7 +385,7 @@ export default function RecipeDetailPage() {
           {recipe.recipeInstructions.length > 0 && (
             <button
               onClick={() => setCookingMode(true)}
-              className="min-h-[44px] flex items-center gap-1.5 text-sm font-medium bg-green-600 text-white px-3 rounded-lg hover:bg-green-700 transition-colors"
+              className="min-h-[44px] flex items-center gap-1.5 text-sm font-medium bg-green-700 text-white px-3 rounded-lg hover:bg-green-800 transition-colors"
             >
               <ChefHat size={14} strokeWidth={2} aria-hidden="true" />
               Cook
@@ -422,7 +422,7 @@ export default function RecipeDetailPage() {
           {recipe.recipeInstructions.length > 0 && (
             <button
               onClick={() => setCookingMode(true)}
-              className="flex items-center gap-1.5 text-sm font-medium bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center gap-1.5 text-sm font-medium bg-green-700 text-white px-3 py-1.5 rounded-lg hover:bg-green-800 transition-colors"
             >
               <ChefHat size={14} strokeWidth={2} aria-hidden="true" />
               Cook
@@ -634,7 +634,7 @@ export default function RecipeDetailPage() {
         <ol className="space-y-3">
           {recipe.recipeInstructions.map((step, i) => (
             <li key={i} className="flex gap-3 text-sm print:[break-inside:avoid]">
-              <span className="shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <span className="shrink-0 w-6 h-6 bg-green-700 text-white rounded-full flex items-center justify-center text-xs font-bold">
                 {i + 1}
               </span>
               <p className="text-gray-700 dark:text-gray-200 leading-relaxed pt-0.5">{step.text}</p>
@@ -780,7 +780,7 @@ export default function RecipeDetailPage() {
                         <div
                           className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
                             shared
-                              ? 'bg-green-600 border-green-600'
+                              ? 'bg-green-700 border-green-600'
                               : 'border-gray-300 dark:border-gray-500'
                           }`}
                         >
@@ -811,7 +811,7 @@ export default function RecipeDetailPage() {
               <button
                 onClick={handleShare}
                 disabled={sharing}
-                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50"
               >
                 {sharing ? 'Saving…' : 'Save'}
               </button>
@@ -887,7 +887,7 @@ export default function RecipeDetailPage() {
                           <div
                             className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                               inCollection
-                                ? 'bg-green-600 border-green-600'
+                                ? 'bg-green-700 border-green-600'
                                 : 'border-gray-300 dark:border-gray-500'
                             }`}
                           >

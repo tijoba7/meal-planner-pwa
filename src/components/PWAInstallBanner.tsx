@@ -28,7 +28,7 @@ export default function PWAInstallBanner() {
         </div>
         <button
           onClick={() => void install()}
-          className="text-xs font-medium bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors shrink-0"
+          className="text-xs font-medium bg-green-700 hover:bg-green-800 text-white px-3 py-1.5 rounded-lg transition-colors shrink-0"
         >
           Install
         </button>

@@ -93,7 +93,7 @@ export default function GroupCard({
             onClick={() => onJoin?.(group.id)}
             disabled={disabled}
             aria-label={`Join ${group.name}`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-700 text-white hover:bg-green-800 transition-colors disabled:opacity-50"
           >
             <LogIn size={12} strokeWidth={2} aria-hidden="true" />
             Join
@@ -105,7 +105,7 @@ export default function GroupCard({
             onClick={() => onAcceptInvite?.(group.id)}
             disabled={disabled}
             aria-label={`Accept invite to ${group.name}`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-700 text-white hover:bg-green-800 transition-colors disabled:opacity-50"
           >
             Join
           </button>

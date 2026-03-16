@@ -906,7 +906,7 @@ export default function RecipeFormPage() {
                   title={pref.description}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     selected
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-green-700 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
@@ -1112,7 +1112,7 @@ export default function RecipeFormPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+          className="w-full bg-green-700 text-white font-semibold py-3 rounded-xl hover:bg-green-800 transition-colors disabled:opacity-50"
         >
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Recipe'}
         </button>

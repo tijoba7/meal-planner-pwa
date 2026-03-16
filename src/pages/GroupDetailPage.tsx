@@ -300,7 +300,7 @@ function ShareRecipeModal({
                       className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                         alreadyShared
                           ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                          : 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-green-700 text-white hover:bg-green-800'
                       }`}
                     >
                       {sharing === r.id ? (
@@ -410,7 +410,7 @@ function InviteMemberModal({
                       className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                         alreadyInvited
                           ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                          : 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-green-700 text-white hover:bg-green-800'
                       }`}
                     >
                       {inviting === f.id ? (
@@ -504,7 +504,7 @@ function EditGroupModal({
             <button
               type="submit"
               disabled={busy || name.trim().length === 0}
-              className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-2 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {busy && <Loader2 size={14} className="animate-spin" />}Save
             </button>
@@ -664,7 +664,7 @@ export default function GroupDetailPage() {
       <div className="flex gap-2 mb-5">
         <button
           onClick={() => setShowShareRecipe(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-colors"
         >
           <Plus size={14} strokeWidth={2} />
           Share recipe

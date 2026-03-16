@@ -62,7 +62,7 @@ export default function FriendCard({
             onClick={onAdd}
             disabled={disabled}
             aria-label={`Add ${profile.display_name} as a friend`}
-            className="flex items-center gap-1.5 bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-green-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50"
           >
             <UserPlus size={13} strokeWidth={2} aria-hidden="true" />
             Add
@@ -82,7 +82,7 @@ export default function FriendCard({
               onClick={onAccept}
               disabled={disabled}
               aria-label={`Accept friend request from ${profile.display_name}`}
-              className="flex items-center gap-1.5 bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-green-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50"
             >
               <UserCheck size={13} strokeWidth={2} aria-hidden="true" />
               Accept

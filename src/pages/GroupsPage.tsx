@@ -81,7 +81,7 @@ function CreateGroupDialog({
             <button
               type="submit"
               disabled={busy || name.trim().length === 0}
-              className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-2 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {busy && <Loader2 size={14} className="animate-spin" />}
               Create
@@ -175,7 +175,7 @@ export default function GroupsPage() {
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Groups</h1>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-colors"
         >
           <Plus size={14} strokeWidth={2} />
           New group

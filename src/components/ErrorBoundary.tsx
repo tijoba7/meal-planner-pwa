@@ -70,7 +70,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             )}
             <button
               onClick={this.reset}
-              className="mt-5 flex items-center gap-2 bg-green-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+              className="mt-5 flex items-center gap-2 bg-green-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors"
             >
               <RefreshCw size={16} />
               Try Again

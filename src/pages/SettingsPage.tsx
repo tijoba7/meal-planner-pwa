@@ -194,7 +194,7 @@ function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-        checked ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'
+        checked ? 'bg-green-700' : 'bg-gray-200 dark:bg-gray-600'
       }`}
     >
       <span
@@ -524,7 +524,7 @@ export default function SettingsPage() {
                   onClick={() => setTheme(opt.value)}
                   className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     theme === opt.value
-                      ? 'bg-green-600 text-white border-green-600'
+                      ? 'bg-green-700 text-white border-green-600'
                       : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
@@ -548,7 +548,7 @@ export default function SettingsPage() {
                   onClick={() => setUnitSystem(opt.value)}
                   className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     unitSystem === opt.value
-                      ? 'bg-green-600 text-white border-green-600'
+                      ? 'bg-green-700 text-white border-green-600'
                       : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
@@ -581,7 +581,7 @@ export default function SettingsPage() {
                     title={pref.description}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       selected
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-700 text-white'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -675,7 +675,7 @@ export default function SettingsPage() {
               <div className="mt-2 space-y-1.5">
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
-                    className="bg-green-600 h-2 rounded-full transition-all"
+                    className="bg-green-700 h-2 rounded-full transition-all"
                     style={{ width: `${storageUsedPct ?? 0}%` }}
                   />
                 </div>
@@ -787,7 +787,7 @@ export default function SettingsPage() {
               />
               <button
                 type="submit"
-                className="bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-800 transition-colors"
               >
                 {saved ? 'Saved!' : 'Save'}
               </button>
@@ -821,7 +821,7 @@ export default function SettingsPage() {
               />
               <button
                 type="submit"
-                className="bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-800 transition-colors"
               >
                 {displayNameSaved ? 'Saved!' : 'Save'}
               </button>
@@ -969,7 +969,7 @@ export default function SettingsPage() {
                     className={`flex-1 py-2.5 text-sm font-semibold rounded-xl text-white transition-colors ${
                       importMode === 'replace'
                         ? 'bg-red-600 hover:bg-red-700'
-                        : 'bg-green-600 hover:bg-green-700'
+                        : 'bg-green-700 hover:bg-green-800'
                     }`}
                   >
                     {importMode === 'replace' ? 'Replace & Import' : 'Import'}
@@ -991,7 +991,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
-                      className="bg-green-600 h-2 rounded-full transition-all duration-200"
+                      className="bg-green-700 h-2 rounded-full transition-all duration-200"
                       style={{ width: `${importProgress?.pct ?? 0}%` }}
                     />
                   </div>
@@ -1038,7 +1038,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={handleImportDismiss}
-                  className="w-full py-2.5 text-sm font-semibold rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors"
+                  className="w-full py-2.5 text-sm font-semibold rounded-xl bg-green-700 text-white hover:bg-green-800 transition-colors"
                 >
                   Done
                 </button>

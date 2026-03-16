@@ -163,7 +163,7 @@ export default function PublicProfilePage() {
               <button
                 onClick={handleAdd}
                 disabled={actionBusy}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-colors disabled:opacity-50"
               >
                 {actionBusy ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -194,7 +194,7 @@ export default function PublicProfilePage() {
                 <button
                   onClick={handleAccept}
                   disabled={actionBusy}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-colors disabled:opacity-50"
                 >
                   {actionBusy ? (
                     <Loader2 size={13} className="animate-spin" />

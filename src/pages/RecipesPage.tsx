@@ -233,7 +233,7 @@ export default function RecipesPage() {
           </Link>
           <Link
             to="/recipes/new"
-            className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
           >
             + Add Recipe
           </Link>
@@ -286,7 +286,7 @@ export default function RecipesPage() {
           <SlidersHorizontal size={14} aria-hidden="true" />
           Filters
           {activeFilterCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center bg-green-600 text-white text-[10px] font-bold rounded-full px-1">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center bg-green-700 text-white text-[10px] font-bold rounded-full px-1">
               {activeFilterCount}
             </span>
           )}
@@ -373,7 +373,7 @@ export default function RecipesPage() {
                     aria-pressed={selectedCategories.includes(cat)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedCategories.includes(cat)
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-700 text-white'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -400,7 +400,7 @@ export default function RecipesPage() {
                     aria-pressed={selectedCuisines.includes(cui)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedCuisines.includes(cui)
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-700 text-white'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -429,7 +429,7 @@ export default function RecipesPage() {
                     aria-pressed={selectedTags.includes(tag)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       selectedTags.includes(tag)
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-700 text-white'
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -458,7 +458,7 @@ export default function RecipesPage() {
                   title={pref.description}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     selectedDiets.includes(pref.id)
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-green-700 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >

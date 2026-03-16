@@ -284,7 +284,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
           <div className="max-w-2xl mx-auto w-full">
             {/* Step badge */}
             <div className="mb-4">
-              <span className="inline-flex items-center justify-center w-10 h-10 bg-green-600 text-white rounded-full text-lg font-bold">
+              <span className="inline-flex items-center justify-center w-10 h-10 bg-green-700 text-white rounded-full text-lg font-bold">
                 {stepIndex + 1}
               </span>
             </div>
@@ -348,7 +348,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
         {isLast ? (
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-colors font-medium"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white transition-colors font-medium"
           >
             Finish
           </button>
@@ -356,7 +356,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
           <button
             onClick={() => setStepIndex((i) => Math.min(i + 1, steps.length - 1))}
             aria-label="Next step"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-colors font-medium"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white transition-colors font-medium"
           >
             <span className="hidden sm:inline">Next</span>
             <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />

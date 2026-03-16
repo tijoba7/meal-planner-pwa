@@ -905,7 +905,7 @@ export default function ShoppingListPage() {
                 <button
                   onClick={handleAddItem}
                   disabled={!newItemName.trim()}
-                  className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add
                 </button>
@@ -1036,7 +1036,7 @@ export default function ShoppingListPage() {
         <button
           onClick={() => setShowCreate(true)}
           aria-label="New shopping list"
-          className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
         >
           + New List
         </button>
@@ -1226,7 +1226,7 @@ export default function ShoppingListPage() {
               <button
                 onClick={handleCreate}
                 disabled={!listName.trim() || creating}
-                className="w-full bg-green-600 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {creating ? 'Creating…' : 'Create List'}
               </button>

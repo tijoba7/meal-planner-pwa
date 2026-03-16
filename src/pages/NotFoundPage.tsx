@@ -22,7 +22,7 @@ export default function NotFoundPage() {
           </button>
           <Link
             to="/"
-            className="text-sm font-medium px-4 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+            className="text-sm font-medium px-4 py-2.5 rounded-lg bg-green-700 text-white hover:bg-green-800 transition-colors"
           >
             Go to recipes
           </Link>

@@ -50,7 +50,7 @@ export default function CollectionsPage() {
         <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Collections</h1>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          className="flex items-center gap-1.5 bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
         >
           <Plus size={14} aria-hidden="true" />
           New collection
@@ -189,7 +189,7 @@ export default function CollectionsPage() {
                 <button
                   type="submit"
                   disabled={!newName.trim() || creating}
-                  className="flex-1 bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-green-700 text-white font-semibold py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creating…' : 'Create'}
                 </button>

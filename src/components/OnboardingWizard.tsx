@@ -161,7 +161,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
                 aria-hidden="true"
                 className={`block w-2 h-2 rounded-full transition-colors ${
                   i === step
-                    ? 'bg-green-600'
+                    ? 'bg-green-700'
                     : i < step
                       ? 'bg-green-300 dark:bg-green-700'
                       : 'bg-gray-200 dark:bg-gray-600'
@@ -253,7 +253,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
                 <button
                   onClick={goSampleRecipe}
                   disabled={saving}
-                  className="w-full bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60 transition-colors"
+                  className="w-full bg-green-700 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-800 disabled:opacity-60 transition-colors"
                 >
                   {saving ? 'Adding…' : 'Try a sample recipe'}
                 </button>
@@ -287,7 +287,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
           {!isLast && (
             <button
               onClick={next}
-              className="flex-1 bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-700 transition-colors"
+              className="flex-1 bg-green-700 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-green-800 transition-colors"
             >
               {step === 0 ? 'Get started' : 'Next'}
             </button>

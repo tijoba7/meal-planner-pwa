@@ -176,7 +176,7 @@ export default function InvitePage() {
                 <button
                   onClick={handleAdd}
                   disabled={status === 'sending'}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 transition-colors disabled:opacity-50"
                 >
                   {status === 'sending' ? (
                     <Loader2 size={15} className="animate-spin" />

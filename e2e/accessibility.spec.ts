@@ -58,7 +58,7 @@ async function assertNoViolations(page: import('@playwright/test').Page, label: 
 test.describe('Accessibility — Recipes page', () => {
   test('empty state has no violations', async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('h2', { timeout: 5000 })
+    await page.waitForSelector('h2', { timeout: 15000 })
     await assertNoViolations(page, 'Recipes page (empty state)')
   })
 })
@@ -70,7 +70,7 @@ test.describe('Accessibility — Recipes page', () => {
 test.describe('Accessibility — Meal Planner page', () => {
   test('planner grid has no violations', async ({ page }) => {
     await page.goto('/meal-plan')
-    await page.waitForSelector('h2', { timeout: 5000 })
+    await page.waitForSelector('h2', { timeout: 15000 })
     await assertNoViolations(page, 'Meal Planner page')
   })
 })
@@ -82,14 +82,14 @@ test.describe('Accessibility — Meal Planner page', () => {
 test.describe('Accessibility — Shopping Lists page', () => {
   test('empty state has no violations', async ({ page }) => {
     await page.goto('/shopping')
-    await page.waitForSelector('h2', { timeout: 5000 })
+    await page.waitForSelector('h2', { timeout: 15000 })
     await assertNoViolations(page, 'Shopping Lists page (empty state)')
   })
 
   test('new list dialog has no violations', async ({ page }) => {
     await page.goto('/shopping')
     await page.getByRole('button', { name: /new shopping list/i }).click()
-    await page.waitForSelector('[role="dialog"]', { timeout: 3000 })
+    await page.waitForSelector('[role="dialog"]', { timeout: 10000 })
     await assertNoViolations(page, 'Shopping Lists — new list dialog')
   })
 })
@@ -101,7 +101,7 @@ test.describe('Accessibility — Shopping Lists page', () => {
 test.describe('Accessibility — Recipe Form page', () => {
   test('new recipe form has no violations', async ({ page }) => {
     await page.goto('/recipes/new')
-    await page.waitForSelector('form', { timeout: 5000 })
+    await page.waitForSelector('form', { timeout: 15000 })
     await assertNoViolations(page, 'Recipe Form page (new)')
   })
 })
@@ -115,7 +115,7 @@ test.describe('Accessibility — Discover page', () => {
     await page.goto('/discover')
     // When Supabase is not configured the page shows a "Connect to Supabase" message
     // instead of the h2/tablist; wait for either state to be ready.
-    await page.waitForSelector('h2, [role="tablist"], p', { timeout: 5000 })
+    await page.waitForSelector('h2, [role="tablist"], p', { timeout: 15000 })
     await assertNoViolations(page, 'Discover page')
   })
 })

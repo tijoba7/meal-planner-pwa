@@ -1038,7 +1038,7 @@ export default function PlannerPage() {
                   disabled={
                     !sourceHasMeals || copyTarget === weekStart || copyTargetPlan === undefined
                   }
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-green-700 text-white text-sm font-medium hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {copyTargetHasMeals ? 'Copy anyway' : 'Copy'}
                 </button>
@@ -1142,7 +1142,7 @@ export default function PlannerPage() {
                   {recipes.length === 0 ? (
                     <Link
                       to="/recipes/new"
-                      className="mt-3 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      className="mt-3 bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-800 transition-colors"
                     >
                       Add your first recipe
                     </Link>
@@ -1252,7 +1252,7 @@ export default function PlannerPage() {
                   setSaveTemplateOpen(true)
                 }}
                 disabled={!sourceHasMeals}
-                className="w-full bg-green-600 text-white text-sm font-semibold py-3 rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full bg-green-700 text-white text-sm font-semibold py-3 rounded-xl hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Save this week as template
               </button>
@@ -1309,7 +1309,7 @@ export default function PlannerPage() {
               <button
                 onClick={saveAsTemplate}
                 disabled={!templateName.trim() || savingTemplate}
-                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {savingTemplate ? 'Saving…' : 'Save'}
               </button>
@@ -1423,7 +1423,7 @@ export default function PlannerPage() {
               </button>
               <button
                 onClick={() => applyTemplate(applyTemplateConfirm)}
-                className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 transition-colors"
               >
                 Apply
               </button>

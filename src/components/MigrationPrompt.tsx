@@ -126,7 +126,7 @@ export default function MigrationPrompt() {
             </button>
             <button
               onClick={migrate}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 transition-colors"
             >
               Upload
             </button>
@@ -150,7 +150,7 @@ export default function MigrationPrompt() {
             </button>
             <button
               onClick={migrate}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 transition-colors"
             >
               Retry
             </button>

@@ -16,14 +16,26 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// Fake user for E2E test mode (VITE_TEST_BYPASS_AUTH=true)
+const TEST_USER = {
+  id: 'test-user-id',
+  email: 'test@example.com',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+} as User
+
+const isTestMode = import.meta.env.VITE_TEST_BYPASS_AUTH === 'true'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(isTestMode ? TEST_USER : null)
   const [session, setSession] = useState<Session | null>(null)
   // When Supabase is not configured, auth is always "resolved" (no user)
-  const [loading, setLoading] = useState(supabase !== null)
+  const [loading, setLoading] = useState(isTestMode ? false : supabase !== null)
 
   useEffect(() => {
-    if (!supabase) return
+    if (isTestMode || !supabase) return
 
     // Get the initial session
     supabase.auth.getSession().then(({ data: { session } }) => {

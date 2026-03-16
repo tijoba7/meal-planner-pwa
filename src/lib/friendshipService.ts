@@ -229,6 +229,7 @@ export async function getFriends(currentUserId: string): Promise<FriendshipWithP
 
   if (!data) return []
 
+  // Supabase SDK infers a complex join type that doesn't overlap with FriendshipJoinRow — cast via unknown
   return (data as unknown as FriendshipJoinRow[]).map((row) => {
     const isRequester = row.requester_id === currentUserId
     const profile = isRequester
@@ -263,6 +264,7 @@ export async function getPendingRequests(currentUserId: string): Promise<Friends
 
   if (!data) return []
 
+  // Supabase SDK infers a complex join type that doesn't overlap with PendingRequestRow — cast via unknown
   return (data as unknown as PendingRequestRow[]).map((row) => ({
     id: row.id,
     requester_id: row.requester_id,
@@ -291,6 +293,7 @@ export async function getSentRequests(currentUserId: string): Promise<Friendship
 
   if (!data) return []
 
+  // Supabase SDK infers a complex join type that doesn't overlap with SentRequestRow — cast via unknown
   return (data as unknown as SentRequestRow[]).map((row) => ({
     id: row.id,
     requester_id: row.requester_id,

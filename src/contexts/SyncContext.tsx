@@ -72,9 +72,39 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       if (userIdRef.current) void backgroundPull(userIdRef.current)
     }, BACKGROUND_SYNC_INTERVAL_MS)
 
+    // Register Background Sync API tag when going offline so the browser can
+    // wake the service worker and trigger a pull when connectivity is restored —
+    // even if the tab is not visible at that moment.
+    const handleOnline = () => {
+      if (userIdRef.current) void backgroundPull(userIdRef.current)
+    }
+    const handleOffline = () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready
+          .then((reg) => (reg as unknown as { sync: { register(tag: string): Promise<void> } }).sync.register('mise-pull'))
+          .catch(() => {
+            // BackgroundSync not supported — rely on window.online fallback
+          })
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    // Listen for BACKGROUND_SYNC messages from the service worker (fired when
+    // the SW handles a sync event while the app is in the background).
+    const handleSwMessage = (event: MessageEvent<{ type: string }>) => {
+      if (event.data?.type === 'BACKGROUND_SYNC' && userIdRef.current) {
+        void backgroundPull(userIdRef.current)
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', handleSwMessage)
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
       clearInterval(intervalId)
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+      navigator.serviceWorker?.removeEventListener('message', handleSwMessage)
       stopSync()
     }
   }, [user?.id, backgroundPull])

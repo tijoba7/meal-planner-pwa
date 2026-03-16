@@ -23,11 +23,14 @@ import type { Json } from '../types/supabase'
 import { db } from './db'
 import { supabase } from './supabase'
 import type { MealPlan, Recipe, ShoppingList } from '../types'
+import { getMyHouseholds, pushSharedMealPlanData } from './householdService'
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
 let currentUserId: string | null = null
 let channel: RealtimeChannel | null = null
+/** Channels for each household (keyed by householdId). */
+const householdChannels = new Map<string, RealtimeChannel>()
 
 /**
  * IDs currently being written from the cloud to local IndexedDB.
@@ -106,6 +109,16 @@ export async function deleteCloudRecipe(id: string): Promise<void> {
 
 export async function pushMealPlan(plan: MealPlan, userId: string): Promise<void> {
   if (!supabase) return
+
+  // Shared household plans: non-owners can only UPDATE (not insert).
+  // Use a data-only update first; the plan must already exist in the cloud.
+  if (plan.householdId) {
+    const ok = await pushSharedMealPlanData(plan)
+    if (!ok) addPending({ table: 'meal_plans', id: plan.id, op: 'upsert' })
+    else removePending('meal_plans', plan.id)
+    return
+  }
+
   const { error } = await supabase.from('meal_plans_cloud').upsert(
     { id: plan.id, owner_id: userId, data: plan as unknown as Json, updated_at: plan.updatedAt },
     { onConflict: 'id' }
@@ -176,7 +189,41 @@ export async function flushPending(userId: string): Promise<void> {
 /** Pull all cloud records for this user and apply them locally (last-write-wins). */
 export async function pullFromCloud(userId: string): Promise<void> {
   if (!supabase) return
-  await Promise.all([pullRecipes(userId), pullMealPlans(userId), pullShoppingLists(userId)])
+  await Promise.all([
+    pullRecipes(userId),
+    pullMealPlans(userId),
+    pullShoppingLists(userId),
+    pullHouseholdMealPlans(userId),
+  ])
+}
+
+/** Pull shared meal plans from all of the user's households. */
+async function pullHouseholdMealPlans(userId: string): Promise<void> {
+  if (!supabase) return
+  const households = await getMyHouseholds(userId)
+  await Promise.all(households.map((h) => pullHouseholdPlansForId(h.id)))
+}
+
+async function pullHouseholdPlansForId(householdId: string): Promise<void> {
+  if (!supabase) return
+  const { data, error } = await supabase
+    .from('meal_plans_cloud')
+    .select('id, data, updated_at')
+    .eq('household_id', householdId)
+  if (error || !data) return
+
+  for (const row of data) {
+    const cloudPlan = row.data as unknown as MealPlan
+    const local = await db.mealPlans.get(row.id)
+    if (!local || new Date(row.updated_at).getTime() > new Date(local.updatedAt).getTime()) {
+      markCloud('meal_plans', row.id)
+      try {
+        await db.mealPlans.put({ ...cloudPlan, id: row.id, householdId })
+      } finally {
+        unmarkCloud('meal_plans', row.id)
+      }
+    }
+  }
 }
 
 async function pullRecipes(userId: string): Promise<void> {
@@ -362,6 +409,27 @@ function handleRealtimeShoppingList(payload: AnyPayload): void {
     .finally(() => unmarkCloud('shopping_lists', row.id))
 }
 
+function handleRealtimeHouseholdMealPlan(payload: AnyPayload, householdId: string): void {
+  if (payload.eventType === 'DELETE') {
+    const id = (payload.old as { id?: string }).id
+    if (!id) return
+    markCloud('meal_plans', id)
+    void db.mealPlans.delete(id).finally(() => unmarkCloud('meal_plans', id))
+    return
+  }
+  const row = payload.new as { id: string; data: unknown; updated_at: string }
+  const cloudPlan = row.data as MealPlan
+  markCloud('meal_plans', row.id)
+  void db.mealPlans
+    .get(row.id)
+    .then((local) => {
+      if (!local || new Date(row.updated_at).getTime() > new Date(local.updatedAt).getTime()) {
+        return db.mealPlans.put({ ...cloudPlan, id: row.id, householdId })
+      }
+    })
+    .finally(() => unmarkCloud('meal_plans', row.id))
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 let _onlineHandler: (() => void) | null = null
@@ -370,6 +438,7 @@ let _onlineHandler: (() => void) | null = null
  * Start bidirectional sync for a signed-in user.
  * - Flushes any pending offline writes from a previous session
  * - Subscribes to Realtime for live updates from other devices
+ * - Sets up household plan subscriptions for all the user's households
  * Resolves when setup is complete (does NOT wait for pullFromCloud —
  * callers should invoke pullFromCloud separately to show loading state).
  */
@@ -386,7 +455,7 @@ export async function startSync(userId: string): Promise<void> {
   _onlineHandler = () => void flushPending(userId)
   window.addEventListener('online', _onlineHandler)
 
-  // Subscribe to Realtime
+  // Subscribe to Realtime for personal data
   channel = supabase
     .channel(`sync:${userId}`)
     .on(
@@ -415,6 +484,33 @@ export async function startSync(userId: string): Promise<void> {
       handleRealtimeShoppingList
     )
     .subscribe()
+
+  // Subscribe to Realtime for each household's shared meal plans
+  const households = await getMyHouseholds(userId)
+  for (const household of households) {
+    subscribeToHouseholdPlans(household.id)
+  }
+}
+
+/** Subscribe to shared meal plan changes for a single household. Idempotent. */
+function subscribeToHouseholdPlans(householdId: string): void {
+  if (!supabase || householdChannels.has(householdId)) return
+
+  const ch = supabase
+    .channel(`household-sync:${householdId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'meal_plans_cloud',
+        filter: `household_id=eq.${householdId}`,
+      },
+      (payload) => handleRealtimeHouseholdMealPlan(payload, householdId)
+    )
+    .subscribe()
+
+  householdChannels.set(householdId, ch)
 }
 
 /** Stop sync and clean up subscriptions. Called on sign-out. */
@@ -430,4 +526,11 @@ export function stopSync(): void {
     void supabase.removeChannel(channel)
     channel = null
   }
+
+  if (supabase) {
+    for (const ch of householdChannels.values()) {
+      void supabase.removeChannel(ch)
+    }
+  }
+  householdChannels.clear()
 }

@@ -1,0 +1,81 @@
+version: 2
+updates:
+  # npm/pnpm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    versioning-strategy: auto
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-router-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "@testing-library/react"
+          - "@testing-library/user-event"
+          - "@testing-library/jest-dom"
+          - "eslint-plugin-react-hooks"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/plugin-react"
+          - "vite-plugin-pwa"
+          - "@sentry/vite-plugin"
+          - "rollup-plugin-visualizer"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+      typescript:
+        patterns:
+          - "typescript"
+          - "@typescript-eslint/*"
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-config-*"
+          - "eslint-plugin-*"
+        exclude-patterns:
+          - "eslint-plugin-react-hooks"
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "jsdom"
+          - "fake-indexeddb"
+      sentry:
+        patterns:
+          - "@sentry/*"
+      supabase:
+        patterns:
+          - "@supabase/*"
+    labels:
+      - "dependencies"
+    ignore:
+      # Don't update major versions automatically — too risky
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"

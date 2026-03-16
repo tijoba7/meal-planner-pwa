@@ -20,6 +20,12 @@ export const APP_SETTING_KEYS = {
   SCRAPING_PROVIDER: 'scraping.provider',
   SCRAPING_MODEL: 'scraping.model',
   SCRAPING_RATE_LIMIT: 'scraping.rate_limit',
+  FEATURES_SOCIAL: 'features.social',
+  FEATURES_GROUPS: 'features.groups',
+  FEATURES_DISCOVER: 'features.discover',
+  DEFAULTS_DIETARY: 'defaults.dietary_preferences',
+  DEFAULTS_NOTIF_PUSH: 'defaults.notifications.push_enabled',
+  DEFAULTS_NOTIF_REMINDERS: 'defaults.notifications.meal_plan_reminders',
 } as const
 
 export type AppSettingKey = (typeof APP_SETTING_KEYS)[keyof typeof APP_SETTING_KEYS]

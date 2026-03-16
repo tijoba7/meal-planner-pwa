@@ -5,7 +5,7 @@ import { Card, CardBody } from '../components/ui'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface HelpItem {
+interface HelpItemData {
   question: string
   answer: string
 }
@@ -14,7 +14,7 @@ interface HelpSection {
   id: string
   title: string
   icon: React.ReactNode
-  items: HelpItem[]
+  items: HelpItemData[]
 }
 
 // ─── Content ──────────────────────────────────────────────────────────────────

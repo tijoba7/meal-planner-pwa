@@ -23,7 +23,6 @@ function handleMetric(metric: Metric) {
   vitalsStore[metric.name] = metric
 
   if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
     console.debug(
       `[web-vitals] ${metric.name}: ${metric.value.toFixed(2)} ${metric.name === 'CLS' ? '' : 'ms'} (rating: ${metric.rating})`,
     )

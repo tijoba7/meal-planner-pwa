@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { AdminProvider } from './contexts/AdminContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { MigrationProvider } from './contexts/MigrationContext'
 import { ProfileProvider } from './contexts/ProfileContext'
@@ -59,6 +60,7 @@ export default function App() {
           <SyncProvider>
             <MigrationProvider>
               <ProfileProvider>
+                <AdminProvider>
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
@@ -105,6 +107,7 @@ export default function App() {
                     </Routes>
                   </Suspense>
                 </ErrorBoundary>
+                </AdminProvider>
               </ProfileProvider>
             </MigrationProvider>
           </SyncProvider>

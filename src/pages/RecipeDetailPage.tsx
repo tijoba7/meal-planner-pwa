@@ -21,17 +21,18 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { getDietaryPrefs, detectAllergenIngredients, DIETARY_PREFERENCES } from '../lib/dietary'
 import {
-  getRecipe,
-  deleteRecipe,
-  duplicateRecipe,
-  toggleFavorite,
-  durationToMinutes,
-  getCollections,
-  addRecipeToCollection,
-  removeRecipeFromCollection,
-} from '../lib/db'
+  useRecipe,
+  useDeleteRecipe,
+  useDuplicateRecipe,
+  useToggleFavorite,
+} from '../hooks/useRecipes'
+import {
+  useCollections,
+  useAddRecipeToCollection,
+  useRemoveRecipeFromCollection,
+} from '../hooks/useCollections'
+import { durationToMinutes } from '../lib/db'
 import { convertUnit } from '../lib/units'
-import type { Recipe, Collection } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
@@ -121,11 +122,18 @@ export default function RecipeDetailPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user } = useAuth()
-  const [recipe, setRecipe] = useState<Recipe | null>(null)
-  const [notFound, setNotFound] = useState(false)
+
+  const { data: recipe, isLoading: recipeLoading } = useRecipe(id ?? '')
+  const deleteRecipeMutation = useDeleteRecipe()
+  const duplicateRecipeMutation = useDuplicateRecipe()
+  const toggleFavoriteMutation = useToggleFavorite()
+
+  // Collections
+  const { data: collections = [] } = useCollections()
+  const addToCollectionMutation = useAddRecipeToCollection()
+  const removeFromCollectionMutation = useRemoveRecipeFromCollection()
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [duplicating, setDuplicating] = useState(false)
   const [scaledServings, setScaledServings] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
 
@@ -134,7 +142,6 @@ export default function RecipeDetailPage() {
 
   // Collection panel state
   const [showCollectionPanel, setShowCollectionPanel] = useState(false)
-  const [collections, setCollections] = useState<Collection[]>([])
   const [collectionTogglingId, setCollectionTogglingId] = useState<string | null>(null)
 
   // Share panel state
@@ -148,6 +155,11 @@ export default function RecipeDetailPage() {
   const [groupTogglingId, setGroupTogglingId] = useState<string | null>(null)
 
   const [unitSystem] = useUnitPreference()
+
+  // Sync scaledServings when recipe loads
+  useEffect(() => {
+    if (recipe) setScaledServings(parseServings(recipe.recipeYield))
+  }, [recipe])
 
   // Allergen detection based on user dietary prefs
   const userDietaryPrefs = getDietaryPrefs()
@@ -174,16 +186,6 @@ export default function RecipeDetailPage() {
   })
 
   useEffect(() => {
-    if (!id) return
-    getRecipe(id).then((r) => {
-      if (r) {
-        setRecipe(r)
-        setScaledServings(parseServings(r.recipeYield))
-      } else setNotFound(true)
-    })
-  }, [id])
-
-  useEffect(() => {
     if (!id || !user) return
     getCloudRecipeMeta(id).then((meta) => {
       if (meta) {
@@ -192,11 +194,6 @@ export default function RecipeDetailPage() {
       }
     })
   }, [id, user])
-
-  useEffect(() => {
-    if (!showCollectionPanel) return
-    getCollections().then(setCollections)
-  }, [showCollectionPanel])
 
   // Estimated nutrition — computed before early returns to satisfy the Rules of Hooks.
   // Only used when manual nutrition data is absent from the recipe.
@@ -212,18 +209,14 @@ export default function RecipeDetailPage() {
     const col = collections.find((c) => c.id === collectionId)
     if (!col) return
     setCollectionTogglingId(collectionId)
-    if (col.recipeIds.includes(id)) {
-      await removeRecipeFromCollection(collectionId, id)
-      setCollections((prev) =>
-        prev.map((c) =>
-          c.id === collectionId ? { ...c, recipeIds: c.recipeIds.filter((rid) => rid !== id) } : c
-        )
-      )
-    } else {
-      await addRecipeToCollection(collectionId, id)
-      setCollections((prev) =>
-        prev.map((c) => (c.id === collectionId ? { ...c, recipeIds: [...c.recipeIds, id] } : c))
-      )
+    try {
+      if (col.recipeIds.includes(id)) {
+        await removeFromCollectionMutation.mutateAsync({ collectionId, recipeId: id })
+      } else {
+        await addToCollectionMutation.mutateAsync({ collectionId, recipeId: id })
+      }
+    } catch {
+      toast.error('Failed to update collection.')
     }
     setCollectionTogglingId(null)
   }
@@ -258,25 +251,34 @@ export default function RecipeDetailPage() {
 
   async function handleToggleFavorite() {
     if (!id || !recipe) return
-    const newVal = await toggleFavorite(id)
-    setRecipe((r) => (r ? { ...r, isFavorite: newVal } : r))
+    try {
+      await toggleFavoriteMutation.mutateAsync(id)
+    } catch {
+      toast.error('Failed to update favorite.')
+    }
   }
 
   async function handleDuplicate() {
     if (!id) return
-    setDuplicating(true)
-    const copy = await duplicateRecipe(id)
-    toast.success(`"${copy.name}" created.`)
-    navigate(`/recipes/${copy.id}/edit`)
+    try {
+      const copy = await duplicateRecipeMutation.mutateAsync(id)
+      toast.success(`"${copy.name}" created.`)
+      navigate(`/recipes/${copy.id}/edit`)
+    } catch {
+      toast.error('Failed to duplicate recipe.')
+    }
   }
 
   async function handleDelete() {
     if (!id || !recipe) return
-    setDeleting(true)
-    const deletedRecipe = { ...recipe }
-    await deleteRecipe(id)
-    navigate('/')
-    toast.success(`"${deletedRecipe.name}" deleted.`)
+    const deletedName = recipe.name
+    try {
+      await deleteRecipeMutation.mutateAsync(id)
+      navigate('/')
+      toast.success(`"${deletedName}" deleted.`)
+    } catch {
+      toast.error('Failed to delete recipe.')
+    }
   }
 
   async function handleShare() {
@@ -301,7 +303,7 @@ export default function RecipeDetailPage() {
     setSharing(false)
   }
 
-  if (notFound) {
+  if (!recipeLoading && !recipe) {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
         <p className="text-gray-500 dark:text-gray-400">Recipe not found.</p>
@@ -312,9 +314,9 @@ export default function RecipeDetailPage() {
     )
   }
 
-  if (!recipe) {
+  if (recipeLoading || !recipe) {
     return (
-      <div className="p-4 max-w-2xl mx-auto pb-8" aria-busy="true" aria-label="Loading recipe">
+      <div className="p-4 max-w-2xl mx-auto pb-8" role="status" aria-busy="true" aria-label="Loading recipe">
         <Skeleton className="h-4 w-20 mb-4" />
         <div className="flex items-start justify-between gap-3 mb-4">
           <Skeleton className="h-8 w-2/3" />
@@ -461,12 +463,12 @@ export default function RecipeDetailPage() {
           </Link>
           <button
             onClick={handleDuplicate}
-            disabled={duplicating}
+            disabled={duplicateRecipeMutation.isPending}
             aria-label="Duplicate recipe"
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             <Copy size={14} strokeWidth={2} aria-hidden="true" />
-            {duplicating ? 'Copying…' : 'Duplicate'}
+            {duplicateRecipeMutation.isPending ? 'Copying…' : 'Duplicate'}
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
@@ -1007,7 +1009,7 @@ export default function RecipeDetailPage() {
                   setShowMoreSheet(false)
                   handleDuplicate()
                 }}
-                disabled={duplicating}
+                disabled={duplicateRecipeMutation.isPending}
                 className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
                 <Copy
@@ -1016,7 +1018,7 @@ export default function RecipeDetailPage() {
                   className="text-gray-500 dark:text-gray-400 shrink-0"
                   aria-hidden="true"
                 />
-                {duplicating ? 'Duplicating…' : 'Duplicate recipe'}
+                {duplicateRecipeMutation.isPending ? 'Duplicating…' : 'Duplicate recipe'}
               </button>
               <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
               <button
@@ -1057,16 +1059,16 @@ export default function RecipeDetailPage() {
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                disabled={deleting}
+                disabled={deleteRecipeMutation.isPending}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleting}
+                disabled={deleteRecipeMutation.isPending}
                 className="flex-1 bg-red-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
               >
-                {deleting ? 'Deleting…' : 'Delete'}
+                {deleteRecipeMutation.isPending ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>

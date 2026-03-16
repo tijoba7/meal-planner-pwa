@@ -136,8 +136,8 @@ test.describe('Recipe search — advanced filters panel', () => {
     // Change to A–Z (alpha-asc)
     await sortSelect.selectOption({ value: 'alpha-asc' })
 
-    // Verify no crash and the page is still on /
-    await expect(page).toHaveURL('/')
+    // Verify no crash and the page is still on /recipes
+    await expect(page).toHaveURL('/recipes')
   })
 })
 

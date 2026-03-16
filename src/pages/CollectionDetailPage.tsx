@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Library, Pencil, Plus, Trash2, X, Check } from 'lucide-react'
 import {
-  getCollection,
-  updateCollection,
-  deleteCollection,
-  addRecipeToCollection,
-  removeRecipeFromCollection,
-  getRecipes,
-  durationToMinutes,
-} from '../lib/db'
-import type { Collection, Recipe } from '../types'
+  useCollection,
+  useUpdateCollection,
+  useDeleteCollection,
+  useAddRecipeToCollection,
+  useRemoveRecipeFromCollection,
+} from '../hooks/useCollections'
+import { useRecipes } from '../hooks/useRecipes'
+import { durationToMinutes } from '../lib/db'
 import RecipeImage from '../components/RecipeImage'
 import EmptyState from '../components/EmptyState'
 
@@ -19,35 +18,21 @@ export default function CollectionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const [collection, setCollection] = useState<Collection | null>(null)
-  const [allRecipes, setAllRecipes] = useState<Recipe[]>([])
-  const [notFound, setNotFound] = useState(false)
+  const { data: collection, isLoading } = useCollection(id ?? '')
+  const { data: allRecipes = [] } = useRecipes()
+  const updateCollectionMutation = useUpdateCollection()
+  const deleteCollectionMutation = useDeleteCollection()
+  const addToCollectionMutation = useAddRecipeToCollection()
+  const removeFromCollectionMutation = useRemoveRecipeFromCollection()
+
   const [showAddRecipes, setShowAddRecipes] = useState(false)
   const [addSearch, setAddSearch] = useState('')
   const [showEditName, setShowEditName] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  useEffect(() => {
-    if (!id) return
-    let cancelled = false
-    Promise.all([getCollection(id), getRecipes()]).then(([col, recipes]) => {
-      if (cancelled) return
-      if (!col) {
-        setNotFound(true)
-        return
-      }
-      setCollection(col)
-      setAllRecipes(recipes)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [id])
-
-  if (notFound) {
+  if (!isLoading && !collection) {
     return (
       <div className="p-4 max-w-2xl mx-auto">
         <Link
@@ -61,7 +46,7 @@ export default function CollectionDetailPage() {
     )
   }
 
-  if (!collection) {
+  if (isLoading || !collection) {
     return (
       <div className="p-4 max-w-2xl mx-auto">
         <div className="animate-pulse space-y-3">
@@ -80,35 +65,25 @@ export default function CollectionDetailPage() {
   })
 
   async function handleRemoveRecipe(recipeId: string) {
-    if (!collection) return
-    await removeRecipeFromCollection(collection.id, recipeId)
-    setCollection((prev) =>
-      prev ? { ...prev, recipeIds: prev.recipeIds.filter((rid) => rid !== recipeId) } : prev
-    )
+    await removeFromCollectionMutation.mutateAsync({ collectionId: collection!.id, recipeId })
   }
 
   async function handleAddRecipe(recipeId: string) {
-    if (!collection) return
-    await addRecipeToCollection(collection.id, recipeId)
-    setCollection((prev) => (prev ? { ...prev, recipeIds: [...prev.recipeIds, recipeId] } : prev))
+    await addToCollectionMutation.mutateAsync({ collectionId: collection!.id, recipeId })
   }
 
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault()
-    if (!collection || !editName.trim()) return
-    setSaving(true)
-    const updated = await updateCollection(collection.id, {
-      name: editName.trim(),
-      description: editDescription.trim() || undefined,
+    if (!editName.trim()) return
+    await updateCollectionMutation.mutateAsync({
+      collectionId: collection!.id,
+      data: { name: editName.trim(), description: editDescription.trim() || undefined },
     })
-    setCollection(updated)
-    setSaving(false)
     setShowEditName(false)
   }
 
   async function handleDelete() {
-    if (!collection) return
-    await deleteCollection(collection.id)
+    await deleteCollectionMutation.mutateAsync(collection!.id)
     navigate('/collections', { replace: true })
   }
 
@@ -385,10 +360,10 @@ export default function CollectionDetailPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!editName.trim() || saving}
+                  disabled={!editName.trim() || updateCollectionMutation.isPending}
                   className="flex-1 bg-green-700 text-white font-semibold py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? 'Saving…' : 'Save'}
+                  {updateCollectionMutation.isPending ? 'Saving…' : 'Save'}
                 </button>
               </div>
             </form>

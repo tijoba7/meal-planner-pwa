@@ -1,14 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Camera, X } from 'lucide-react'
+import { minutesToDuration, durationToMinutes } from '../lib/db'
 import {
-  getRecipe,
-  createRecipe,
-  updateRecipe,
-  minutesToDuration,
-  durationToMinutes,
-  getRecipes,
-} from '../lib/db'
+  useRecipe,
+  useCreateRecipe,
+  useUpdateRecipe,
+  useRecipes,
+} from '../hooks/useRecipes'
 import {
   uploadRecipeImage,
   resizeToDataUrl,
@@ -88,33 +87,29 @@ interface IngredientSuggestion {
 }
 
 function useIngredientSuggestions(): IngredientSuggestion[] {
-  const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([])
-  useEffect(() => {
-    getRecipes().then((recipes) => {
-      const acc = new Map<string, { forms: Map<string, number>; units: Map<string, number> }>()
-      for (const recipe of recipes) {
-        for (const ing of recipe.recipeIngredient) {
-          const key = ing.name.trim().toLowerCase()
-          if (!key) continue
-          if (!acc.has(key)) acc.set(key, { forms: new Map(), units: new Map() })
-          const entry = acc.get(key)!
-          const display = ing.name.trim()
-          entry.forms.set(display, (entry.forms.get(display) ?? 0) + 1)
-          if (ing.unit.trim()) {
-            const u = ing.unit.trim()
-            entry.units.set(u, (entry.units.get(u) ?? 0) + 1)
-          }
+  const { data: recipes = [] } = useRecipes()
+  return useMemo(() => {
+    const acc = new Map<string, { forms: Map<string, number>; units: Map<string, number> }>()
+    for (const recipe of recipes) {
+      for (const ing of recipe.recipeIngredient) {
+        const key = ing.name.trim().toLowerCase()
+        if (!key) continue
+        if (!acc.has(key)) acc.set(key, { forms: new Map(), units: new Map() })
+        const entry = acc.get(key)!
+        const display = ing.name.trim()
+        entry.forms.set(display, (entry.forms.get(display) ?? 0) + 1)
+        if (ing.unit.trim()) {
+          const u = ing.unit.trim()
+          entry.units.set(u, (entry.units.get(u) ?? 0) + 1)
         }
       }
-      const list: IngredientSuggestion[] = Array.from(acc.entries()).map(([, entry]) => {
-        const name = [...entry.forms.entries()].sort((a, b) => b[1] - a[1])[0][0]
-        const unit = [...entry.units.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
-        return { name, unit }
-      })
-      setSuggestions(list)
+    }
+    return Array.from(acc.entries()).map(([, entry]) => {
+      const name = [...entry.forms.entries()].sort((a, b) => b[1] - a[1])[0][0]
+      const unit = [...entry.units.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+      return { name, unit }
     })
-  }, [])
-  return suggestions
+  }, [recipes])
 }
 
 interface IngredientNameInputProps {
@@ -378,32 +373,32 @@ export default function RecipeFormPage() {
   const { user } = useAuth()
   const isEdit = Boolean(id)
 
+  const { data: existingRecipe, isLoading: recipeLoading } = useRecipe(id ?? '')
+  const createRecipeMutation = useCreateRecipe()
+  const updateRecipeMutation = useUpdateRecipe()
+  const { data: allRecipes = [] } = useRecipes()
+
   const [form, setForm] = useState<FormState>(emptyForm)
+  const [formInitialized, setFormInitialized] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
-  const [notFound, setNotFound] = useState(false)
   const ingredientSuggestions = useIngredientSuggestions()
-  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([])
-  const [cuisineSuggestions, setCuisineSuggestions] = useState<string[]>([])
-  const [keywordSuggestions, setKeywordSuggestions] = useState<string[]>([])
   const categoryListId = useId()
   const cuisineListId = useId()
 
-  useEffect(() => {
-    getRecipes().then((rs) => {
-      const cats = new Set<string>()
-      const cuis = new Set<string>()
-      const kws = new Set<string>()
-      for (const r of rs) {
-        if (r.recipeCategory?.trim()) cats.add(r.recipeCategory.trim())
-        if (r.recipeCuisine?.trim()) cuis.add(r.recipeCuisine.trim())
-        for (const kw of r.keywords) if (kw.trim()) kws.add(kw.trim().toLowerCase())
-      }
-      setCategorySuggestions([...cats].sort())
-      setCuisineSuggestions([...cuis].sort())
-      setKeywordSuggestions([...kws].sort())
-    })
-  }, [])
+  // Derive suggestions from TanStack Query cache
+  const categorySuggestions = useMemo(
+    () => [...new Set(allRecipes.flatMap((r) => (r.recipeCategory?.trim() ? [r.recipeCategory.trim()] : [])))].sort(),
+    [allRecipes]
+  )
+  const cuisineSuggestions = useMemo(
+    () => [...new Set(allRecipes.flatMap((r) => (r.recipeCuisine?.trim() ? [r.recipeCuisine.trim()] : [])))].sort(),
+    [allRecipes]
+  )
+  const keywordSuggestions = useMemo(
+    () => [...new Set(allRecipes.flatMap((r) => r.keywords.map((k) => k.trim().toLowerCase()).filter(Boolean)))].sort(),
+    [allRecipes]
+  )
 
   // ── Image state ─────────────────────────────────────────────────────────────
   // `pendingFile`    – file selected by the user, not yet uploaded
@@ -418,46 +413,42 @@ export default function RecipeFormPage() {
   const [imageCleared, setImageCleared] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Populate form once existing recipe loads (edit mode)
   useEffect(() => {
-    if (!id) return
-    getRecipe(id).then((recipe) => {
-      if (!recipe) {
-        setNotFound(true)
-        return
-      }
-      setForm({
-        name: recipe.name,
-        description: recipe.description,
-        recipeYield: recipe.recipeYield,
-        prepTimeMinutes: String(durationToMinutes(recipe.prepTime)),
-        cookTimeMinutes: String(durationToMinutes(recipe.cookTime)),
-        ingredients:
-          recipe.recipeIngredient.length > 0
-            ? recipe.recipeIngredient
-            : [{ name: '', amount: 1, unit: '' }],
-        instructions:
-          recipe.recipeInstructions.length > 0
-            ? recipe.recipeInstructions.map((s) => s.text)
-            : [''],
-        keywords: recipe.keywords,
-        suitableForDiet: recipe.suitableForDiet ?? [],
-        recipeCategory: recipe.recipeCategory ?? '',
-        recipeCuisine: recipe.recipeCuisine ?? '',
-        nutritionCalories: parseNutritionFormValue(recipe.nutrition?.calories),
-        nutritionProtein: parseNutritionFormValue(recipe.nutrition?.proteinContent),
-        nutritionFat: parseNutritionFormValue(recipe.nutrition?.fatContent),
-        nutritionCarbs: parseNutritionFormValue(recipe.nutrition?.carbohydrateContent),
-        nutritionFiber: parseNutritionFormValue(recipe.nutrition?.fiberContent),
-      })
-      if (recipe.image) {
-        setExistingImage(recipe.image)
-        setPreviewUrl(recipe.image)
-      }
-      if (recipe.imageThumbnailUrl) {
-        setExistingThumb(recipe.imageThumbnailUrl)
-      }
+    if (!existingRecipe || formInitialized) return
+    setFormInitialized(true)
+    setForm({
+      name: existingRecipe.name,
+      description: existingRecipe.description,
+      recipeYield: existingRecipe.recipeYield,
+      prepTimeMinutes: String(durationToMinutes(existingRecipe.prepTime)),
+      cookTimeMinutes: String(durationToMinutes(existingRecipe.cookTime)),
+      ingredients:
+        existingRecipe.recipeIngredient.length > 0
+          ? existingRecipe.recipeIngredient
+          : [{ name: '', amount: 1, unit: '' }],
+      instructions:
+        existingRecipe.recipeInstructions.length > 0
+          ? existingRecipe.recipeInstructions.map((s) => s.text)
+          : [''],
+      keywords: existingRecipe.keywords,
+      suitableForDiet: existingRecipe.suitableForDiet ?? [],
+      recipeCategory: existingRecipe.recipeCategory ?? '',
+      recipeCuisine: existingRecipe.recipeCuisine ?? '',
+      nutritionCalories: parseNutritionFormValue(existingRecipe.nutrition?.calories),
+      nutritionProtein: parseNutritionFormValue(existingRecipe.nutrition?.proteinContent),
+      nutritionFat: parseNutritionFormValue(existingRecipe.nutrition?.fatContent),
+      nutritionCarbs: parseNutritionFormValue(existingRecipe.nutrition?.carbohydrateContent),
+      nutritionFiber: parseNutritionFormValue(existingRecipe.nutrition?.fiberContent),
     })
-  }, [id])
+    if (existingRecipe.image) {
+      setExistingImage(existingRecipe.image)
+      setPreviewUrl(existingRecipe.image)
+    }
+    if (existingRecipe.imageThumbnailUrl) {
+      setExistingThumb(existingRecipe.imageThumbnailUrl)
+    }
+  }, [existingRecipe, formInitialized])
 
   // Revoke object URLs on unmount to avoid memory leaks
   useEffect(() => {
@@ -608,7 +599,7 @@ export default function RecipeFormPage() {
 
     try {
       if (isEdit && id) {
-        await updateRecipe(id, data)
+        await updateRecipeMutation.mutateAsync({ recipeId: id, data })
         // Clean up old storage image if it was replaced or removed
         if (imageCleared && existingImage && isStorageUrl(existingImage) && user) {
           deleteRecipeImages(user.id, id).catch(() => {})
@@ -616,7 +607,7 @@ export default function RecipeFormPage() {
         toast.success('Recipe saved.')
         navigate(`/recipes/${id}`)
       } else {
-        await createRecipe(data, targetRecipeId)
+        await createRecipeMutation.mutateAsync({ ...data, recipeId: targetRecipeId })
         toast.success('Recipe added.')
         navigate(`/recipes/${targetRecipeId}`)
       }
@@ -671,7 +662,7 @@ export default function RecipeFormPage() {
     setForm((f) => ({ ...f, instructions: f.instructions.filter((_, i) => i !== index) }))
   }
 
-  if (notFound) {
+  if (isEdit && !recipeLoading && !existingRecipe) {
     return (
       <div className="p-4 max-w-2xl mx-auto text-center py-16">
         <p className="text-gray-500">Recipe not found.</p>

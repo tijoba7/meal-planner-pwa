@@ -2,34 +2,104 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../test/supabaseMocks'
 import RecipeFormPage from './RecipeFormPage'
-import { db, createRecipe } from '../lib/db'
 import { ToastProvider } from '../contexts/ToastContext'
-import { AuthProvider } from '../contexts/AuthContext'
+import type { Recipe } from '../types'
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-// Hoist mockNavigate so it's available inside the vi.mock factory (hoisting safety).
 const mockNavigate = vi.hoisted(() => vi.fn())
+const mockCreateMutateAsync = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    id: 'new-recipe-id',
+    name: 'Carbonara',
+    dateCreated: '2026-01-01T00:00:00.000Z',
+    dateModified: '2026-01-01T00:00:00.000Z',
+  } as Recipe)
+)
+const mockUpdateMutateAsync = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    id: 'existing-recipe-id',
+    name: 'Updated',
+    dateCreated: '2026-01-01T00:00:00.000Z',
+    dateModified: '2026-01-01T00:00:00.000Z',
+  } as Recipe)
+)
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
+vi.mock('../hooks/useRecipes', () => ({
+  useRecipe: vi.fn(),
+  useCreateRecipe: vi.fn(() => ({ mutateAsync: mockCreateMutateAsync, isPending: false })),
+  useUpdateRecipe: vi.fn(() => ({ mutateAsync: mockUpdateMutateAsync, isPending: false })),
+  useRecipes: vi.fn(() => ({ data: [] })),
+}))
+
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'test-user', email: 'test@test.com' }, signOut: vi.fn() }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
+vi.mock('../lib/imageService', () => ({
+  uploadRecipeImage: vi.fn().mockResolvedValue(null),
+  resizeToDataUrl: vi.fn().mockResolvedValue(null),
+  deleteRecipeImages: vi.fn().mockResolvedValue(undefined),
+  isStorageUrl: vi.fn().mockReturnValue(false),
+  MAX_INPUT_BYTES: 5 * 1024 * 1024,
+}))
+
+import { useRecipe } from '../hooks/useRecipes'
+const mockUseRecipe = vi.mocked(useRecipe)
+
+// ─── Fixtures ─────────────────────────────────────────────────────────────────
+
+const sampleRecipe: Recipe = {
+  id: 'existing-recipe-id',
+  name: 'Test Pasta',
+  description: 'A classic dish',
+  recipeYield: '4',
+  prepTime: 'PT10M',
+  cookTime: 'PT20M',
+  recipeIngredient: [{ name: 'pasta', amount: 200, unit: 'g' }],
+  recipeInstructions: [{ '@type': 'HowToStep', text: 'Boil water.' }],
+  keywords: ['italian'],
+  dateCreated: '2026-01-01T00:00:00.000Z',
+  dateModified: '2026-01-01T00:00:00.000Z',
+}
+
+function makeResult(data: Recipe | null | undefined, loading = false) {
+  return {
+    data,
+    isLoading: loading,
+    isPending: loading,
+    isSuccess: !loading,
+    isError: false,
+    error: null,
+    status: loading ? ('pending' as const) : ('success' as const),
+    fetchStatus: 'idle' as const,
+  }
+}
+
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
-beforeEach(async () => {
-  await db.delete()
-  await db.open()
+beforeEach(() => {
   mockNavigate.mockReset()
+  mockCreateMutateAsync.mockClear()
+  mockUpdateMutateAsync.mockClear()
+  // Add mode: no existing recipe
+  mockUseRecipe.mockReturnValue(makeResult(null) as ReturnType<typeof useRecipe>)
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function renderAdd() {
   render(
-    <AuthProvider>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ToastProvider>
         <MemoryRouter initialEntries={['/recipes/new']}>
           <Routes>
@@ -37,13 +107,13 @@ function renderAdd() {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
-    </AuthProvider>
+    </QueryClientProvider>
   )
 }
 
 function renderEdit(id: string) {
   render(
-    <AuthProvider>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ToastProvider>
         <MemoryRouter initialEntries={[`/recipes/${id}/edit`]}>
           <Routes>
@@ -51,18 +121,8 @@ function renderEdit(id: string) {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
-    </AuthProvider>
+    </QueryClientProvider>
   )
-}
-
-const baseRecipe = {
-  description: '',
-  recipeYield: '1',
-  prepTime: 'PT0M',
-  cookTime: 'PT0M',
-  recipeIngredient: [{ name: 'flour', amount: 1, unit: 'cup' }],
-  recipeInstructions: [{ '@type': 'HowToStep' as const, text: 'Mix.' }],
-  keywords: [] as string[],
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -89,19 +149,12 @@ describe('RecipeFormPage', () => {
   })
 
   describe('edit mode', () => {
-    it('pre-fills the form from the stored recipe', async () => {
-      const recipe = await createRecipe({
-        name: 'Test Pasta',
-        description: 'A classic dish',
-        recipeYield: '4',
-        prepTime: 'PT10M',
-        cookTime: 'PT20M',
-        recipeIngredient: [{ name: 'pasta', amount: 200, unit: 'g' }],
-        recipeInstructions: [{ '@type': 'HowToStep', text: 'Boil water.' }],
-        keywords: ['italian'],
-      })
+    beforeEach(() => {
+      mockUseRecipe.mockReturnValue(makeResult(sampleRecipe) as ReturnType<typeof useRecipe>)
+    })
 
-      renderEdit(recipe.id)
+    it('pre-fills the form from the stored recipe', async () => {
+      renderEdit(sampleRecipe.id)
 
       await waitFor(() => {
         expect(screen.getByPlaceholderText(/spaghetti bolognese/i)).toHaveValue('Test Pasta')
@@ -112,6 +165,7 @@ describe('RecipeFormPage', () => {
     })
 
     it('shows "Recipe not found" for an unknown id', async () => {
+      mockUseRecipe.mockReturnValue(makeResult(null) as ReturnType<typeof useRecipe>)
       renderEdit('nonexistent-id')
       await waitFor(() => {
         expect(screen.getByText(/recipe not found/i)).toBeInTheDocument()
@@ -119,16 +173,14 @@ describe('RecipeFormPage', () => {
     })
 
     it('back link points to the recipe detail page', async () => {
-      const recipe = await createRecipe({ name: 'Test', ...baseRecipe })
-
-      renderEdit(recipe.id)
+      renderEdit(sampleRecipe.id)
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/spaghetti bolognese/i)).toHaveValue('Test')
+        expect(screen.getByPlaceholderText(/spaghetti bolognese/i)).toHaveValue('Test Pasta')
       })
       expect(screen.getByRole('link', { name: /back to recipe/i })).toHaveAttribute(
         'href',
-        `/recipes/${recipe.id}`
+        `/recipes/${sampleRecipe.id}`
       )
     })
   })
@@ -240,13 +292,12 @@ describe('RecipeFormPage', () => {
     })
 
     it('updates the recipe and navigates to the detail page (edit mode)', async () => {
-      const recipe = await createRecipe({ name: 'Original', ...baseRecipe })
-
+      mockUseRecipe.mockReturnValue(makeResult(sampleRecipe) as ReturnType<typeof useRecipe>)
       const user = userEvent.setup()
-      renderEdit(recipe.id)
+      renderEdit(sampleRecipe.id)
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/spaghetti bolognese/i)).toHaveValue('Original')
+        expect(screen.getByPlaceholderText(/spaghetti bolognese/i)).toHaveValue('Test Pasta')
       })
 
       const nameInput = screen.getByPlaceholderText(/spaghetti bolognese/i)
@@ -256,7 +307,7 @@ describe('RecipeFormPage', () => {
       await user.click(screen.getByRole('button', { name: /save changes/i }))
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(`/recipes/${recipe.id}`)
+        expect(mockNavigate).toHaveBeenCalledWith(`/recipes/${sampleRecipe.id}`)
       })
     })
   })

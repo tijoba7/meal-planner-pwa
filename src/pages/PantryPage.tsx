@@ -2,8 +2,13 @@ import { useEffect, useState, useRef } from 'react'
 import { Package, Plus, Trash2, Pencil, X, Check, ChevronRight, ChevronDown } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../contexts/ToastContext'
-import type { PantryItem, IngredientCategory } from '../types'
-import { getPantryItems, createPantryItem, updatePantryItem, deletePantryItem } from '../lib/db'
+import type { IngredientCategory, PantryItem } from '../types'
+import {
+  usePantryItems,
+  useCreatePantryItem,
+  useUpdatePantryItem,
+  useDeletePantryItem,
+} from '../hooks/usePantryItems'
 import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
 
 const UNITS = [
@@ -72,24 +77,18 @@ function groupByCategory(items: PantryItem[]): Array<[IngredientCategory, Pantry
 }
 
 export default function PantryPage() {
-  const [items, setItems] = useState<PantryItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: items = [], isLoading: loading } = usePantryItems()
+  const createPantryItemMutation = useCreatePantryItem()
+  const updatePantryItemMutation = useUpdatePantryItem()
+  const deletePantryItemMutation = useDeletePantryItem()
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState<ItemFormState>(BLANK_FORM)
-  const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<ItemFormState>(BLANK_FORM)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const nameInputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
-
-  useEffect(() => {
-    getPantryItems().then((data) => {
-      setItems(data)
-      setLoading(false)
-    })
-  }, [])
 
   useEffect(() => {
     if (showAdd) nameInputRef.current?.focus()
@@ -99,22 +98,19 @@ export default function PantryPage() {
     e.preventDefault()
     const name = form.name.trim()
     if (!name) return
-    setSaving(true)
-    const item = await createPantryItem({
+    const item = await createPantryItemMutation.mutateAsync({
       name,
       quantity: parseFloat(form.quantity) || 1,
       unit: form.unit,
       expiryDate: form.expiryDate || undefined,
       category: categorizeIngredient(name),
     })
-    setItems((prev) => [...prev, item].sort((a, b) => a.name.localeCompare(b.name)))
     setForm(BLANK_FORM)
     setShowAdd(false)
-    setSaving(false)
     toast.success(`"${item.name}" added to pantry.`)
   }
 
-  function startEdit(item: PantryItem) {
+  function startEdit(item: { id: string; name: string; quantity: number; unit: string; expiryDate?: string }) {
     setEditingId(item.id)
     setEditForm({
       name: item.name,
@@ -127,24 +123,23 @@ export default function PantryPage() {
   async function handleSaveEdit(itemId: string) {
     const name = editForm.name.trim()
     if (!name) return
-    const updated = await updatePantryItem(itemId, {
-      name,
-      quantity: parseFloat(editForm.quantity) || 1,
-      unit: editForm.unit,
-      expiryDate: editForm.expiryDate || undefined,
-      category: categorizeIngredient(name),
+    await updatePantryItemMutation.mutateAsync({
+      itemId,
+      data: {
+        name,
+        quantity: parseFloat(editForm.quantity) || 1,
+        unit: editForm.unit,
+        expiryDate: editForm.expiryDate || undefined,
+        category: categorizeIngredient(name),
+      },
     })
-    setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? updated : i)).sort((a, b) => a.name.localeCompare(b.name))
-    )
     setEditingId(null)
     toast.success('Pantry item updated.')
   }
 
   async function handleDelete(itemId: string) {
     const item = items.find((i) => i.id === itemId)
-    await deletePantryItem(itemId)
-    setItems((prev) => prev.filter((i) => i.id !== itemId))
+    await deletePantryItemMutation.mutateAsync(itemId)
     setConfirmDeleteId(null)
     if (item) toast.success(`"${item.name}" removed from pantry.`)
   }
@@ -285,10 +280,10 @@ export default function PantryPage() {
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
-                disabled={!form.name.trim() || saving}
+                disabled={!form.name.trim() || createPantryItemMutation.isPending}
                 className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Adding…' : 'Add to Pantry'}
+                {createPantryItemMutation.isPending ? 'Adding…' : 'Add to Pantry'}
               </button>
               <button
                 type="button"

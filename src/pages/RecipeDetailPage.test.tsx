@@ -2,37 +2,38 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../test/supabaseMocks'
 import RecipeDetailPage from './RecipeDetailPage'
-import * as db from '../lib/db'
 import { ToastProvider } from '../contexts/ToastContext'
-import { AuthProvider } from '../contexts/AuthContext'
 import type { Recipe } from '../types'
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 
-const { mockNavigate } = vi.hoisted(() => ({
+const { mockNavigate, mockDeleteMutate } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
+  mockDeleteMutate: vi.fn().mockResolvedValue(undefined),
 }))
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-vi.mock('../lib/db', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/db')>()
-  return {
-    ...actual,
-    getRecipe: vi.fn(),
-    deleteRecipe: vi.fn().mockResolvedValue(undefined),
-  }
-})
+vi.mock('../hooks/useRecipes', () => ({
+  useRecipe: vi.fn(),
+  useDeleteRecipe: vi.fn(() => ({ mutateAsync: mockDeleteMutate, isPending: false })),
+  useDuplicateRecipe: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useToggleFavorite: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+}))
 
-// Stub nutritionCalculator — prevents estimated-nutrition from showing in tests
-// that only want to verify the explicit recipe.nutrition field behaviour.
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'test-user', email: 'test@test.com' }, signOut: vi.fn() }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
 vi.mock('../lib/nutritionCalculator', () => ({
   calculateNutrition: vi.fn().mockReturnValue(null),
   nutritionResultToRecord: vi.fn(),
 }))
 
-// Stub CookingMode so tests stay focused on RecipeDetailPage behaviour.
 vi.mock('../components/CookingMode', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="cooking-mode">
@@ -45,6 +46,16 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return { ...actual, useNavigate: () => mockNavigate }
 })
+
+vi.mock('../hooks/useKeyboardShortcuts', () => ({ useKeyboardShortcuts: vi.fn() }))
+vi.mock('../hooks/useCollections', () => ({
+  useCollections: vi.fn(() => ({ data: [] })),
+  useAddRecipeToCollection: vi.fn(() => ({ mutate: vi.fn() })),
+  useRemoveRecipeFromCollection: vi.fn(() => ({ mutate: vi.fn() })),
+}))
+
+import { useRecipe } from '../hooks/useRecipes'
+const mockUseRecipe = vi.mocked(useRecipe)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -68,11 +79,24 @@ const sampleRecipe: Recipe = {
   dateModified: '2026-01-01T00:00:00.000Z',
 }
 
+function makeResult(data: Recipe | null | undefined, loading = false) {
+  return {
+    data,
+    isLoading: loading,
+    isPending: loading,
+    isSuccess: !loading,
+    isError: false,
+    error: null,
+    status: loading ? ('pending' as const) : ('success' as const),
+    fetchStatus: 'idle' as const,
+  }
+}
+
 // ─── Render helper ────────────────────────────────────────────────────────────
 
 function renderPage(id = 'recipe-123') {
   return render(
-    <AuthProvider>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ToastProvider>
         <MemoryRouter initialEntries={[`/recipes/${id}`]}>
           <Routes>
@@ -80,19 +104,16 @@ function renderPage(id = 'recipe-123') {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
-    </AuthProvider>
+    </QueryClientProvider>
   )
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('RecipeDetailPage', () => {
-  const mockGetRecipe = vi.mocked(db.getRecipe)
-  const mockDeleteRecipe = vi.mocked(db.deleteRecipe)
-
   beforeEach(() => {
-    mockGetRecipe.mockResolvedValue(sampleRecipe)
-    mockDeleteRecipe.mockResolvedValue(undefined)
+    mockUseRecipe.mockReturnValue(makeResult(sampleRecipe) as ReturnType<typeof useRecipe>)
+    mockDeleteMutate.mockClear()
     mockNavigate.mockClear()
   })
 
@@ -100,7 +121,7 @@ describe('RecipeDetailPage', () => {
 
   describe('loading state', () => {
     it('shows a loading skeleton while the recipe is being fetched', () => {
-      mockGetRecipe.mockReturnValue(new Promise(() => {}))
+      mockUseRecipe.mockReturnValue(makeResult(undefined, true) as ReturnType<typeof useRecipe>)
       renderPage()
       expect(screen.getByRole('generic', { busy: true })).toBeInTheDocument()
     })
@@ -110,7 +131,7 @@ describe('RecipeDetailPage', () => {
 
   describe('not found state', () => {
     it('shows "Recipe not found." when the recipe does not exist', async () => {
-      mockGetRecipe.mockResolvedValue(undefined)
+      mockUseRecipe.mockReturnValue(makeResult(null) as ReturnType<typeof useRecipe>)
       renderPage('no-such-id')
       await waitFor(() => {
         expect(screen.getByText('Recipe not found.')).toBeInTheDocument()
@@ -118,7 +139,7 @@ describe('RecipeDetailPage', () => {
     })
 
     it('renders a back link to the home page', async () => {
-      mockGetRecipe.mockResolvedValue(undefined)
+      mockUseRecipe.mockReturnValue(makeResult(null) as ReturnType<typeof useRecipe>)
       renderPage('no-such-id')
       await waitFor(() => {
         const link = screen.getByRole('link', { name: /back to recipes/i })
@@ -187,10 +208,9 @@ describe('RecipeDetailPage', () => {
     })
 
     it('renders a nutrition section when nutrition data is present', async () => {
-      mockGetRecipe.mockResolvedValue({
-        ...sampleRecipe,
-        nutrition: { calories: 350, proteinContent: 12 },
-      })
+      mockUseRecipe.mockReturnValue(
+        makeResult({ ...sampleRecipe, nutrition: { calories: 350, proteinContent: 12 } }) as ReturnType<typeof useRecipe>
+      )
       renderPage()
       expect(await screen.findByRole('heading', { name: 'Nutrition' })).toBeInTheDocument()
     })
@@ -201,13 +221,14 @@ describe('RecipeDetailPage', () => {
   describe('Cook button', () => {
     it('shows the Cook button when the recipe has instructions', async () => {
       renderPage()
-      // The page renders both mobile and desktop Cook buttons; at least one must be present.
       const cookButtons = await screen.findAllByRole('button', { name: /^cook$/i })
       expect(cookButtons.length).toBeGreaterThanOrEqual(1)
     })
 
     it('hides the Cook button when the recipe has no instructions', async () => {
-      mockGetRecipe.mockResolvedValue({ ...sampleRecipe, recipeInstructions: [] })
+      mockUseRecipe.mockReturnValue(
+        makeResult({ ...sampleRecipe, recipeInstructions: [] }) as ReturnType<typeof useRecipe>
+      )
       renderPage()
       await screen.findByRole('heading', { name: 'Test Pasta' })
       expect(screen.queryAllByRole('button', { name: /^cook$/i })).toHaveLength(0)
@@ -233,11 +254,9 @@ describe('RecipeDetailPage', () => {
 
   // ── Serving scaler ─────────────────────────────────────────────────────────
 
-  // The serving count text is split across DOM elements ("<span>4</span> servings"),
-  // so we use a custom textContent matcher rather than getByText string matching.
   function findServings(n: number) {
     return screen.getByText(
-      (_, el) => el?.textContent?.replace(/\s+/g, ' ').trim() === `${n} servings`
+      (_: string, el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() === `${n} servings`
     )
   }
 
@@ -263,7 +282,9 @@ describe('RecipeDetailPage', () => {
     })
 
     it('disables the decrease button when servings is already 1', async () => {
-      mockGetRecipe.mockResolvedValue({ ...sampleRecipe, recipeYield: '1' })
+      mockUseRecipe.mockReturnValue(
+        makeResult({ ...sampleRecipe, recipeYield: '1' }) as ReturnType<typeof useRecipe>
+      )
       renderPage()
       expect(await screen.findByRole('button', { name: 'Decrease servings' })).toBeDisabled()
     })
@@ -279,7 +300,7 @@ describe('RecipeDetailPage', () => {
     })
   })
 
-  // ── Delete flow ───────────────────────────────────────────────────────────
+  // ── Delete flow ────────────────────────────────────────────────────────────
 
   describe('delete flow', () => {
     it('shows a confirmation dialog when the Delete button is clicked', async () => {
@@ -296,23 +317,21 @@ describe('RecipeDetailPage', () => {
       await user.click(await screen.findByRole('button', { name: 'Delete' }))
       await user.click(screen.getByRole('button', { name: 'Cancel' }))
       expect(screen.queryByText('Delete recipe?')).not.toBeInTheDocument()
-      expect(mockDeleteRecipe).not.toHaveBeenCalled()
+      expect(mockDeleteMutate).not.toHaveBeenCalled()
     })
 
     it('calls deleteRecipe and navigates to "/" when deletion is confirmed', async () => {
       const user = userEvent.setup()
       renderPage()
 
-      // Open dialog — only one "Delete" button visible at this point
       await user.click(await screen.findByRole('button', { name: 'Delete' }))
       expect(screen.getByText('Delete recipe?')).toBeInTheDocument()
 
-      // Two "Delete" buttons are now in the DOM: header + dialog confirm button
       const [, confirmButton] = screen.getAllByRole('button', { name: 'Delete' })
       await user.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockDeleteRecipe).toHaveBeenCalledWith('recipe-123')
+        expect(mockDeleteMutate).toHaveBeenCalledWith('recipe-123')
         expect(mockNavigate).toHaveBeenCalledWith('/')
       })
     })

@@ -529,25 +529,21 @@ export default function DiscoverPage() {
             <p className="text-sm text-red-500 text-center py-8">Failed to load public recipes.</p>
           ) : exploreLoading ? (
             gridView ? (
-              <ul
-                className="grid grid-cols-2 gap-3"
-                aria-busy="true"
-                aria-label="Loading public recipes"
-              >
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <GridSkeleton key={i} />
-                ))}
-              </ul>
+              <div role="status" aria-busy="true" aria-label="Loading public recipes">
+                <ul className="grid grid-cols-2 gap-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <GridSkeleton key={i} />
+                  ))}
+                </ul>
+              </div>
             ) : (
-              <ul
-                className="space-y-3"
-                aria-busy="true"
-                aria-label="Loading public recipes"
-              >
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <CardSkeleton key={i} />
-                ))}
-              </ul>
+              <div role="status" aria-busy="true" aria-label="Loading public recipes">
+                <ul className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <CardSkeleton key={i} />
+                  ))}
+                </ul>
+              </div>
             )
           ) : filteredExplore.length === 0 ? (
             <div className="text-center py-16">
@@ -612,15 +608,13 @@ export default function DiscoverPage() {
           {feedError ? (
             <p className="text-sm text-red-500 text-center py-8">Failed to load friends feed.</p>
           ) : feedLoading ? (
-            <ul
-              className="space-y-3"
-              aria-busy="true"
-              aria-label="Loading friends feed"
-            >
-              {Array.from({ length: 4 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </ul>
+            <div role="status" aria-busy="true" aria-label="Loading friends feed">
+              <ul className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </ul>
+            </div>
           ) : feedItems.length === 0 ? (
             <div className="text-center py-16">
               <Rss size={36} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />

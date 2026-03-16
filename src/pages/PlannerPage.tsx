@@ -15,18 +15,18 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { CalendarIllustration } from '../components/EmptyStateIllustrations'
-import type { MealType, Recipe, MealPlan, MealPlanTemplate } from '../types'
+import type { MealType, MealPlan, MealPlanTemplate, Recipe } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
-  getRecipes,
-  getMealPlans,
-  getMealPlanForWeek,
-  createMealPlan,
-  updateMealPlan,
-  getMealPlanTemplates,
-  createMealPlanTemplate,
-  deleteMealPlanTemplate,
-} from '../lib/db'
+  useMealPlans,
+  useMealPlanForWeek,
+  useCreateMealPlan,
+  useUpdateMealPlan,
+  useMealPlanTemplates,
+  useCreateMealPlanTemplate,
+  useDeleteMealPlanTemplate,
+} from '../hooks/useMealPlans'
+import { useRecipes } from '../hooks/useRecipes'
 import { getDietaryPrefs, detectAllergenIngredients } from '../lib/dietary'
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
@@ -124,25 +124,19 @@ function QuickPickCard({ recipe, onClick }: { recipe: Recipe; onClick: () => voi
 
 export default function PlannerPage() {
   const [weekStart, setWeekStart] = useState<string>(() => toISODate(getMonday(new Date())))
-  const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
-  const [recipes, setRecipes] = useState<Recipe[]>([])
   const [pickerTarget, setPickerTarget] = useState<{ date: string; meal: MealType } | null>(null)
   const [search, setSearch] = useState('')
   const [copyModalOpen, setCopyModalOpen] = useState(false)
   const [copyTarget, setCopyTarget] = useState<string>('')
-  const [copyTargetPlan, setCopyTargetPlan] = useState<MealPlan | null | undefined>(undefined)
 
   // Template state
-  const [templates, setTemplates] = useState<MealPlanTemplate[]>([])
   const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false)
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [applyTemplateConfirm, setApplyTemplateConfirm] = useState<MealPlanTemplate | null>(null)
-  const [savingTemplate, setSavingTemplate] = useState(false)
 
   // History state
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [histMealPlans, setHistMealPlans] = useState<MealPlan[]>([])
 
   // Drag-and-drop state
   const [dragSource, setDragSource] = useState<DragSource | null>(null)
@@ -151,55 +145,64 @@ export default function PlannerPage() {
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchSourceRef = useRef<DragSource | null>(null)
 
-  // Quick-pick state: recent recipe IDs from past meal plans
-  const [recentRecipeIds, setRecentRecipeIds] = useState<string[]>([])
+  // TanStack Query hooks
+  const { data: recipes = [] } = useRecipes()
+  const { data: mealPlan, isLoading: planLoading } = useMealPlanForWeek(weekStart)
+  const { data: copyTargetPlan } = useMealPlanForWeek(copyTarget)
+  const { data: templates = [] } = useMealPlanTemplates()
+  const { data: allMealPlans = [] } = useMealPlans()
 
-  useEffect(() => {
-    getRecipes().then(setRecipes)
-  }, [])
+  const createMealPlanMutation = useCreateMealPlan()
+  const updateMealPlanMutation = useUpdateMealPlan()
+  const createTemplateMutation = useCreateMealPlanTemplate()
+  const deleteTemplateMutation = useDeleteMealPlanTemplate()
 
+  // Auto-create a meal plan for the current week if none exists
   useEffect(() => {
-    // cancelled flag prevents React StrictMode's double-invocation from creating
-    // two plans for the same week. The first effect's result is discarded on
-    // cleanup; only the second (canonical) run persists state.
-    let cancelled = false
-    getMealPlanForWeek(weekStart).then(async (plan) => {
-      if (cancelled) return
-      if (plan) {
-        setMealPlan(plan)
-      } else {
-        const newPlan = await createMealPlan({ weekStartDate: weekStart, days: {} })
-        if (!cancelled) setMealPlan(newPlan)
-      }
-    })
-    return () => {
-      cancelled = true
+    if (!planLoading && mealPlan === null) {
+      createMealPlanMutation.mutate({ weekStartDate: weekStart, days: {} })
     }
-  }, [weekStart])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planLoading, mealPlan, weekStart])
 
-  useEffect(() => {
-    if (!copyTarget) return
-    setCopyTargetPlan(undefined)
-    getMealPlanForWeek(copyTarget).then((plan) => setCopyTargetPlan(plan ?? null))
-  }, [copyTarget])
+  // Derive history from all meal plans (computed, not fetched on open)
+  const histMealPlans = useMemo(() => {
+    if (!historyOpen) return []
+    return allMealPlans
+      .filter(
+        (p) =>
+          p.weekStartDate !== weekStart &&
+          Object.values(p.days).some((d) => Object.keys(d).length > 0)
+      )
+      .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
+  }, [allMealPlans, historyOpen, weekStart])
 
-  useEffect(() => {
-    getMealPlanTemplates().then(setTemplates)
-  }, [])
-
-  useEffect(() => {
-    if (!historyOpen) return
-    getMealPlans().then((plans) => {
-      const filtered = plans
-        .filter(
-          (p) =>
-            p.weekStartDate !== weekStart &&
-            Object.values(p.days).some((d) => Object.keys(d).length > 0)
-        )
-        .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
-      setHistMealPlans(filtered)
-    })
-  }, [historyOpen, weekStart])
+  // Derive recent recipe IDs from past meal plans for quick-pick
+  const recentRecipeIds = useMemo(() => {
+    if (!pickerTarget) return []
+    const sorted = [...allMealPlans].sort((a, b) =>
+      b.weekStartDate.localeCompare(a.weekStartDate)
+    )
+    const seen = new Set<string>()
+    const ids: string[] = []
+    for (const plan of sorted) {
+      if (plan.weekStartDate === weekStart) continue
+      for (const dayPlan of Object.values(plan.days)) {
+        for (const meal of (['breakfast', 'lunch', 'dinner', 'snack'] as MealType[])) {
+          const slot = dayPlan[meal as MealType]
+          if (!slot) continue
+          for (const { recipeId } of normalizeMealSlot(slot).recipes) {
+            if (!seen.has(recipeId)) {
+              seen.add(recipeId)
+              ids.push(recipeId)
+            }
+          }
+        }
+      }
+      if (ids.length >= 20) break
+    }
+    return ids
+  }, [allMealPlans, pickerTarget, weekStart])
 
   // Non-passive touchmove listener: prevents page scroll while touch-dragging
   // and tracks which meal slot is under the finger.
@@ -267,7 +270,6 @@ export default function PlannerPage() {
   const openCopyModal = () => {
     const nextWeek = toISODate(addDays(new Date(weekStart + 'T00:00:00'), 7))
     setCopyTarget(nextWeek)
-    setCopyTargetPlan(undefined)
     setCopyModalOpen(true)
   }
 
@@ -291,9 +293,9 @@ export default function PlannerPage() {
       targetDays[toISODate(d)] = dayPlan
     }
     if (copyTargetPlan) {
-      await updateMealPlan(copyTargetPlan.id, { days: targetDays })
+      await updateMealPlanMutation.mutateAsync({ planId: copyTargetPlan.id, data: { days: targetDays } })
     } else {
-      await createMealPlan({ weekStartDate: copyTarget, days: targetDays })
+      await createMealPlanMutation.mutateAsync({ weekStartDate: copyTarget, days: targetDays })
     }
     setCopyModalOpen(false)
     setWeekStart(copyTarget)
@@ -308,8 +310,7 @@ export default function PlannerPage() {
       ...days[date],
       [meal]: { recipes: [...slot.recipes, { recipeId, servings: 2 }] },
     }
-    const updated = await updateMealPlan(mealPlan.id, { days })
-    setMealPlan(updated)
+    await updateMealPlanMutation.mutateAsync({ planId: mealPlan.id, data: { days } })
     setPickerTarget(null)
     setSearch('')
   }
@@ -328,8 +329,7 @@ export default function PlannerPage() {
       dayPlan[meal] = { recipes: newRecipes }
     }
     days[date] = dayPlan
-    const updated = await updateMealPlan(mealPlan.id, { days })
-    setMealPlan(updated)
+    await updateMealPlanMutation.mutateAsync({ planId: mealPlan.id, data: { days } })
   }
 
   const moveRecipe = async (
@@ -368,8 +368,7 @@ export default function PlannerPage() {
       [tgtMeal]: { recipes: [...tgtSlot.recipes, recipeToMove] },
     }
 
-    const updated = await updateMealPlan(mealPlan.id, { days })
-    setMealPlan(updated)
+    await updateMealPlanMutation.mutateAsync({ planId: mealPlan.id, data: { days } })
   }
 
   const closePicker = () => {
@@ -379,7 +378,6 @@ export default function PlannerPage() {
 
   const saveAsTemplate = async () => {
     if (!mealPlan || !templateName.trim()) return
-    setSavingTemplate(true)
     const templateDays: MealPlanTemplate['days'] = {}
     for (const [dateStr, dayPlan] of Object.entries(mealPlan.days)) {
       const offset = Math.round(
@@ -388,12 +386,9 @@ export default function PlannerPage() {
       )
       if (offset >= 0 && offset <= 6) templateDays[String(offset)] = dayPlan
     }
-    await createMealPlanTemplate({ name: templateName.trim(), days: templateDays })
-    const updated = await getMealPlanTemplates()
-    setTemplates(updated)
+    await createTemplateMutation.mutateAsync({ name: templateName.trim(), days: templateDays })
     setTemplateName('')
     setSaveTemplateOpen(false)
-    setSavingTemplate(false)
     setTemplateGalleryOpen(true)
   }
 
@@ -404,15 +399,13 @@ export default function PlannerPage() {
       const d = addDays(new Date(weekStart + 'T00:00:00'), parseInt(dayIdx, 10))
       targetDays[toISODate(d)] = dayPlan
     }
-    const updated = await updateMealPlan(mealPlan.id, { days: targetDays })
-    setMealPlan(updated)
+    await updateMealPlanMutation.mutateAsync({ planId: mealPlan.id, data: { days: targetDays } })
     setApplyTemplateConfirm(null)
     setTemplateGalleryOpen(false)
   }
 
   const deleteTemplate = async (templateId: string) => {
-    await deleteMealPlanTemplate(templateId)
-    setTemplates((prev) => prev.filter((t) => t.id !== templateId))
+    await deleteTemplateMutation.mutateAsync(templateId)
   }
 
   const copyFromHistory = async (sourcePlan: MealPlan) => {
@@ -427,8 +420,7 @@ export default function PlannerPage() {
       const targetDate = toISODate(addDays(new Date(weekStart + 'T00:00:00'), offset))
       targetDays[targetDate] = dayPlan
     }
-    const updated = await updateMealPlan(mealPlan.id, { days: targetDays })
-    setMealPlan(updated)
+    await updateMealPlanMutation.mutateAsync({ planId: mealPlan.id, data: { days: targetDays } })
     setHistoryOpen(false)
   }
 
@@ -597,32 +589,6 @@ export default function PlannerPage() {
     return { date: toISODate(d), label: formatDayHeader(d) }
   })
 
-  // Load recent recipe IDs from past meal plans whenever the picker opens
-  useEffect(() => {
-    if (!pickerTarget) return
-    getMealPlans().then((plans) => {
-      const sorted = [...plans].sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
-      const seen = new Set<string>()
-      const ids: string[] = []
-      for (const plan of sorted) {
-        if (plan.weekStartDate === weekStart) continue
-        for (const dayPlan of Object.values(plan.days)) {
-          for (const meal of MEAL_TYPES) {
-            const slot = dayPlan[meal as MealType]
-            if (!slot) continue
-            for (const { recipeId } of normalizeMealSlot(slot).recipes) {
-              if (!seen.has(recipeId)) {
-                seen.add(recipeId)
-                ids.push(recipeId)
-              }
-            }
-          }
-        }
-      }
-      setRecentRecipeIds(ids.slice(0, 20))
-    })
-  }, [pickerTarget, weekStart])
-
   // favoriteRecipes and recentRecipes are computed for a planned "smart picker"
   // UI that surfaces favorites + recents ahead of the full list. Inline the deps
   // here so they're ready when that section is wired up.
@@ -686,7 +652,7 @@ export default function PlannerPage() {
 
   if (mealPlan === null) {
     return (
-      <div className="p-4 max-w-4xl mx-auto" aria-busy="true" aria-label="Loading meal plan">
+      <div className="p-4 max-w-4xl mx-auto" role="status" aria-busy="true" aria-label="Loading meal plan">
         {/* Week nav skeleton */}
         <div className="flex items-center justify-between mb-6">
           <Skeleton className="h-9 w-9" />
@@ -1308,10 +1274,10 @@ export default function PlannerPage() {
               </button>
               <button
                 onClick={saveAsTemplate}
-                disabled={!templateName.trim() || savingTemplate}
+                disabled={!templateName.trim() || createTemplateMutation.isPending}
                 className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {savingTemplate ? 'Saving…' : 'Save'}
+                {createTemplateMutation.isPending ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

@@ -3,12 +3,18 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Playwright E2E test configuration for Mise.
  *
- * Two web servers:
- *  - Port 5173: auth-bypass server for feature tests (VITE_TEST_BYPASS_AUTH=true)
- *  - Port 5174: real-auth server for auth flow tests (fake Supabase, API mocked via page.route)
+ * Two web servers, both using fake Supabase credentials:
+ *  - Port 5173: feature test server — tests inject sessions via localStorage
+ *  - Port 5174: auth flow test server — tests exercise login/redirect/logout flows
  *
  * Covers Chrome (desktop), Firefox (desktop), and mobile Chrome/Safari for feature tests.
  * Auth flow tests run on Chromium only (auth logic is browser-agnostic).
+ *
+ * Session injection pattern (feature tests):
+ *   The Supabase JS client reads its session from localStorage key
+ *   `sb-localhost-auth-token` (derived from VITE_SUPABASE_URL hostname).
+ *   Tests inject a fake far-future session before page.goto() so
+ *   ProtectedRoute sees an authenticated user and renders the app.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -88,21 +94,22 @@ export default defineConfig({
   /* Web servers — one per auth mode */
   webServer: [
     {
-      // Auth-bypass server for feature tests (routes always accessible)
+      // Feature test server — session injected per-test via localStorage.
+      // Fake Supabase credentials satisfy supabase.ts startup check;
+      // actual API calls are intercepted by page.route() in fixtures.ts.
       command: 'pnpm dev',
       url: 'http://localhost:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {
-        // Bypass Supabase auth in E2E tests — ProtectedRoute lets all requests through,
-        // and AuthContext returns a fake authenticated user.
-        VITE_TEST_BYPASS_AUTH: 'true',
+        VITE_SUPABASE_URL: 'http://localhost:54321',
+        VITE_SUPABASE_ANON_KEY: 'test-anon-key-for-e2e',
       },
     },
     {
-      // Real-auth server for auth flow tests (ProtectedRoute active)
-      // Fake Supabase URL makes isSupabaseAvailable() return true;
-      // actual API calls are intercepted by page.route() in auth.spec.ts.
+      // Auth flow test server — ProtectedRoute enforces auth normally.
+      // Fake Supabase credentials satisfy supabase.ts startup check;
+      // API calls are intercepted by page.route() in auth.spec.ts.
       command: 'pnpm dev --port 5174',
       url: 'http://localhost:5174',
       reuseExistingServer: !process.env.CI,

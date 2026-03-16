@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, SlidersHorizontal, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
-import { getRecipes, toggleFavorite, durationToMinutes } from '../lib/db'
+import { useRecipes, useToggleFavorite } from '../hooks/useRecipes'
+import { durationToMinutes } from '../lib/db'
+import { useToast } from '../contexts/ToastContext'
 import type { Recipe } from '../types'
 import { DIETARY_PREFERENCES, getDietaryPrefs } from '../lib/dietary'
 import EmptyState from '../components/EmptyState'
@@ -80,11 +82,12 @@ function RecipeCardSkeleton() {
 }
 
 export default function RecipesPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const { data: recipes = [], isLoading: loading } = useRecipes()
+  const toggleFavoriteMutation = useToggleFavorite()
+  const toast = useToast()
   const [query, setQuery] = useState('')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>(getSavedSort)
-  const [loading, setLoading] = useState(true)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -127,13 +130,6 @@ export default function RecipesPage() {
     return [...set].sort()
   }, [recipes])
 
-  useEffect(() => {
-    getRecipes().then((r) => {
-      setRecipes(r)
-      setLoading(false)
-    })
-  }, [])
-
   function handleSortChange(newSort: SortKey) {
     setSort(newSort)
     try {
@@ -146,10 +142,11 @@ export default function RecipesPage() {
   async function handleToggleFavorite(e: React.MouseEvent, recipeId: string) {
     e.preventDefault()
     e.stopPropagation()
-    await toggleFavorite(recipeId)
-    setRecipes((prev) =>
-      prev.map((r) => (r.id === recipeId ? { ...r, isFavorite: !r.isFavorite } : r))
-    )
+    try {
+      await toggleFavoriteMutation.mutateAsync(recipeId)
+    } catch {
+      toast.error('Failed to update favorite. Please try again.')
+    }
   }
 
   function clearAdvancedFilters() {
@@ -508,15 +505,13 @@ export default function RecipesPage() {
       </div>
 
       {loading ? (
-        <ul
-          className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
-          aria-busy="true"
-          aria-label="Loading recipes"
-        >
-          {Array.from({ length: 4 }).map((_, i) => (
-            <RecipeCardSkeleton key={i} />
-          ))}
-        </ul>
+        <div role="status" aria-busy="true" aria-label="Loading recipes">
+          <ul className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <RecipeCardSkeleton key={i} />
+            ))}
+          </ul>
+        </div>
       ) : filtered.length === 0 ? (
         showFavoritesOnly && !hasAnyFilter ? (
           <EmptyState

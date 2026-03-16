@@ -125,8 +125,10 @@ test.describe('Auth — login', () => {
     await page.getByLabel('Password').fill('password123')
     await page.getByRole('button', { name: 'Sign in' }).click()
 
-    // Use exact: true — 'Recipes' is a substring of 'Back up your recipes?'
-    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible()
+    // After login, the app redirects to the home feed — verify we're no longer on the login page
+    await expect(page).not.toHaveURL(/\/auth\/login/)
+    // The main nav should be visible, confirming the authenticated layout rendered
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
   })
 
   test('redirects to intended destination after login', async ({ page }) => {
@@ -271,14 +273,14 @@ test.describe('Auth — session persistence', () => {
     await page.goto('/')
     // Should be on the home page, not redirected to login
     await expect(page).not.toHaveURL(/\/auth\/login/)
-    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
 
     // Reload the page
     await page.reload()
 
     // Should still be on the home page
     await expect(page).not.toHaveURL(/\/auth\/login/)
-    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
   })
 })
 
@@ -313,7 +315,7 @@ test.describe('Auth — logout', () => {
     )
 
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
 
     // Click the sign-out button in the desktop sidebar
     await page.getByRole('button', { name: 'Sign out' }).click()

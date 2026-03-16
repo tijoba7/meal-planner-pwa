@@ -1,47 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Library, Plus, X } from 'lucide-react'
-import { getCollections, createCollection, deleteCollection } from '../lib/db'
-import type { Collection } from '../types'
+import {
+  useCollections,
+  useCreateCollection,
+  useDeleteCollection,
+} from '../hooks/useCollections'
 import EmptyState from '../components/EmptyState'
 
 export default function CollectionsPage() {
-  const [collections, setCollections] = useState<Collection[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: collections = [], isLoading: loading } = useCollections()
+  const createCollectionMutation = useCreateCollection()
+  const deleteCollectionMutation = useDeleteCollection()
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDescription, setNewDescription] = useState('')
-  const [creating, setCreating] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-
-  useEffect(() => {
-    getCollections().then((c) => {
-      setCollections(c)
-      setLoading(false)
-    })
-  }, [])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     const name = newName.trim()
     if (!name) return
-    setCreating(true)
-    const collection = await createCollection({
+    await createCollectionMutation.mutateAsync({
       name,
       description: newDescription.trim() || undefined,
       recipeIds: [],
     })
-    setCollections((prev) => [collection, ...prev])
     setNewName('')
     setNewDescription('')
-    setCreating(false)
     setShowCreate(false)
   }
 
   async function handleDelete(collectionId: string) {
-    await deleteCollection(collectionId)
-    setCollections((prev) => prev.filter((c) => c.id !== collectionId))
+    await deleteCollectionMutation.mutateAsync(collectionId)
     setConfirmDeleteId(null)
   }
 
@@ -189,10 +181,10 @@ export default function CollectionsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={!newName.trim() || creating}
+                  disabled={!newName.trim() || createCollectionMutation.isPending}
                   className="flex-1 bg-green-700 text-white font-semibold py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {creating ? 'Creating…' : 'Create'}
+                  {createCollectionMutation.isPending ? 'Creating…' : 'Create'}
                 </button>
               </div>
             </form>

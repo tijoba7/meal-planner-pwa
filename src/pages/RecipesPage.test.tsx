@@ -1,18 +1,33 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../test/supabaseMocks'
 import RecipesPage from './RecipesPage'
-import { getRecipes } from '../lib/db'
+import { ToastProvider } from '../contexts/ToastContext'
+import type { Recipe } from '../types'
 
-vi.mock('../lib/db', async (importActual) => {
-  const actual = await importActual<typeof import('../lib/db')>()
-  return { ...actual, getRecipes: vi.fn() }
-})
+// ─── Module mocks ─────────────────────────────────────────────────────────────
 
-const mockGetRecipes = vi.mocked(getRecipes)
+vi.mock('../hooks/useRecipes', () => ({
+  useRecipes: vi.fn(),
+  useToggleFavorite: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+}))
 
-const sampleRecipes = [
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'test-user', email: 'test@test.com' }, signOut: vi.fn() }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+
+vi.mock('../hooks/useKeyboardShortcuts', () => ({ useKeyboardShortcuts: vi.fn() }))
+
+import { useRecipes } from '../hooks/useRecipes'
+const mockUseRecipes = vi.mocked(useRecipes)
+
+// ─── Sample data ──────────────────────────────────────────────────────────────
+
+const sampleRecipes: Recipe[] = [
   {
     id: 'r1',
     name: 'Spaghetti Bolognese',
@@ -41,17 +56,34 @@ const sampleRecipes = [
   },
 ]
 
+function makeQueryResult(data: Recipe[]) {
+  return {
+    data,
+    isLoading: false,
+    isPending: false,
+    isSuccess: true,
+    isError: false,
+    error: null,
+    status: 'success' as const,
+    fetchStatus: 'idle' as const,
+  }
+}
+
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <RecipesPage />
-    </MemoryRouter>
+    <QueryClientProvider client={createTestQueryClient()}>
+      <ToastProvider>
+        <MemoryRouter>
+          <RecipesPage />
+        </MemoryRouter>
+      </ToastProvider>
+    </QueryClientProvider>
   )
 }
 
 describe('RecipesPage', () => {
   beforeEach(() => {
-    mockGetRecipes.mockResolvedValue([])
+    mockUseRecipes.mockReturnValue(makeQueryResult([]) as ReturnType<typeof useRecipes>)
   })
 
   describe('page structure', () => {
@@ -102,7 +134,7 @@ describe('RecipesPage', () => {
 
   describe('recipe list rendering', () => {
     beforeEach(() => {
-      mockGetRecipes.mockResolvedValue(sampleRecipes)
+      mockUseRecipes.mockReturnValue(makeQueryResult(sampleRecipes) as ReturnType<typeof useRecipes>)
     })
 
     it('renders all recipe names', async () => {
@@ -118,38 +150,36 @@ describe('RecipesPage', () => {
     })
 
     it('renders total time (prep + cook)', async () => {
-      mockGetRecipes.mockResolvedValue([sampleRecipes[0]])
+      mockUseRecipes.mockReturnValue(makeQueryResult([sampleRecipes[0]]) as ReturnType<typeof useRecipes>)
       renderPage()
       await screen.findByText('60 min') // 15 + 45
     })
 
     it('renders individual prep and cook times', async () => {
-      mockGetRecipes.mockResolvedValue([sampleRecipes[0]])
+      mockUseRecipes.mockReturnValue(makeQueryResult([sampleRecipes[0]]) as ReturnType<typeof useRecipes>)
       renderPage()
       await screen.findByText('prep 15m')
       expect(screen.getByText('cook 45m')).toBeInTheDocument()
     })
 
     it('renders serving count', async () => {
-      mockGetRecipes.mockResolvedValue([sampleRecipes[0]])
+      mockUseRecipes.mockReturnValue(makeQueryResult([sampleRecipes[0]]) as ReturnType<typeof useRecipes>)
       renderPage()
       await screen.findByText('4 servings')
     })
 
     it('renders keyword tags', async () => {
-      mockGetRecipes.mockResolvedValue([sampleRecipes[0]])
+      mockUseRecipes.mockReturnValue(makeQueryResult([sampleRecipes[0]]) as ReturnType<typeof useRecipes>)
       renderPage()
       await screen.findByText('italian')
       expect(screen.getByText('pasta')).toBeInTheDocument()
     })
 
     it('links each recipe card to its detail page', async () => {
-      mockGetRecipes.mockResolvedValue([sampleRecipes[0]])
+      mockUseRecipes.mockReturnValue(makeQueryResult([sampleRecipes[0]]) as ReturnType<typeof useRecipes>)
       renderPage()
-      await waitFor(() => {
-        const link = screen.getByRole('link', { name: /Spaghetti Bolognese/ })
-        expect(link).toHaveAttribute('href', '/recipes/r1')
-      })
+      const link = await screen.findByRole('link', { name: /Spaghetti Bolognese/ })
+      expect(link).toHaveAttribute('href', '/recipes/r1')
     })
 
     it('does not show empty state when recipes are present', async () => {
@@ -161,7 +191,7 @@ describe('RecipesPage', () => {
 
   describe('search filtering', () => {
     beforeEach(() => {
-      mockGetRecipes.mockResolvedValue(sampleRecipes)
+      mockUseRecipes.mockReturnValue(makeQueryResult(sampleRecipes) as ReturnType<typeof useRecipes>)
     })
 
     it('filters recipes by name', async () => {

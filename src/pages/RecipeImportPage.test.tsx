@@ -42,6 +42,11 @@ vi.mock('../components/RecipeImage', () => ({
   default: ({ alt }: { alt: string }) => <img alt={alt} data-testid="recipe-image" />,
 }))
 
+vi.mock('../lib/appSettingsService', () => ({
+  getAppSettingString: vi.fn().mockResolvedValue(null),
+  APP_SETTING_KEYS: { SCRAPING_API_KEY: 'scraping.api_key' },
+}))
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const sampleExtractedRecipe: ExtractedRecipe = {
@@ -99,24 +104,25 @@ describe('RecipeImportPage', () => {
       mockGetStoredApiKey.mockReturnValue('')
     })
 
-    it('shows the AI API key required banner', () => {
+    it('shows the AI API key required banner', async () => {
       renderPage()
-      expect(screen.getByText(/AI API key required for URL/i)).toBeInTheDocument()
+      expect(await screen.findByText(/AI API key required for URL/i)).toBeInTheDocument()
     })
 
-    it('renders a link to Settings to add an API key', () => {
+    it('renders a link to Settings to add an API key', async () => {
       renderPage()
-      const link = screen.getByRole('link', { name: /add api key in settings/i })
+      const link = await screen.findByRole('link', { name: /add api key in settings/i })
       expect(link).toHaveAttribute('href', '/settings')
     })
 
-    it('renders an "Import file" button for file import without API key', () => {
+    it('renders an "Import file" button for file import without API key', async () => {
       renderPage()
-      expect(screen.getByRole('button', { name: /import file/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /import file/i })).toBeInTheDocument()
     })
 
-    it('does not render the textarea input when API key is missing', () => {
+    it('does not render the textarea input when API key is missing', async () => {
       renderPage()
+      await screen.findByText(/AI API key required for URL/i)
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })
@@ -124,29 +130,29 @@ describe('RecipeImportPage', () => {
   // ── Input form (with API key) ───────────────────────────────────────────────
 
   describe('input form (with API key)', () => {
-    it('renders the Import Recipe heading', () => {
+    it('renders the Import Recipe heading', async () => {
       renderPage()
-      expect(screen.getByRole('heading', { name: /import recipe/i })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: /import recipe/i })).toBeInTheDocument()
     })
 
-    it('renders the textarea input', () => {
+    it('renders the textarea input', async () => {
       renderPage()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(await screen.findByRole('textbox')).toBeInTheDocument()
     })
 
-    it('renders an Import submit button', () => {
+    it('renders an Import submit button', async () => {
       renderPage()
-      expect(screen.getByRole('button', { name: /^import$/i })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /^import$/i })).toBeInTheDocument()
     })
 
-    it('back link points to the recipes list', () => {
+    it('back link points to the recipes list', async () => {
       renderPage()
-      expect(screen.getByRole('link', { name: /← recipes/i })).toHaveAttribute('href', '/')
+      expect(await screen.findByRole('link', { name: /← recipes/i })).toHaveAttribute('href', '/')
     })
 
-    it('Import button is disabled when textarea is empty', () => {
+    it('Import button is disabled when textarea is empty', async () => {
       renderPage()
-      expect(screen.getByRole('button', { name: /^import$/i })).toBeDisabled()
+      expect(await screen.findByRole('button', { name: /^import$/i })).toBeDisabled()
     })
   })
 
@@ -158,7 +164,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
 
       expect(screen.getByRole('status')).toBeInTheDocument()
@@ -169,7 +175,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
 
       expect(screen.queryByRole('button', { name: /^import$/i })).not.toBeInTheDocument()
@@ -184,7 +190,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/bad-url')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/bad-url')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
 
       await waitFor(() => {
@@ -197,7 +203,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/bad-url')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/bad-url')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
 
       await waitFor(() => {
@@ -212,7 +218,7 @@ describe('RecipeImportPage', () => {
     async function triggerReview() {
       const user = userEvent.setup()
       renderPage()
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       await screen.findByText('Recipe extracted! Review before saving.')
       return user
@@ -281,7 +287,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       await screen.findByText('Recipe extracted! Review before saving.')
 
@@ -297,7 +303,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       await screen.findByText('Recipe extracted! Review before saving.')
 
@@ -322,7 +328,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       await screen.findByText('Recipe extracted! Review before saving.')
 
@@ -344,7 +350,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       await screen.findByText('Recipe extracted! Review before saving.')
 
@@ -358,7 +364,7 @@ describe('RecipeImportPage', () => {
       const user = userEvent.setup()
       renderPage()
 
-      await user.type(screen.getByRole('textbox'), 'https://example.com/recipe')
+      await user.type(await screen.findByRole('textbox'), 'https://example.com/recipe')
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       await screen.findByText('Recipe extracted! Review before saving.')
 

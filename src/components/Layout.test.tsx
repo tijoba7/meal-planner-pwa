@@ -25,6 +25,10 @@ vi.mock('../lib/supabase', () => ({
   supabase: {},
 }))
 
+vi.mock('../contexts/AdminContext', () => ({
+  useAdmin: vi.fn(() => ({ isAdmin: false, loading: false })),
+}))
+
 vi.mock('./OnboardingWizard', () => ({
   default: ({ onDone }: { onDone: () => void }) => (
     <div data-testid="onboarding-wizard">
@@ -103,7 +107,8 @@ describe('Layout', () => {
 
   describe('navigation items', () => {
     const expectedItems = [
-      { label: 'Recipes', href: '/' },
+      { label: 'Feed', href: '/' },
+      { label: 'Recipes', href: '/recipes' },
       { label: 'Collections', href: '/collections' },
       { label: 'Meal Plan', href: '/meal-plan' },
       { label: 'Shopping', href: '/shopping' },
@@ -135,36 +140,36 @@ describe('Layout', () => {
       }
     })
 
-    it('renders exactly 9 navigation items in the mobile tab bar', () => {
+    it('renders exactly 11 navigation items in the mobile tab bar', () => {
       const { container } = renderLayout()
       // The mobile bottom tab bar is the fixed nav at the bottom (md:hidden)
       const mobileNav = container.querySelector('nav.md\\:hidden.fixed')
       expect(mobileNav).toBeInTheDocument()
       const links = mobileNav!.querySelectorAll('a')
-      expect(links).toHaveLength(10)
+      expect(links).toHaveLength(11)
     })
 
-    it('renders exactly 11 navigation items in the desktop sidebar', () => {
+    it('renders exactly 12 navigation items in the desktop sidebar', () => {
       const { container } = renderLayout()
       const sidebar = container.querySelector('aside')
       expect(sidebar).toBeInTheDocument()
-      // sidebar may contain auth link too — count only nav links inside <nav>
+      // sidebar has 11 NAV_ITEMS + 1 Help link (Admin is hidden when isAdmin=false)
       const sidebarNav = sidebar!.querySelector('nav')
       expect(sidebarNav).toBeInTheDocument()
       const navLinks = sidebarNav!.querySelectorAll('a')
-      expect(navLinks).toHaveLength(11)
+      expect(navLinks).toHaveLength(12)
     })
   })
 
   // ── Active route highlighting ────────────────────────────────────────────────
 
   describe('active route highlighting', () => {
-    it('applies active styles to the Recipes link when on the home route', () => {
+    it('applies active styles to the Feed link when on the home route', () => {
       renderLayout('/')
       // The active class contains "green" for active items
-      const recipeLinks = screen.getAllByRole('link', { name: 'Recipes' })
+      const feedLinks = screen.getAllByRole('link', { name: 'Feed' })
       // At least one link should have the active (green) class
-      const hasActive = recipeLinks.some((link) => link.className.includes('green'))
+      const hasActive = feedLinks.some((link) => link.className.includes('green'))
       expect(hasActive).toBe(true)
     })
 

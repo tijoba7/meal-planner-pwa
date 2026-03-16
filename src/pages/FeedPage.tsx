@@ -253,7 +253,7 @@ export default function FeedPage() {
           Failed to load feed.
         </p>
       ) : isLoading ? (
-        <div aria-busy="true" aria-label="Loading feed">
+        <div role="status" aria-busy="true" aria-label="Loading feed">
           {Array.from({ length: 3 }).map((_, i) => (
             <CardSkeleton key={i} />
           ))}

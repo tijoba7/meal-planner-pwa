@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo, useId } from 'react'
+import { useState, useRef, useMemo, useId } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   X,
   ChevronDown,
@@ -29,16 +30,17 @@ import type {
 } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
-  getShoppingLists,
-  getShoppingList,
-  createShoppingList,
-  deleteShoppingList,
-  toggleShoppingItem,
-  updateShoppingList,
-  getMealPlans,
-  getRecipes,
-  getPantryItems,
-} from '../lib/db'
+  useShoppingLists,
+  useShoppingList,
+  useCreateShoppingList,
+  useUpdateShoppingList,
+  useDeleteShoppingList,
+  useToggleShoppingItem,
+  shoppingListKeys,
+} from '../hooks/useShoppingLists'
+import { useMealPlans } from '../hooks/useMealPlans'
+import { useRecipes } from '../hooks/useRecipes'
+import { usePantryItems } from '../hooks/usePantryItems'
 import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
 import { mergeIngredients } from '../lib/ingredientMerger'
 
@@ -575,10 +577,9 @@ function CategorySection({
 
 export default function ShoppingListPage() {
   const toast = useToast()
+  const qc = useQueryClient()
   const [unitSystem] = useUnitPreference()
-  const [lists, setLists] = useState<ShoppingList[]>([])
   const [activeListId, setActiveListId] = useState<string | null>(null)
-  const [activeList, setActiveList] = useState<ShoppingList | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
   const [startDate, setStartDate] = useState(() => toISODate(getMonday(new Date())))
@@ -588,40 +589,25 @@ export default function ShoppingListPage() {
     return toISODate(sun)
   })
   const [listName, setListName] = useState('')
-
-  const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
-  const [recipes, setRecipes] = useState<Recipe[]>([])
-  const [pantryItems, setPantryItems] = useState<PantryItem[]>([])
   const [excludePantry, setExcludePantry] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
   const [showExport, setShowExport] = useState(false)
   const [showAddItem, setShowAddItem] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemAmount, setNewItemAmount] = useState('')
   const [newItemUnit, setNewItemUnit] = useState('')
-  const reload = useCallback(async () => {
-    const all = await getShoppingLists()
-    setLists(all.reverse())
-  }, [])
 
-  useEffect(() => {
-    Promise.all([
-      reload(),
-      getMealPlans().then(setMealPlans),
-      getRecipes().then(setRecipes),
-      getPantryItems().then(setPantryItems),
-    ]).then(() => setLoading(false))
-  }, [reload])
+  const { data: lists = [], isLoading: loading } = useShoppingLists()
+  const { data: activeList } = useShoppingList(activeListId ?? '')
+  const { data: mealPlans = [] } = useMealPlans()
+  const { data: recipes = [] } = useRecipes()
+  const { data: pantryItems = [] } = usePantryItems()
 
-  useEffect(() => {
-    if (activeListId) {
-      getShoppingList(activeListId).then((l) => setActiveList(l ?? null))
-    } else {
-      setActiveList(null)
-    }
-  }, [activeListId])
+  const createShoppingListMutation = useCreateShoppingList()
+  const updateShoppingListMutation = useUpdateShoppingList()
+  const deleteShoppingListMutation = useDeleteShoppingList()
+  const toggleShoppingItemMutation = useToggleShoppingItem()
+  const creating = createShoppingListMutation.isPending
 
   const recipesById = new Map(recipes.map((r) => [r.id, r]))
 
@@ -629,27 +615,24 @@ export default function ShoppingListPage() {
 
   const handleCreate = async () => {
     if (!listName.trim()) return
-    setCreating(true)
     const { items: aggregated, excludedCount } = aggregateIngredients(
       startDate,
       endDate,
       mealPlans,
       recipesById,
-      pantryItems
+      excludePantry ? pantryItems : []
     )
     const itemsWithIds: ShoppingItem[] = aggregated.map((item) => ({
       ...item,
       id: crypto.randomUUID(),
     }))
-    const list = await createShoppingList({
+    const list = await createShoppingListMutation.mutateAsync({
       name: listName.trim(),
       items: itemsWithIds,
     })
     setShowCreate(false)
     setListName('')
-    await reload()
     setActiveListId(list.id)
-    setCreating(false)
     const msg =
       excludedCount > 0
         ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
@@ -658,9 +641,8 @@ export default function ShoppingListPage() {
   }
 
   const handleDelete = async (id: string) => {
-    await deleteShoppingList(id)
+    await deleteShoppingListMutation.mutateAsync(id)
     if (activeListId === id) setActiveListId(null)
-    await reload()
   }
 
   const handleToggle = async (itemId: string) => {
@@ -678,10 +660,7 @@ export default function ShoppingListPage() {
         300
       )
     }
-    await toggleShoppingItem(activeListId, itemId)
-    const updated = await getShoppingList(activeListId)
-    setActiveList(updated ?? null)
-    await reload()
+    await toggleShoppingItemMutation.mutateAsync({ listId: activeListId, itemId })
   }
 
   const handleRemoveItem = async (itemId: string) => {
@@ -691,23 +670,19 @@ export default function ShoppingListPage() {
     if (!removedItem) return
 
     const items = activeList.items.filter((i) => i.id !== itemId)
-    await updateShoppingList(listId, { items })
-    const updated = await getShoppingList(listId)
-    setActiveList(updated ?? null)
-    await reload()
+    await updateShoppingListMutation.mutateAsync({ listId, data: { items } })
 
     toast.success(`"${removedItem.name}" removed.`, {
       duration: 5000,
       action: {
         label: 'Undo',
         onClick: async () => {
-          const currentList = await getShoppingList(listId)
-          if (!currentList) return
-          const restoredItems = [...currentList.items, removedItem]
-          await updateShoppingList(listId, { items: restoredItems })
-          const restored = await getShoppingList(listId)
-          setActiveList(restored ?? null)
-          await reload()
+          const current = qc.getQueryData<ShoppingList | null>(shoppingListKeys.detail(listId))
+          if (!current) return
+          await updateShoppingListMutation.mutateAsync({
+            listId,
+            data: { items: [...current.items, removedItem] },
+          })
         },
       },
     })
@@ -716,9 +691,7 @@ export default function ShoppingListPage() {
   const handleCategoryChange = async (itemId: string, newCat: IngredientCategory) => {
     if (!activeList) return
     const items = activeList.items.map((i) => (i.id === itemId ? { ...i, category: newCat } : i))
-    await updateShoppingList(activeList.id, { items })
-    const updated = await getShoppingList(activeList.id)
-    setActiveList(updated ?? null)
+    await updateShoppingListMutation.mutateAsync({ listId: activeList.id, data: { items } })
   }
 
   const handleAddItem = async () => {
@@ -736,11 +709,10 @@ export default function ShoppingListPage() {
       checked: false,
       category: categorizeIngredient(name),
     }
-    const items = [...activeList.items, newItem]
-    await updateShoppingList(activeList.id, { items })
-    const updated = await getShoppingList(activeList.id)
-    setActiveList(updated ?? null)
-    await reload()
+    await updateShoppingListMutation.mutateAsync({
+      listId: activeList.id,
+      data: { items: [...activeList.items, newItem] },
+    })
     setNewItemName('')
     setNewItemAmount('')
     setNewItemUnit('')
@@ -1043,7 +1015,7 @@ export default function ShoppingListPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading shopping lists">
+        <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading shopping lists">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}

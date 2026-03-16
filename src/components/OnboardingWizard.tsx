@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, CalendarDays, ShoppingCart, Utensils, X } from 'lucide-react'
-import { createRecipe } from '../lib/db'
+import { useCreateRecipe } from '../hooks/useRecipes'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
 const STORAGE_KEY = 'mise_onboarding_done'
@@ -99,10 +99,11 @@ interface OnboardingWizardProps {
 
 export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
   const [step, setStep] = useState(0)
-  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const createRecipeMutation = useCreateRecipe()
   useFocusTrap(dialogRef)
+  const saving = createRecipeMutation.isPending
 
   function dismiss() {
     markOnboardingDone()
@@ -129,13 +130,12 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
 
   async function goSampleRecipe() {
     if (saving) return
-    setSaving(true)
     try {
-      const recipe = await createRecipe(SAMPLE_RECIPE)
+      const recipe = await createRecipeMutation.mutateAsync(SAMPLE_RECIPE)
       dismiss()
       navigate(`/recipes/${recipe.id}`)
     } catch {
-      setSaving(false)
+      // ignore — saving state resets automatically via isPending
     }
   }
 

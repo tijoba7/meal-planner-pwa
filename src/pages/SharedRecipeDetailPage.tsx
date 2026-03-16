@@ -404,7 +404,7 @@ export default function SharedRecipeDetailPage() {
 
   if (!item) {
     return (
-      <div className="p-4 max-w-2xl mx-auto pb-8" aria-busy="true" aria-label="Loading recipe">
+      <div className="p-4 max-w-2xl mx-auto pb-8" role="status" aria-busy="true" aria-label="Loading recipe">
         <Skeleton className="h-4 w-20 mb-4" />
         <div className="flex items-start justify-between gap-3 mb-4">
           <Skeleton className="h-8 w-2/3" />

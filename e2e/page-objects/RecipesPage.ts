@@ -25,7 +25,7 @@ export class RecipesPageObject {
   }
 
   async goto() {
-    await this.page.goto('/')
+    await this.page.goto('/recipes')
   }
 
   async search(term: string) {

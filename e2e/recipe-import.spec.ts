@@ -5,15 +5,41 @@ import { test, expect, type Page } from '@playwright/test'
  *
  * The import flow calls https://api.anthropic.com/v1/messages directly from
  * the browser. In E2E tests we:
- *   1. Set `mise_anthropic_api_key` via addInitScript so the page shows the form.
- *   2. Intercept the Anthropic API with page.route() and return a fixed recipe.
- *   3. Optionally block the page-fetch (CORS preflight) to keep tests hermetic.
+ *   1. Inject a fake Supabase session so ProtectedRoute renders the app.
+ *   2. Set `mise_anthropic_api_key` via addInitScript so the page shows the form.
+ *   3. Intercept the Anthropic API with page.route() and return a fixed recipe.
+ *   4. Optionally block the page-fetch (CORS preflight) to keep tests hermetic.
  *
  * Tests that don't need the mocked API (e.g. no-key gate, JSON-LD import)
  * skip the route intercept.
  */
 
 const RUN_ID = Date.now()
+
+// Supabase JS v2 storage key — derived from VITE_SUPABASE_URL='http://localhost:54321'
+const SUPABASE_STORAGE_KEY = 'sb-localhost-auth-token'
+
+function buildFakeSession(email = 'e2e@test.local') {
+  return {
+    access_token: 'fake-e2e-access-token',
+    refresh_token: 'fake-e2e-refresh-token',
+    token_type: 'bearer',
+    expires_in: 365 * 24 * 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 365 * 24 * 3600,
+    user: {
+      id: 'e2e00000-0000-0000-0000-000000000001',
+      aud: 'authenticated',
+      role: 'authenticated',
+      email,
+      email_confirmed_at: '2024-01-01T00:00:00.000Z',
+      phone: '',
+      created_at: '2024-01-01T00:00:00.000Z',
+      updated_at: '2024-01-01T00:00:00.000Z',
+      app_metadata: { provider: 'email', providers: ['email'] },
+      user_metadata: {},
+    },
+  }
+}
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 
@@ -57,22 +83,60 @@ async function mockAnthropicApi(page: Page) {
   })
 }
 
-/** Inject a fake API key and dismiss the onboarding wizard. */
+/** Inject a fake Supabase session, API key, and dismiss onboarding. */
 async function setApiKey(page: Page) {
-  await page.addInitScript(() => {
-    localStorage.setItem('mise_anthropic_api_key', 'test-key-e2e-do-not-use')
-    localStorage.setItem('mise_onboarding_done', '1')
-  })
+  const session = buildFakeSession()
+  await page.addInitScript(
+    ({ key, sessionJson }) => {
+      localStorage.setItem('mise_anthropic_api_key', 'test-key-e2e-do-not-use')
+      localStorage.setItem('mise_onboarding_done', '1')
+      localStorage.setItem(key, sessionJson)
+    },
+    { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },
+  )
+  await page.route('**/auth/v1/user**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(session.user),
+    }),
+  )
+  await page.route('**/auth/v1/token**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(session),
+    }),
+  )
 }
 
 // ── Tests: No API key gate ────────────────────────────────────────────────────
 
 test.describe('Recipe Import — no API key', () => {
   test.beforeEach(async ({ page }) => {
-    // Dismiss onboarding but do NOT set an API key
-    await page.addInitScript(() => {
-      localStorage.setItem('mise_onboarding_done', '1')
-    })
+    const session = buildFakeSession()
+    // Inject session but do NOT set an API key — tests the no-key gate
+    await page.addInitScript(
+      ({ key, sessionJson }) => {
+        localStorage.setItem('mise_onboarding_done', '1')
+        localStorage.setItem(key, sessionJson)
+      },
+      { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },
+    )
+    await page.route('**/auth/v1/user**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(session.user),
+      }),
+    )
+    await page.route('**/auth/v1/token**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(session),
+      }),
+    )
   })
 
   test('shows API key required message when no key is stored', async ({ page }) => {
@@ -174,8 +238,8 @@ test.describe('Recipe Import — URL import', () => {
     await page.getByRole('button', { name: 'Save Recipe' }).click()
     await expect(page).toHaveURL(/recipes\/[^/]+$/)
 
-    // Navigate to the list and verify it appears
-    await page.goto('/')
+    // Navigate to the recipes list and verify it appears
+    await page.goto('/recipes')
     await expect(page.getByRole('link', { name: new RegExp(MOCK_RECIPE.name) })).toBeVisible()
   })
 
@@ -219,10 +283,29 @@ test.describe('Recipe Import — URL import', () => {
 
 test.describe('Recipe Import — JSON-LD', () => {
   test.beforeEach(async ({ page }) => {
-    // Dismiss onboarding; no API key needed for JSON import
-    await page.addInitScript(() => {
-      localStorage.setItem('mise_onboarding_done', '1')
-    })
+    const session = buildFakeSession()
+    // Inject session; no API key needed for JSON import
+    await page.addInitScript(
+      ({ key, sessionJson }) => {
+        localStorage.setItem('mise_onboarding_done', '1')
+        localStorage.setItem(key, sessionJson)
+      },
+      { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },
+    )
+    await page.route('**/auth/v1/user**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(session.user),
+      }),
+    )
+    await page.route('**/auth/v1/token**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(session),
+      }),
+    )
   })
 
   test('can import a recipe from JSON-LD without an API key', async ({ page }) => {

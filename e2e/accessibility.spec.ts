@@ -17,11 +17,64 @@ import AxeBuilder from '@axe-core/playwright'
  * See the "Known limitations" section at the bottom of this file.
  */
 
+// Supabase JS v2 storage key — derived from VITE_SUPABASE_URL='http://localhost:54321'
+const SUPABASE_STORAGE_KEY = 'sb-localhost-auth-token'
+
+function buildFakeSession(email = 'e2e@test.local') {
+  return {
+    access_token: 'fake-e2e-access-token',
+    refresh_token: 'fake-e2e-refresh-token',
+    token_type: 'bearer',
+    expires_in: 365 * 24 * 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 365 * 24 * 3600,
+    user: {
+      id: 'e2e00000-0000-0000-0000-000000000001',
+      aud: 'authenticated',
+      role: 'authenticated',
+      email,
+      email_confirmed_at: '2024-01-01T00:00:00.000Z',
+      phone: '',
+      created_at: '2024-01-01T00:00:00.000Z',
+      updated_at: '2024-01-01T00:00:00.000Z',
+      app_metadata: { provider: 'email', providers: ['email'] },
+      user_metadata: {},
+    },
+  }
+}
+
 test.beforeEach(async ({ page }) => {
-  // Dismiss the onboarding wizard so it doesn't block the audit
-  await page.addInitScript(() => {
-    localStorage.setItem('mise_onboarding_done', '1')
-  })
+  const session = buildFakeSession()
+
+  // Inject authenticated session and dismiss the onboarding wizard so they
+  // don't block or distort the axe scan results.
+  const userId = session.user.id
+  await page.addInitScript(
+    ({ key, sessionJson, userId }) => {
+      localStorage.setItem('mise_onboarding_done', '1')
+      localStorage.setItem(key, sessionJson)
+      localStorage.setItem(
+        `mise:migration:${userId}`,
+        JSON.stringify({ skipped: true, skippedAt: new Date().toISOString() }),
+      )
+    },
+    { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session), userId },
+  )
+
+  // Mock Supabase API calls — the fake server at localhost:54321 is not running.
+  await page.route('**/auth/v1/user**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(session.user),
+    }),
+  )
+  await page.route('**/auth/v1/token**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(session),
+    }),
+  )
 })
 
 // ---------------------------------------------------------------------------
@@ -57,7 +110,7 @@ async function assertNoViolations(page: import('@playwright/test').Page, label: 
 
 test.describe('Accessibility — Recipes page', () => {
   test('empty state has no violations', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/recipes')
     await page.waitForSelector('h2', { timeout: 15000 })
     await assertNoViolations(page, 'Recipes page (empty state)')
   })

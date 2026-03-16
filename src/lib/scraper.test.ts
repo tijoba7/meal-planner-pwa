@@ -2,6 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { extractRecipeFromUrl, getStoredApiKey, setStoredApiKey } from './scraper'
 import type { ExtractedRecipe } from './scraper'
 
+// ─── Module mocks ─────────────────────────────────────────────────────────────
+
+// Prevent loadAdminScrapingConfig() from consuming mocked fetch calls.
+vi.mock('./appSettingsService', () => ({
+  getAppSettingString: vi.fn().mockResolvedValue(null),
+  APP_SETTING_KEYS: {
+    SCRAPING_API_KEY: 'scraping.api_key',
+    SCRAPING_MODEL: 'scraping.model',
+  },
+}))
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FAKE_API_KEY = 'sk-ant-test-key'

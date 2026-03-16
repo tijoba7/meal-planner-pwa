@@ -36,7 +36,7 @@ test.describe('App smoke tests', () => {
 
     // Navigate back to Recipes via the nav sidebar link (exact match)
     await page.getByRole('link', { name: 'Recipes', exact: true }).click()
-    await expect(page).toHaveURL('/')
+    await expect(page).toHaveURL('/recipes')
   })
 
   test('404 page renders for unknown routes', async ({ page }) => {

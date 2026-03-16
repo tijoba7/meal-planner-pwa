@@ -182,13 +182,13 @@ describe('PlannerPage', () => {
 
   describe('loading state', () => {
     it('shows a loading skeleton while data is being fetched', () => {
-      mockUseMealPlanForWeek.mockReturnValue(makeResult(undefined, true) as unknown as ReturnType<typeof useMealPlanForWeek>)
+      mockUseMealPlanForWeek.mockReturnValue(makeResult(null, true) as unknown as ReturnType<typeof useMealPlanForWeek>)
       renderPage()
       expect(screen.getByRole('generic', { busy: true })).toBeInTheDocument()
     })
 
     it('loading skeleton has accessible label', () => {
-      mockUseMealPlanForWeek.mockReturnValue(makeResult(undefined, true) as unknown as ReturnType<typeof useMealPlanForWeek>)
+      mockUseMealPlanForWeek.mockReturnValue(makeResult(null, true) as unknown as ReturnType<typeof useMealPlanForWeek>)
       renderPage()
       expect(screen.getByLabelText('Loading meal plan')).toBeInTheDocument()
     })

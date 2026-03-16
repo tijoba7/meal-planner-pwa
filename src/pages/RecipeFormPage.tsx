@@ -22,7 +22,7 @@ interface FormState {
   cookTimeMinutes: string
   ingredients: Ingredient[]
   instructions: string[]
-  keywords: string
+  keywords: string[]
   recipeCategory: string
   recipeCuisine: string
   nutritionCalories: string
@@ -40,7 +40,7 @@ const emptyForm: FormState = {
   cookTimeMinutes: '0',
   ingredients: [{ name: '', amount: 1, unit: '' }],
   instructions: [''],
-  keywords: '',
+  keywords: [],
   recipeCategory: '',
   recipeCuisine: '',
   nutritionCalories: '',
@@ -205,6 +205,135 @@ function IngredientNameInput({
   )
 }
 
+// ── Tag picker ────────────────────────────────────────────────────────────────
+
+interface TagPickerProps {
+  tags: string[]
+  onChange: (tags: string[]) => void
+  suggestions: string[]
+  placeholder?: string
+}
+
+function TagPicker({ tags, onChange, suggestions, placeholder = 'Add a tag…' }: TagPickerProps) {
+  const [inputVal, setInputVal] = useState('')
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listId = useId()
+
+  const filtered = useMemo(() => {
+    const available = suggestions.filter((s) => !tags.includes(s))
+    if (!inputVal.trim()) return available.slice(0, 8)
+    const q = inputVal.toLowerCase()
+    return available.filter((s) => s.toLowerCase().includes(q)).slice(0, 6)
+  }, [inputVal, suggestions, tags])
+
+  const showDropdown = open && filtered.length > 0
+
+  function addTag(raw: string) {
+    const tag = raw.trim().toLowerCase()
+    if (!tag || tags.includes(tag)) return
+    onChange([...tags, tag])
+    setInputVal('')
+    setActiveIdx(-1)
+  }
+
+  function removeTag(tag: string) {
+    onChange(tags.filter((t) => t !== tag))
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      if (showDropdown && activeIdx >= 0) {
+        addTag(filtered[activeIdx])
+      } else if (inputVal.trim()) {
+        addTag(inputVal)
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.max(i - 1, -1))
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setActiveIdx(-1)
+    } else if (e.key === 'Backspace' && !inputVal && tags.length > 0) {
+      removeTag(tags[tags.length - 1])
+    }
+  }
+
+  return (
+    <div
+      className="flex flex-wrap gap-1.5 min-h-[42px] px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded-lg cursor-text focus-within:ring-2 focus-within:ring-green-500 dark:bg-gray-800"
+      onClick={() => inputRef.current?.focus()}
+    >
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="inline-flex items-center gap-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); removeTag(tag) }}
+            aria-label={`Remove tag ${tag}`}
+            className="hover:text-green-900 dark:hover:text-green-200"
+          >
+            <X size={10} strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        </span>
+      ))}
+      <div className="relative flex-1 min-w-[120px]">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputVal}
+          onChange={(e) => { setInputVal(e.target.value); setOpen(true); setActiveIdx(-1) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => { setOpen(false); setActiveIdx(-1) }}
+          onKeyDown={handleKeyDown}
+          placeholder={tags.length === 0 ? placeholder : ''}
+          className="w-full text-sm bg-transparent outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 py-1"
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+          aria-controls={showDropdown ? listId : undefined}
+          autoComplete="off"
+        />
+        {showDropdown && (
+          <ul
+            id={listId}
+            role="listbox"
+            onMouseDown={(e) => e.preventDefault()}
+            className="absolute z-10 mt-1 left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-md max-h-40 overflow-y-auto"
+          >
+            {filtered.map((s, idx) => (
+              <li
+                key={s}
+                role="option"
+                aria-selected={idx === activeIdx}
+                onClick={() => addTag(s)}
+                onMouseEnter={() => setActiveIdx(idx)}
+                className={`px-3 py-1.5 text-sm cursor-pointer ${
+                  idx === activeIdx
+                    ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {s}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function RecipeFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -219,6 +348,7 @@ export default function RecipeFormPage() {
   const ingredientSuggestions = useIngredientSuggestions()
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([])
   const [cuisineSuggestions, setCuisineSuggestions] = useState<string[]>([])
+  const [keywordSuggestions, setKeywordSuggestions] = useState<string[]>([])
   const categoryListId = useId()
   const cuisineListId = useId()
 
@@ -226,12 +356,15 @@ export default function RecipeFormPage() {
     getRecipes().then((rs) => {
       const cats = new Set<string>()
       const cuis = new Set<string>()
+      const kws = new Set<string>()
       for (const r of rs) {
         if (r.recipeCategory?.trim()) cats.add(r.recipeCategory.trim())
         if (r.recipeCuisine?.trim()) cuis.add(r.recipeCuisine.trim())
+        for (const kw of r.keywords) if (kw.trim()) kws.add(kw.trim().toLowerCase())
       }
       setCategorySuggestions([...cats].sort())
       setCuisineSuggestions([...cuis].sort())
+      setKeywordSuggestions([...kws].sort())
     })
   }, [])
 
@@ -263,7 +396,7 @@ export default function RecipeFormPage() {
         cookTimeMinutes: String(durationToMinutes(recipe.cookTime)),
         ingredients: recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [{ name: '', amount: 1, unit: '' }],
         instructions: recipe.recipeInstructions.length > 0 ? recipe.recipeInstructions.map((s) => s.text) : [''],
-        keywords: recipe.keywords.join(', '),
+        keywords: recipe.keywords,
         recipeCategory: recipe.recipeCategory ?? '',
         recipeCuisine: recipe.recipeCuisine ?? '',
         nutritionCalories: parseNutritionFormValue(recipe.nutrition?.calories),
@@ -421,10 +554,7 @@ export default function RecipeFormPage() {
       recipeInstructions: form.instructions
         .filter((s) => s.trim())
         .map((text) => ({ '@type': 'HowToStep' as const, text })),
-      keywords: form.keywords
-        .split(',')
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean),
+      keywords: form.keywords,
       recipeCategory: form.recipeCategory.trim() || undefined,
       recipeCuisine: form.recipeCuisine.trim() || undefined,
       nutrition,
@@ -641,17 +771,16 @@ export default function RecipeFormPage() {
           </div>
         </div>
 
-        {/* Keywords */}
+        {/* Tags */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Keywords</label>
-          <input
-            type="text"
-            value={form.keywords}
-            onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
-            placeholder="italian, pasta, dinner"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tags</label>
+          <TagPicker
+            tags={form.keywords}
+            onChange={(kws) => setForm((f) => ({ ...f, keywords: kws }))}
+            suggestions={keywordSuggestions}
+            placeholder="Add tags… (e.g. italian, pasta)"
           />
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Comma-separated</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Press Enter or comma to add · Backspace to remove last</p>
         </div>
 
         {/* Category & Cuisine */}

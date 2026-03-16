@@ -1,4 +1,11 @@
 import type { Recipe, Ingredient, HowToStep } from '../types'
+import {
+  validateImportUrl,
+  URL_VALIDATION_MESSAGES,
+  checkImportRateLimit,
+  formatRetryAfter,
+  sanitizeRecipeData,
+} from './validation'
 
 export interface ExtractedRecipe {
   name: string
@@ -72,11 +79,26 @@ export async function extractRecipeFromUrl(
   url: string,
   apiKey: string
 ): Promise<ScrapeResult> {
+  // Validate URL before any network request (SSRF protection)
+  const urlError = validateImportUrl(url)
+  if (urlError) {
+    return { ok: false, error: URL_VALIDATION_MESSAGES[urlError] }
+  }
+
+  // Enforce per-user rate limit before calling the AI (cost guard)
+  const rateLimit = checkImportRateLimit()
+  if (!rateLimit.allowed) {
+    const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
+    return { ok: false, error: `Too many import requests. Please wait ${wait} before trying again.` }
+  }
+
   // Best-effort page fetch (will fail for CORS-blocked social platforms)
   const pageText = await fetchPageText(url)
 
+  // Limit total message size sent to the API (request size guard)
+  const MAX_PAGE_CHARS = 12_000
   const userMessage = pageText
-    ? `URL: ${url}\n\nPage content:\n${truncate(pageText, 12000)}`
+    ? `URL: ${url}\n\nPage content:\n${truncate(pageText, MAX_PAGE_CHARS)}`
     : `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
 
   let raw: string
@@ -146,7 +168,8 @@ export async function extractRecipeFromUrl(
     return { ok: false, error: 'No recipe found at this URL.' }
   }
 
-  return { ok: true, recipe }
+  // Sanitize all extracted fields before returning to the caller
+  return { ok: true, recipe: sanitizeRecipeData(recipe) }
 }
 
 function normaliseIngredients(raw: unknown): Ingredient[] {

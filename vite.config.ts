@@ -79,4 +79,16 @@ export default defineConfig({
   build: {
     sourcemap: true, // required for Sentry source maps
   },
+  server: {
+    headers: {
+      // Prevent the app from being embedded in iframes on other origins
+      'X-Frame-Options': 'SAMEORIGIN',
+      // Stop browsers from MIME-sniffing response content types
+      'X-Content-Type-Options': 'nosniff',
+      // Don't send referrer info to third-party URLs
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      // Restrict powerful features (camera used for recipe photo capture)
+      'Permissions-Policy': 'camera=(self), microphone=(), geolocation=()',
+    },
+  },
 })

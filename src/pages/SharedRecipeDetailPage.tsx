@@ -158,7 +158,7 @@ function CommentItem({
             {!isOwn && (
               <button
                 onClick={() =>
-                  toast.success('Report submitted. Thank you for helping keep Mise safe.')
+                  toast.success('Report submitted. Thank you for helping keep mise safe.')
                 }
                 aria-label="Report comment"
                 className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-0.5"

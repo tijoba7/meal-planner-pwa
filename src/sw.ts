@@ -78,7 +78,7 @@ self.addEventListener('push', (event: PushEvent) => {
     return
   }
 
-  const title = data.title ?? 'Mise'
+  const title = data.title ?? 'mise'
   const body = data.body ?? 'You have a new notification.'
   const url = data.url ?? '/'
 

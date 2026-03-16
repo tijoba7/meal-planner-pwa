@@ -37,9 +37,9 @@ const HELP_SECTIONS: HelpSection[] = [
     icon: <HelpCircle size={18} strokeWidth={1.75} aria-hidden="true" />,
     items: [
       {
-        question: 'What is Mise?',
+        question: 'What is mise?',
         answer:
-          'Mise ("everything in its place") is a local-first meal planning app. You can store recipes, plan your weekly meals, generate shopping lists, and track your pantry — all without an account.',
+          'mise is a social recipe platform where you can discover, cook, and share recipes with friends. Plan meals, build shopping lists, and connect with other food lovers.',
       },
       {
         question: 'Do I need to create an account?',
@@ -52,9 +52,9 @@ const HELP_SECTIONS: HelpSection[] = [
           'Use the sidebar on desktop or the bottom tab bar on mobile. Recipes is the home screen. Press ? at any time to see keyboard shortcuts.',
       },
       {
-        question: 'Can I use Mise offline?',
+        question: 'Can I use mise offline?',
         answer:
-          'Yes. Mise is a Progressive Web App (PWA) and works fully offline. You can also install it to your home screen for a native app experience.',
+          'Yes. mise is a Progressive Web App (PWA) and works fully offline. You can also install it to your home screen for a native app experience.',
       },
     ],
   },
@@ -71,7 +71,7 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: 'Can I import recipes from a website?',
         answer:
-          'Yes — use Recipes → Import URL. Paste a recipe URL and Mise will attempt to extract the recipe automatically. This requires an AI API key configured in Settings.',
+          'Yes — use Recipes → Import URL. Paste a recipe URL and mise will attempt to extract the recipe automatically. This requires an AI API key configured in Settings.',
       },
       {
         question: 'How do I organise recipes into collections?',
@@ -86,7 +86,7 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: 'How do dietary tags work?',
         answer:
-          "You can tag each recipe with dietary labels (vegan, gluten-free, etc). Go to Settings → Dietary preferences to set your household's needs — Mise will then highlight any mismatches when you plan meals.",
+          "You can tag each recipe with dietary labels (vegan, gluten-free, etc). Go to Settings → Dietary preferences to set your household's needs — mise will then highlight any mismatches when you plan meals.",
       },
     ],
   },
@@ -113,7 +113,7 @@ const HELP_SECTIONS: HelpSection[] = [
       {
         question: 'How do I generate a shopping list from my plan?',
         answer:
-          'On the Meal Plan page, tap "Generate shopping list". Mise combines all ingredient quantities for the week and creates a list on the Shopping page, grouped by category.',
+          'On the Meal Plan page, tap "Generate shopping list". mise combines all ingredient quantities for the week and creates a list on the Shopping page, grouped by category.',
       },
     ],
   },
@@ -190,7 +190,7 @@ const HELP_SECTIONS: HelpSection[] = [
     items: [
       {
         question: 'App version',
-        answer: 'Mise v1.0.0',
+        answer: 'mise v1.0.0',
       },
       {
         question: 'What does "local-first" mean?',

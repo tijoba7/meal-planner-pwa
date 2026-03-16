@@ -27,13 +27,11 @@ export default function AdminLayout() {
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
-        <div className="flex items-center justify-center lg:block px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-xl font-bold text-green-700 dark:text-green-400 lg:hidden" aria-hidden="true">
-            M
-          </span>
+        <div className="flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+          <img src="/favicon.svg" alt="mise" className="w-8 h-8 rounded-lg" />
           <div className="hidden lg:block">
-            <h1 className="text-xl font-bold text-green-700 dark:text-green-400">Mise</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Admin Panel</p>
+            <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-0.5">Admin Panel</p>
           </div>
         </div>
 

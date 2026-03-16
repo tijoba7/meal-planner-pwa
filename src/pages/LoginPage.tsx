@@ -70,7 +70,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <span className="text-5xl select-none block mb-2" role="img" aria-label="Mise logo">🍲</span>
+          <img src="/favicon.svg" alt="mise" className="w-16 h-16 rounded-2xl mx-auto mb-2" />
           <h1 className="text-3xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
           <p className="text-gray-400 dark:text-gray-500 mt-1 text-sm tracking-wide">Cook. Share. Enjoy.</p>
         </div>

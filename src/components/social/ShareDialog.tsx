@@ -21,7 +21,7 @@ const VISIBILITY_OPTIONS: VisibilityOption[] = [
     value: 'public',
     icon: Globe,
     label: 'Everyone',
-    description: 'Anyone using Mise can discover it',
+    description: 'Anyone using mise can discover it',
   },
 ]
 

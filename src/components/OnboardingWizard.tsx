@@ -148,7 +148,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in"
       role="dialog"
       aria-modal="true"
-      aria-label="Welcome to Mise"
+      aria-label="Welcome to mise"
     >
       <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col animate-scale-in">
         {/* Header */}

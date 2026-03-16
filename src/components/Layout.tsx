@@ -148,7 +148,7 @@ export default function Layout() {
       {/* Sidebar — icon-only on tablet (md), full labels on desktop (lg+) */}
       <aside className="print:hidden hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
         <div className="flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-2xl select-none" role="img" aria-label="Mise logo">🍲</span>
+          <img src="/favicon.svg" alt="mise" className="w-8 h-8 rounded-lg" />
           <div className="hidden lg:block">
             <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-0.5 tracking-wide uppercase">
@@ -281,7 +281,7 @@ export default function Layout() {
       {/* Mobile header */}
       <header className="print:hidden md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xl select-none" role="img" aria-label="Mise logo">🍲</span>
+          <img src="/favicon.svg" alt="mise" className="w-7 h-7 rounded-lg" />
           <h1 className="text-lg font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
         </div>
         {user ? (

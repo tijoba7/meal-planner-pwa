@@ -427,6 +427,34 @@ export type Database = {
           }
         ]
       }
+      friend_invites: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token?: string
+          expires_at?: string
+          created_at?: string
+        }
+        Update: {
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'friend_invites_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
@@ -471,6 +499,7 @@ export type HouseholdInvitationStatus = Database['public']['Enums']['household_i
 export type Household = Tables<'households'>
 export type HouseholdMember = Tables<'household_members'>
 export type HouseholdInvitation = Tables<'household_invitations'>
+export type FriendInvite = Tables<'friend_invites'>
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 

@@ -19,6 +19,8 @@ import SignUpPage from './pages/SignUpPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import ProfilePage from './pages/ProfilePage'
 import PublicProfilePage from './pages/PublicProfilePage'
+import FriendsPage from './pages/FriendsPage'
+import InvitePage from './pages/InvitePage'
 import DiscoverPage from './pages/DiscoverPage'
 import SharedRecipeDetailPage from './pages/SharedRecipeDetailPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -50,6 +52,8 @@ export default function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="users/:userId" element={<PublicProfilePage />} />
+            <Route path="friends" element={<FriendsPage />} />
+            <Route path="invite/:token" element={<InvitePage />} />
             <Route path="discover" element={<DiscoverPage />} />
             <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
             <Route path="*" element={<NotFoundPage />} />

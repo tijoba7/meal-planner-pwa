@@ -1,8 +1,10 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { Camera, Check, Loader2, Pencil, Sparkles, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Camera, Check, Loader2, Pencil, Sparkles, X, Users, Link2, Copy, RefreshCw } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useProfile } from '../contexts/ProfileContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Avatar } from '../components/ProfileCard'
+import { getFriendCount, getOrCreateInviteLink, revokeInviteLink } from '../lib/friendshipService'
 
 const DIETARY_OPTIONS = [
   'Vegetarian',
@@ -34,6 +36,42 @@ export default function ProfilePage() {
   const [dietary, setDietary] = useState<string[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Social stats
+  const [friendCount, setFriendCount] = useState(0)
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    getFriendCount(user.id).then(setFriendCount)
+  }, [user])
+
+  async function handleGetInviteLink() {
+    if (!user) return
+    setInviteLoading(true)
+    const { token } = await getOrCreateInviteLink(user.id)
+    setInviteToken(token)
+    setInviteLoading(false)
+  }
+
+  async function handleRevokeInvite() {
+    if (!user) return
+    setInviteLoading(true)
+    await revokeInviteLink(user.id)
+    setInviteToken(null)
+    setInviteLoading(false)
+  }
+
+  function handleCopyInvite() {
+    if (!inviteToken) return
+    const url = `${window.location.origin}/invite/${inviteToken}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   // Detect "fresh" profile (trigger created it with just email prefix, no bio/avatar)
   const isNewProfile =
@@ -126,6 +164,8 @@ export default function ProfilePage() {
     )
   }
 
+  const inviteUrl = inviteToken ? `${window.location.origin}/invite/${inviteToken}` : null
+
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
       {/* Onboarding banner */}
@@ -174,6 +214,15 @@ export default function ProfilePage() {
         <div className="text-center">
           <p className="text-xs text-gray-400 dark:text-gray-500">{user.email}</p>
         </div>
+        {/* Friend count */}
+        <Link
+          to="/friends"
+          className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-green-700 dark:hover:text-green-400 transition-colors"
+        >
+          <Users size={14} strokeWidth={1.75} />
+          <span className="font-medium">{friendCount}</span>
+          <span className="text-gray-400 dark:text-gray-500">{friendCount === 1 ? 'friend' : 'friends'}</span>
+        </Link>
       </div>
 
       {/* Profile info / edit form */}
@@ -299,6 +348,56 @@ export default function ProfilePage() {
           )}
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+          {/* Invite link section */}
+          <div className="border-t border-gray-100 dark:border-gray-700 pt-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <Link2 size={12} strokeWidth={1.75} />
+              Invite link
+            </p>
+            {!inviteToken ? (
+              <button
+                onClick={handleGetInviteLink}
+                disabled={inviteLoading}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                {inviteLoading ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Link2 size={13} strokeWidth={1.75} />
+                )}
+                Generate invite link
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <p className="flex-1 text-xs text-gray-500 dark:text-gray-400 truncate font-mono">
+                    {inviteUrl}
+                  </p>
+                  <button
+                    onClick={handleCopyInvite}
+                    title="Copy link"
+                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                  >
+                    {copied ? <Check size={12} strokeWidth={2} /> : <Copy size={12} strokeWidth={1.75} />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <button
+                  onClick={handleRevokeInvite}
+                  disabled={inviteLoading}
+                  className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors disabled:opacity-50"
+                >
+                  {inviteLoading ? (
+                    <Loader2 size={11} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={11} strokeWidth={1.75} />
+                  )}
+                  Revoke link
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

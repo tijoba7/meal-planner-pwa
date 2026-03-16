@@ -23,6 +23,8 @@ interface FormState {
   ingredients: Ingredient[]
   instructions: string[]
   keywords: string
+  recipeCategory: string
+  recipeCuisine: string
   nutritionCalories: string
   nutritionProtein: string
   nutritionFat: string
@@ -39,6 +41,8 @@ const emptyForm: FormState = {
   ingredients: [{ name: '', amount: 1, unit: '' }],
   instructions: [''],
   keywords: '',
+  recipeCategory: '',
+  recipeCuisine: '',
   nutritionCalories: '',
   nutritionProtein: '',
   nutritionFat: '',
@@ -213,6 +217,23 @@ export default function RecipeFormPage() {
   const [saving, setSaving] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const ingredientSuggestions = useIngredientSuggestions()
+  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([])
+  const [cuisineSuggestions, setCuisineSuggestions] = useState<string[]>([])
+  const categoryListId = useId()
+  const cuisineListId = useId()
+
+  useEffect(() => {
+    getRecipes().then((rs) => {
+      const cats = new Set<string>()
+      const cuis = new Set<string>()
+      for (const r of rs) {
+        if (r.recipeCategory?.trim()) cats.add(r.recipeCategory.trim())
+        if (r.recipeCuisine?.trim()) cuis.add(r.recipeCuisine.trim())
+      }
+      setCategorySuggestions([...cats].sort())
+      setCuisineSuggestions([...cuis].sort())
+    })
+  }, [])
 
   // ── Image state ─────────────────────────────────────────────────────────────
   // `pendingFile`    – file selected by the user, not yet uploaded
@@ -243,6 +264,8 @@ export default function RecipeFormPage() {
         ingredients: recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [{ name: '', amount: 1, unit: '' }],
         instructions: recipe.recipeInstructions.length > 0 ? recipe.recipeInstructions.map((s) => s.text) : [''],
         keywords: recipe.keywords.join(', '),
+        recipeCategory: recipe.recipeCategory ?? '',
+        recipeCuisine: recipe.recipeCuisine ?? '',
         nutritionCalories: parseNutritionFormValue(recipe.nutrition?.calories),
         nutritionProtein: parseNutritionFormValue(recipe.nutrition?.proteinContent),
         nutritionFat: parseNutritionFormValue(recipe.nutrition?.fatContent),
@@ -402,6 +425,8 @@ export default function RecipeFormPage() {
         .split(',')
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean),
+      recipeCategory: form.recipeCategory.trim() || undefined,
+      recipeCuisine: form.recipeCuisine.trim() || undefined,
       nutrition,
       image: imageUrl,
       imageThumbnailUrl: thumbnailUrl,
@@ -627,6 +652,38 @@ export default function RecipeFormPage() {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Comma-separated</p>
+        </div>
+
+        {/* Category & Cuisine */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Category</label>
+            <input
+              type="text"
+              list={categoryListId}
+              value={form.recipeCategory}
+              onChange={(e) => setForm((f) => ({ ...f, recipeCategory: e.target.value }))}
+              placeholder="e.g. Dinner"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+            />
+            <datalist id={categoryListId}>
+              {categorySuggestions.map((c) => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cuisine</label>
+            <input
+              type="text"
+              list={cuisineListId}
+              value={form.recipeCuisine}
+              onChange={(e) => setForm((f) => ({ ...f, recipeCuisine: e.target.value }))}
+              placeholder="e.g. Italian"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+            />
+            <datalist id={cuisineListId}>
+              {cuisineSuggestions.map((c) => <option key={c} value={c} />)}
+            </datalist>
+          </div>
         </div>
 
         {/* Nutrition */}

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronDown, ChevronRight } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
-import type { ShoppingList, ShoppingItem, MealPlan, Recipe } from '../types'
+import type { ShoppingList, ShoppingItem, MealPlan, Recipe, IngredientCategory } from '../types'
 import { normalizeMealSlot } from '../types'
 import {
   getShoppingLists,
@@ -16,6 +16,7 @@ import {
   getMealPlans,
   getRecipes,
 } from '../lib/db'
+import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
 
 function toISODate(date: Date): string {
   return date.toISOString().slice(0, 10)
@@ -80,7 +81,169 @@ function aggregateIngredients(
     ...item,
     amount: Math.round(item.amount * 100) / 100,
     checked: false,
+    category: categorizeIngredient(item.name),
   }))
+}
+
+/** Group items by category, preserving display order. */
+function groupByCategory(items: ShoppingItem[]): Array<[IngredientCategory, ShoppingItem[]]> {
+  const map = new Map<IngredientCategory, ShoppingItem[]>()
+  for (const cat of ALL_CATEGORIES) map.set(cat, [])
+  for (const item of items) {
+    const cat = item.category ?? 'Other'
+    map.get(cat)!.push(item)
+  }
+  return Array.from(map.entries()).filter(([, list]) => list.length > 0)
+}
+
+const CATEGORY_COLORS: Record<IngredientCategory, string> = {
+  Produce: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  'Meat & Seafood': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+  'Dairy & Eggs': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  Bakery: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  Frozen: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
+  Pantry: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+  Other: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
+}
+
+function ItemRow({
+  item,
+  onToggle,
+  onRemove,
+  onCategoryChange,
+}: {
+  item: ShoppingItem
+  onToggle: () => void
+  onRemove: () => void
+  onCategoryChange: (cat: IngredientCategory) => void
+}) {
+  const [editingCat, setEditingCat] = useState(false)
+  const cat = item.category ?? 'Other'
+
+  return (
+    <div className="flex items-center px-4 py-3 gap-3">
+      <button
+        onClick={onToggle}
+        className={`w-5 h-5 rounded border-2 shrink-0 transition-colors ${
+          item.checked
+            ? 'border-green-500 bg-green-500 flex items-center justify-center text-white text-xs'
+            : 'border-gray-300 dark:border-gray-600 hover:border-green-500'
+        }`}
+        aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
+      >
+        {item.checked && <>&#10003;</>}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <span
+          className={`text-sm ${item.checked ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-800 dark:text-gray-100'}`}
+        >
+          {item.name}
+        </span>
+        {!item.checked && (
+          <div className="mt-0.5">
+            {editingCat ? (
+              <select
+                value={cat}
+                autoFocus
+                onChange={(e) => {
+                  onCategoryChange(e.target.value as IngredientCategory)
+                  setEditingCat(false)
+                }}
+                onBlur={() => setEditingCat(false)}
+                className="text-xs border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500"
+              >
+                {ALL_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <button
+                onClick={() => setEditingCat(true)}
+                className={`text-xs px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[cat]} hover:opacity-80 transition-opacity`}
+                title="Tap to change category"
+              >
+                {cat}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <span
+        className={`text-xs shrink-0 ${item.checked ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}`}
+      >
+        {item.amount} {item.unit}
+      </span>
+
+      {!item.checked && (
+        <button
+          onClick={onRemove}
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+          aria-label={`Remove ${item.name}`}
+        >
+          <X size={14} strokeWidth={2} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function CategorySection({
+  category,
+  items,
+  onToggle,
+  onRemove,
+  onCategoryChange,
+}: {
+  category: IngredientCategory
+  items: ShoppingItem[]
+  onToggle: (id: string) => void
+  onRemove: (id: string) => void
+  onCategoryChange: (id: string, cat: IngredientCategory) => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const allChecked = items.every((i) => i.checked)
+
+  return (
+    <div className="mb-4">
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full flex items-center gap-1.5 mb-1.5"
+      >
+        {collapsed ? (
+          <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+        ) : (
+          <ChevronDown size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+        )}
+        <span
+          className={`text-xs font-semibold uppercase tracking-wider ${allChecked ? 'text-gray-300 dark:text-gray-600 line-through' : 'text-gray-500 dark:text-gray-400'}`}
+        >
+          {category}
+        </span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">
+          ({items.filter((i) => !i.checked).length}/{items.length})
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {items.map((item, i) => (
+            <div key={item.id} className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}>
+              <ItemRow
+                item={item}
+                onToggle={() => onToggle(item.id)}
+                onRemove={() => onRemove(item.id)}
+                onCategoryChange={(cat) => onCategoryChange(item.id, cat)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function ShoppingListPage() {
@@ -90,7 +253,6 @@ export default function ShoppingListPage() {
   const [activeList, setActiveList] = useState<ShoppingList | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
-  // Create-form state
   const [startDate, setStartDate] = useState(() => toISODate(getMonday(new Date())))
   const [endDate, setEndDate] = useState(() => {
     const sun = getMonday(new Date())
@@ -153,19 +315,6 @@ export default function ShoppingListPage() {
 
   const handleToggle = async (itemId: string) => {
     if (!activeListId) return
-    const isChecking = activeList?.items.find((i) => i.id === itemId)?.checked === false
-    if (isChecking) {
-      setJustChecked((prev) => new Set([...prev, itemId]))
-      setTimeout(
-        () =>
-          setJustChecked((prev) => {
-            const next = new Set(prev)
-            next.delete(itemId)
-            return next
-          }),
-        300
-      )
-    }
     await toggleShoppingItem(activeListId, itemId)
     const updated = await getShoppingList(activeListId)
     setActiveList(updated ?? null)
@@ -201,12 +350,21 @@ export default function ShoppingListPage() {
     })
   }
 
-  // ─── Detail view ───────────────────────────────────────────────────────────
+  const handleCategoryChange = async (itemId: string, newCat: IngredientCategory) => {
+    if (!activeList) return
+    const items = activeList.items.map((i) => (i.id === itemId ? { ...i, category: newCat } : i))
+    await updateShoppingList(activeList.id, { items })
+    const updated = await getShoppingList(activeList.id)
+    setActiveList(updated ?? null)
+  }
+
+  // --- Detail view ---
   if (activeList) {
     const unchecked = activeList.items.filter((i) => !i.checked)
     const checked = activeList.items.filter((i) => i.checked)
     const total = activeList.items.length
     const doneCount = checked.length
+    const uncheckedGroups = groupByCategory(unchecked)
 
     return (
       <div className="p-4 max-w-2xl mx-auto">
@@ -226,7 +384,6 @@ export default function ShoppingListPage() {
           </div>
         </div>
 
-        {/* Progress bar */}
         {total > 0 && (
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-6">
             <div
@@ -244,62 +401,31 @@ export default function ShoppingListPage() {
           />
         )}
 
-        {/* Unchecked items */}
-        {unchecked.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-4">
-            {unchecked.map((item, i) => (
-              <div
-                key={item.id}
-                className={`flex items-center px-4 py-3 gap-3 ${i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}`}
-              >
-                <button
-                  onClick={() => handleToggle(item.id)}
-                  className="w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-600 shrink-0 hover:border-green-500 transition-colors"
-                  aria-label={`Check ${item.name}`}
-                />
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-gray-800 dark:text-gray-100">{item.name}</span>
-                </div>
-                <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                  {item.amount} {item.unit}
-                </span>
-                <button
-                  onClick={() => handleRemoveItem(item.id)}
-                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
-                  aria-label={`Remove ${item.name}`}
-                >
-                  <X size={14} strokeWidth={2} aria-hidden="true" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {uncheckedGroups.map(([cat, items]) => (
+          <CategorySection
+            key={cat}
+            category={cat}
+            items={items}
+            onToggle={handleToggle}
+            onRemove={handleRemoveItem}
+            onCategoryChange={handleCategoryChange}
+          />
+        ))}
 
-        {/* Checked items */}
         {checked.length > 0 && (
           <>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">
               Checked off
             </p>
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               {checked.map((item, i) => (
-                <div
-                  key={item.id}
-                  className={`flex items-center px-4 py-3 gap-3 ${i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}`}
-                >
-                  <button
-                    onClick={() => handleToggle(item.id)}
-                    className="w-5 h-5 rounded border-2 border-green-500 bg-green-500 shrink-0 flex items-center justify-center text-white text-xs"
-                    aria-label={`Uncheck ${item.name}`}
-                  >
-                    &#10003;
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-400 dark:text-gray-500 line-through">{item.name}</span>
-                  </div>
-                  <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">
-                    {item.amount} {item.unit}
-                  </span>
+                <div key={item.id} className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}>
+                  <ItemRow
+                    item={item}
+                    onToggle={() => handleToggle(item.id)}
+                    onRemove={() => handleRemoveItem(item.id)}
+                    onCategoryChange={(cat) => handleCategoryChange(item.id, cat)}
+                  />
                 </div>
               ))}
             </div>
@@ -309,7 +435,7 @@ export default function ShoppingListPage() {
     )
   }
 
-  // ─── List view ─────────────────────────────────────────────────────────────
+  // --- List view ---
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -360,7 +486,7 @@ export default function ShoppingListPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{list.name}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{' '}
+                      {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{" "}
                       {formatDate(list.createdAt.slice(0, 10))}
                     </p>
                   </div>
@@ -388,7 +514,6 @@ export default function ShoppingListPage() {
         })}
       </div>
 
-      {/* Create shopping list modal */}
       {showCreate && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"

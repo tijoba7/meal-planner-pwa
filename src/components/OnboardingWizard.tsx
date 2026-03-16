@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookOpen, CalendarDays, ShoppingCart, Utensils, X } from 'lucide-react'
 import { createRecipe } from '../lib/db'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 const STORAGE_KEY = 'mise_onboarding_done'
 
@@ -88,6 +89,8 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
 
   function dismiss() {
     markOnboardingDone()
@@ -129,6 +132,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
@@ -138,10 +142,11 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-0">
           {/* Progress dots */}
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
             {STEPS.map((_, i) => (
               <span
                 key={i}
+                aria-hidden="true"
                 className={`block w-2 h-2 rounded-full transition-colors ${
                   i === step
                     ? 'bg-green-600'

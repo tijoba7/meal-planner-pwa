@@ -78,6 +78,11 @@ export default function MigrationPrompt() {
             </div>
             <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
+                role="progressbar"
+                aria-valuenow={Math.round((progress.done / progress.total) * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Migration progress"
                 className="h-full bg-green-500 rounded-full transition-all duration-300"
                 style={{ width: `${(progress.done / progress.total) * 100}%` }}
               />

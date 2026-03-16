@@ -84,6 +84,7 @@ export default function RecipesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const searchRef = useRef<HTMLInputElement>(null)
 
   useKeyboardShortcuts({
@@ -102,6 +103,14 @@ export default function RecipesPage() {
     const set = new Set<string>()
     for (const r of recipes) {
       if (r.recipeCuisine?.trim()) set.add(r.recipeCuisine.trim())
+    }
+    return [...set].sort()
+  }, [recipes])
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of recipes) {
+      for (const kw of r.keywords) if (kw.trim()) set.add(kw.trim().toLowerCase())
     }
     return [...set].sort()
   }, [recipes])
@@ -136,6 +145,7 @@ export default function RecipesPage() {
       if (showFavoritesOnly && !r.isFavorite) return false
       if (selectedCategories.length > 0 && !selectedCategories.includes(r.recipeCategory?.trim() ?? '')) return false
       if (selectedCuisines.length > 0 && !selectedCuisines.includes(r.recipeCuisine?.trim() ?? '')) return false
+      if (selectedTags.length > 0 && !selectedTags.every((tag) => r.keywords.includes(tag))) return false
       if (!query.trim()) return true
       const q = query.toLowerCase()
       return (
@@ -242,7 +252,7 @@ export default function RecipesPage() {
 
       {/* Cuisine filter chips */}
       {allCuisines.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-2 scrollbar-hide">
           <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Cuisine</span>
           {allCuisines.map((cui) => (
             <button
@@ -262,6 +272,28 @@ export default function RecipesPage() {
         </div>
       )}
 
+      {/* Tag filter chips */}
+      {allTags.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Tags</span>
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTags((prev) =>
+                prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+              )}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                selectedTags.includes(tag)
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <ul className="space-y-3" aria-busy="true" aria-label="Loading recipes">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -276,12 +308,12 @@ export default function RecipesPage() {
             description="Tap the heart on any recipe to save it here."
             action={{ label: 'Browse all recipes', onClick: () => setShowFavoritesOnly(false) }}
           />
-        ) : selectedCategories.length > 0 || selectedCuisines.length > 0 ? (
+        ) : selectedCategories.length > 0 || selectedCuisines.length > 0 || selectedTags.length > 0 ? (
           <EmptyState
             illustration={<SearchNoResultsIllustration />}
             title="No recipes found"
-            description="No recipes match the selected category or cuisine."
-            action={{ label: 'Clear filters', onClick: () => { setSelectedCategories([]); setSelectedCuisines([]) } }}
+            description="No recipes match the selected filters."
+            action={{ label: 'Clear filters', onClick: () => { setSelectedCategories([]); setSelectedCuisines([]); setSelectedTags([]) } }}
           />
         ) : query ? (
           <EmptyState
@@ -300,11 +332,15 @@ export default function RecipesPage() {
         )
       ) : (
         <ul className="space-y-3" aria-live="polite">
-          {filtered.map((recipe) => {
+          {filtered.map((recipe, index) => {
             const prepMins = durationToMinutes(recipe.prepTime)
             const cookMins = durationToMinutes(recipe.cookTime)
             return (
-              <li key={recipe.id} className="relative">
+              <li
+                key={recipe.id}
+                className="relative animate-fade-in-up"
+                style={{ animationDelay: `${Math.min(index * 40, 200)}ms` }}
+              >
                 <Link
                   to={`/recipes/${recipe.id}`}
                   className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"

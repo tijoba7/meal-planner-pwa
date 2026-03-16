@@ -66,12 +66,22 @@ export interface MealPlan {
   householdId?: string
 }
 
+export type IngredientCategory =
+  | 'Produce'
+  | 'Meat & Seafood'
+  | 'Dairy & Eggs'
+  | 'Bakery'
+  | 'Frozen'
+  | 'Pantry'
+  | 'Other'
+
 export interface ShoppingItem {
   id: string
   name: string
   amount: number
   unit: string
   checked: boolean
+  category?: IngredientCategory
 }
 
 export interface ShoppingList {

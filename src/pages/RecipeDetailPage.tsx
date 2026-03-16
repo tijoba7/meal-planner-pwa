@@ -512,6 +512,7 @@ export default function RecipeDetailPage() {
                 <button
                   key={value}
                   onClick={() => setSelectedVisibility(value)}
+                  aria-pressed={selectedVisibility === value}
                   className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
                     selectedVisibility === value
                       ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
@@ -547,6 +548,8 @@ export default function RecipeDetailPage() {
                         key={group.id}
                         onClick={() => handleGroupToggle(group.id, shared)}
                         disabled={busy || sharing}
+                        aria-pressed={shared}
+                        aria-label={`${shared ? 'Remove from' : 'Share to'} ${group.name}`}
                         className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-colors disabled:opacity-50 ${
                           shared
                             ? 'border-green-500 bg-green-50 dark:bg-green-900/20'

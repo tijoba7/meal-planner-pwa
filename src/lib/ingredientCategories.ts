@@ -1,0 +1,115 @@
+import type { IngredientCategory } from '../types'
+
+/**
+ * Keyword-based ingredient categorization.
+ * Categories are checked in order; first match wins.
+ */
+const CATEGORY_KEYWORDS: Array<[IngredientCategory, string[]]> = [
+  [
+    'Frozen',
+    ['frozen', 'ice cream', 'sorbet', 'gelato', 'popsicle', 'edamame frozen'],
+  ],
+  [
+    'Produce',
+    [
+      'apple', 'apples', 'banana', 'bananas', 'lemon', 'lemons', 'lime', 'limes',
+      'orange', 'oranges', 'grapefruit', 'tomato', 'tomatoes', 'potato', 'potatoes',
+      'sweet potato', 'yam', 'onion', 'onions', 'garlic', 'shallot', 'leek', 'scallion',
+      'green onion', 'carrot', 'carrots', 'celery', 'lettuce', 'spinach', 'kale',
+      'arugula', 'chard', 'collard', 'cabbage', 'cucumber', 'zucchini', 'squash',
+      'pumpkin', 'pepper', 'peppers', 'jalapeño', 'serrano', 'habanero',
+      'mushroom', 'mushrooms', 'broccoli', 'cauliflower', 'corn', 'peas',
+      'green beans', 'asparagus', 'avocado', 'avocados', 'mango', 'mangoes',
+      'pineapple', 'watermelon', 'cantaloupe', 'honeydew', 'peach', 'peaches',
+      'pear', 'pears', 'plum', 'plums', 'cherry', 'cherries', 'grape', 'grapes',
+      'strawberry', 'strawberries', 'blueberry', 'blueberries', 'raspberry', 'raspberries',
+      'blackberry', 'blackberries', 'cranberry', 'cranberries', 'berry', 'berries',
+      'basil', 'cilantro', 'parsley', 'mint', 'rosemary', 'thyme', 'sage', 'dill',
+      'chive', 'chives', 'ginger', 'beet', 'beets', 'radish', 'turnip', 'fennel',
+      'artichoke', 'eggplant', 'edamame', 'bok choy', 'brussel sprout',
+    ],
+  ],
+  [
+    'Meat & Seafood',
+    [
+      'chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'veal', 'venison', 'bison',
+      'salmon', 'tuna', 'shrimp', 'crab', 'lobster', 'scallop', 'clam', 'mussel',
+      'oyster', 'sausage', 'bacon', 'ham', 'prosciutto', 'salami', 'pepperoni',
+      'ground beef', 'ground turkey', 'ground pork', 'steak', 'chop', 'roast',
+      'fillet', 'filet', 'tenderloin', 'brisket', 'rib', 'ribs', 'wing', 'wings',
+      'thigh', 'breast', 'drumstick', 'cod', 'tilapia', 'halibut', 'mahi',
+      'anchovy', 'anchovies', 'sardine', 'sardines', 'fish', 'seafood', 'meat',
+      'chorizo', 'pancetta', 'lardons', 'hot dog', 'bratwurst',
+    ],
+  ],
+  [
+    'Dairy & Eggs',
+    [
+      'milk', 'cream', 'heavy cream', 'whipping cream', 'half and half',
+      'butter', 'ghee', 'cheese', 'cheddar', 'mozzarella', 'parmesan', 'brie',
+      'feta', 'gouda', 'provolone', 'ricotta', 'cottage cheese', 'cream cheese',
+      'yogurt', 'sour cream', 'kefir', 'buttermilk', 'egg', 'eggs',
+    ],
+  ],
+  [
+    'Bakery',
+    [
+      'bread', 'sourdough', 'baguette', 'roll', 'rolls', 'bun', 'buns', 'bagel',
+      'bagels', 'croissant', 'muffin', 'muffins', 'pita', 'naan', 'flatbread',
+      'brioche', 'focaccia',
+    ],
+  ],
+  [
+    'Pantry',
+    [
+      'flour', 'sugar', 'brown sugar', 'powdered sugar', 'salt', 'pepper',
+      'olive oil', 'vegetable oil', 'canola oil', 'coconut oil', 'sesame oil', 'oil',
+      'vinegar', 'balsamic', 'apple cider vinegar',
+      'pasta', 'spaghetti', 'penne', 'rigatoni', 'fettuccine', 'linguine', 'noodle', 'noodles',
+      'rice', 'quinoa', 'lentil', 'lentils', 'bean', 'beans', 'chickpea', 'chickpeas',
+      'black bean', 'kidney bean', 'oat', 'oats', 'oatmeal', 'cereal', 'granola',
+      'canned', 'tomato sauce', 'tomato paste', 'diced tomato', 'crushed tomato',
+      'broth', 'stock', 'bouillon',
+      'soy sauce', 'fish sauce', 'worcestershire', 'hot sauce', 'sriracha',
+      'ketchup', 'mustard', 'mayo', 'mayonnaise', 'relish',
+      'dressing', 'ranch', 'vinaigrette',
+      'syrup', 'maple syrup', 'honey', 'jam', 'jelly', 'marmalade', 'peanut butter',
+      'almond butter', 'tahini', 'nutella',
+      'almond', 'almonds', 'cashew', 'cashews', 'walnut', 'walnuts', 'pecan', 'pecans',
+      'pistachio', 'pistachios', 'peanut', 'peanuts', 'sunflower seed', 'pumpkin seed',
+      'sesame', 'chia', 'flax',
+      'baking powder', 'baking soda', 'yeast', 'cornstarch', 'arrowroot',
+      'chocolate', 'cocoa', 'vanilla', 'extract',
+      'cumin', 'paprika', 'turmeric', 'chili powder', 'cinnamon', 'nutmeg',
+      'oregano', 'bay leaf', 'curry', 'allspice', 'cardamom', 'clove', 'cloves',
+      'cayenne', 'garlic powder', 'onion powder', 'smoked paprika', 'spice', 'spices',
+      'cracker', 'crackers', 'chip', 'chips', 'tortilla chip',
+      'coconut milk', 'coconut cream', 'coconut',
+      'coffee', 'tea', 'juice', 'broth', 'wine', 'beer', 'water',
+    ],
+  ],
+]
+
+/**
+ * Returns the grocery department category for the given ingredient name.
+ * Uses keyword matching; falls back to 'Other'.
+ */
+export function categorizeIngredient(name: string): IngredientCategory {
+  const lower = name.toLowerCase()
+  for (const [category, keywords] of CATEGORY_KEYWORDS) {
+    for (const kw of keywords) {
+      if (lower.includes(kw)) return category
+    }
+  }
+  return 'Other'
+}
+
+export const ALL_CATEGORIES: IngredientCategory[] = [
+  'Produce',
+  'Meat & Seafood',
+  'Dairy & Eggs',
+  'Bakery',
+  'Frozen',
+  'Pantry',
+  'Other',
+]

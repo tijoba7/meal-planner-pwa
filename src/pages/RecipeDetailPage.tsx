@@ -172,6 +172,15 @@ export default function RecipeDetailPage() {
     getCollections().then(setCollections)
   }, [showCollectionPanel])
 
+  // Estimated nutrition — computed before early returns to satisfy the Rules of Hooks.
+  // Only used when manual nutrition data is absent from the recipe.
+  const estimatedNutrition = useMemo(() => {
+    if (!recipe || hasNutrition(recipe.nutrition)) return null
+    const servings = parseServings(recipe.recipeYield)
+    const result = calculateNutrition(recipe.recipeIngredient, servings)
+    return result ? nutritionResultToRecord(result) : null
+  }, [recipe])
+
   async function handleCollectionToggle(collectionId: string) {
     if (!id) return
     const col = collections.find((c) => c.id === collectionId)
@@ -301,13 +310,6 @@ export default function RecipeDetailPage() {
   const originalServings = parseServings(recipe.recipeYield)
   const scale = originalServings > 0 ? scaledServings / originalServings : 1
   const isScaled = scaledServings !== originalServings
-
-  // Estimated nutrition — only used when manual nutrition data is absent
-  const estimatedNutrition = useMemo(() => {
-    if (hasNutrition(recipe.nutrition)) return null
-    const result = calculateNutrition(recipe.recipeIngredient, originalServings)
-    return result ? nutritionResultToRecord(result) : null
-  }, [recipe.recipeIngredient, recipe.nutrition, originalServings])
 
   const displayNutrition = hasNutrition(recipe.nutrition) ? recipe.nutrition : estimatedNutrition
   const isEstimatedNutrition = !hasNutrition(recipe.nutrition) && estimatedNutrition !== null

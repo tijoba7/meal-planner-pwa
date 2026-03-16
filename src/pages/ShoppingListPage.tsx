@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, ChevronDown, ChevronRight, Share2, Copy, Download } from 'lucide-react'
+import { X, ChevronDown, ChevronRight, Share2, Copy, Download, Plus } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
@@ -210,11 +210,14 @@ function CategorySection({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const allChecked = items.every((i) => i.checked)
+  const uncheckedCount = items.filter((i) => !i.checked).length
 
   return (
     <div className="mb-4">
       <button
         onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        aria-label={`${category}: ${uncheckedCount} of ${items.length} items remaining`}
         className="w-full flex items-center gap-1.5 mb-1.5"
       >
         {collapsed ? (
@@ -272,7 +275,10 @@ export default function ShoppingListPage() {
   const [loading, setLoading] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
   const [showExport, setShowExport] = useState(false)
-
+  const [showAddItem, setShowAddItem] = useState(false)
+  const [newItemName, setNewItemName] = useState('')
+  const [newItemAmount, setNewItemAmount] = useState('')
+  const [newItemUnit, setNewItemUnit] = useState('')
   const reload = useCallback(async () => {
     const all = await getShoppingLists()
     setLists(all.reverse())
@@ -376,6 +382,28 @@ export default function ShoppingListPage() {
     await updateShoppingList(activeList.id, { items })
     const updated = await getShoppingList(activeList.id)
     setActiveList(updated ?? null)
+  }
+
+  const handleAddItem = async () => {
+    if (!activeList || !newItemName.trim()) return
+    const newItem: ShoppingItem = {
+      id: crypto.randomUUID(),
+      name: newItemName.trim(),
+      amount: parseFloat(newItemAmount) || 0,
+      unit: newItemUnit.trim(),
+      checked: false,
+      category: 'Other',
+    }
+    const items = [...activeList.items, newItem]
+    await updateShoppingList(activeList.id, { items })
+    const updated = await getShoppingList(activeList.id)
+    setActiveList(updated ?? null)
+    await reload()
+    setNewItemName('')
+    setNewItemAmount('')
+    setNewItemUnit('')
+    setShowAddItem(false)
+    toast.success(`"${newItem.name}" added.`)
   }
 
   // --- Detail view ---
@@ -482,6 +510,72 @@ export default function ShoppingListPage() {
             justChecked={justChecked}
           />
         ))}
+
+        {showAddItem ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+              Add item
+            </p>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem() }}
+                placeholder="Item name (e.g. paper towels)"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={newItemAmount}
+                  onChange={(e) => setNewItemAmount(e.target.value)}
+                  placeholder="Qty"
+                  min="0"
+                  step="any"
+                  className="w-20 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <input
+                  type="text"
+                  value={newItemUnit}
+                  onChange={(e) => setNewItemUnit(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddItem() }}
+                  placeholder="Unit (e.g. oz)"
+                  className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleAddItem}
+                  disabled={!newItemName.trim()}
+                  className="flex-1 bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddItem(false)
+                    setNewItemName('')
+                    setNewItemAmount('')
+                    setNewItemUnit('')
+                  }}
+                  className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAddItem(true)}
+            className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium mb-4 hover:text-green-700 dark:hover:text-green-300 transition-colors"
+          >
+            <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
+            Add item
+          </button>
+        )}
 
         {checked.length > 0 && (
           <>

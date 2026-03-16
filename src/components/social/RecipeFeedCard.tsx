@@ -88,6 +88,7 @@ export default function RecipeFeedCard({
               src={recipe.imageThumbnailUrl}
               alt={recipe.name}
               className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-200"
+              loading="lazy"
             />
           </div>
         )}

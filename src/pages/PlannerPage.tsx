@@ -94,6 +94,7 @@ function QuickPickCard({ recipe, onClick }: { recipe: Recipe; onClick: () => voi
           src={recipe.imageThumbnailUrl}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">

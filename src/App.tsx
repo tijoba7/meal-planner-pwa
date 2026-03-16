@@ -25,6 +25,7 @@ import DiscoverPage from './pages/DiscoverPage'
 import SharedRecipeDetailPage from './pages/SharedRecipeDetailPage'
 import GroupsPage from './pages/GroupsPage'
 import GroupDetailPage from './pages/GroupDetailPage'
+import NotificationsPage from './pages/NotificationsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
             <Route path="groups" element={<GroupsPage />} />
             <Route path="groups/:id" element={<GroupDetailPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 

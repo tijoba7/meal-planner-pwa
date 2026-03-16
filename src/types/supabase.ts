@@ -14,6 +14,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           dietary_preferences: string[]
+          notification_muted_types: string[]
           created_at: string
           updated_at: string
         }
@@ -23,6 +24,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           dietary_preferences?: string[]
+          notification_muted_types?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -32,6 +34,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           dietary_preferences?: string[]
+          notification_muted_types?: string[]
           updated_at?: string
         }
         Relationships: []

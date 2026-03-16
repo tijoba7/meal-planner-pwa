@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ChefHat, Copy, Heart, Share2, Globe, Users, Lock, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
-import { getRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
+import { getRecipe, createRecipe, deleteRecipe, duplicateRecipe, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
 import CookingMode from '../components/CookingMode'
 import RecipeImage from '../components/RecipeImage'
@@ -144,12 +144,22 @@ export default function RecipeDetailPage() {
   }
 
   async function handleDelete() {
-    if (!id) return
+    if (!id || !recipe) return
     setDeleting(true)
-    const name = recipe?.name ?? 'Recipe'
+    const deletedRecipe = { ...recipe }
     await deleteRecipe(id)
-    toast.success(`"${name}" deleted.`)
     navigate('/')
+    toast.success(`"${deletedRecipe.name}" deleted.`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          const { id: _id, dateCreated: _dc, dateModified: _dm, ...restData } = deletedRecipe
+          await createRecipe(restData, deletedRecipe.id)
+          navigate(`/recipes/${deletedRecipe.id}`)
+        },
+      },
+    })
   }
 
   async function handleShare() {

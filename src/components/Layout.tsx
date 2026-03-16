@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { BookOpen, CalendarDays, ShoppingCart, Settings, LogIn, LogOut, Compass, Users, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
@@ -34,6 +34,7 @@ export default function Layout() {
   const { user, signOut } = useAuth()
   const { profile } = useProfile()
   const navigate = useNavigate()
+  const location = useLocation()
   const supIsAvailable = isSupabaseAvailable()
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
   const [showShortcuts, setShowShortcuts] = useState(false)

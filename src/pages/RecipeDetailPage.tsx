@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { AlertTriangle, ChefHat, Copy, Heart, Library, MoreHorizontal, Pencil, Printer, Share2, Trash2, Globe, Users, Lock, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
@@ -27,6 +27,7 @@ import {
   removeRecipeFromGroup,
   type GroupWithMeta,
 } from '../lib/groupService'
+import { calculateNutrition, nutritionResultToRecord } from '../lib/nutritionCalculator'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
 
@@ -301,6 +302,16 @@ export default function RecipeDetailPage() {
   const scale = originalServings > 0 ? scaledServings / originalServings : 1
   const isScaled = scaledServings !== originalServings
 
+  // Estimated nutrition — only used when manual nutrition data is absent
+  const estimatedNutrition = useMemo(() => {
+    if (hasNutrition(recipe.nutrition)) return null
+    const result = calculateNutrition(recipe.recipeIngredient, originalServings)
+    return result ? nutritionResultToRecord(result) : null
+  }, [recipe.recipeIngredient, recipe.nutrition, originalServings])
+
+  const displayNutrition = hasNutrition(recipe.nutrition) ? recipe.nutrition : estimatedNutrition
+  const isEstimatedNutrition = !hasNutrition(recipe.nutrition) && estimatedNutrition !== null
+
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
       {cookingMode && (
@@ -460,7 +471,7 @@ export default function RecipeDetailPage() {
               <span
                 key={dietId}
                 title={pref.description}
-                className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full"
+                className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
               >
                 {pref.label}
               </span>
@@ -553,10 +564,15 @@ export default function RecipeDetailPage() {
       </section>
 
       {/* Nutrition */}
-      {hasNutrition(recipe.nutrition) && (
+      {displayNutrition && (
         <section className="mb-6">
-          <div className="flex items-baseline gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Nutrition</h3>
+            {isEstimatedNutrition && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                Estimated
+              </span>
+            )}
             <span className="text-xs text-gray-400 dark:text-gray-500">
               per {scaledServings} serving{scaledServings !== 1 ? 's' : ''}
             </span>
@@ -564,7 +580,7 @@ export default function RecipeDetailPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
             <div className="grid grid-cols-5 gap-2 text-center">
               {NUTRITION_FIELDS.map(({ key, label, unit }) => {
-                const base = parseNutritionValue(recipe.nutrition?.[key])
+                const base = parseNutritionValue(displayNutrition[key])
                 if (!base) return null
                 const scaled = base * scale
                 const display = scaled % 1 === 0 ? String(Math.round(scaled)) : scaled.toFixed(1)
@@ -579,6 +595,11 @@ export default function RecipeDetailPage() {
                 )
               })}
             </div>
+            {isEstimatedNutrition && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center">
+                Auto-calculated from ingredients · Manually entered values take precedence
+              </p>
+            )}
           </div>
         </section>
       )}

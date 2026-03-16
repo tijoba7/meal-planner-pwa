@@ -214,7 +214,7 @@ export default function RecipesPage() {
           </Link>
           <Link
             to="/recipes/new"
-            className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
+            className="bg-green-600 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             + Add Recipe
           </Link>
@@ -560,7 +560,7 @@ export default function RecipesPage() {
                 {/* Favorite button — outside the Link to avoid nested interactivity */}
                 <button
                   onClick={(e) => handleToggleFavorite(e, recipe.id)}
-                  aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  aria-label={recipe.isFavorite ? `Remove "${recipe.name}" from favorites` : `Add "${recipe.name}" to favorites`}
                   className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Heart

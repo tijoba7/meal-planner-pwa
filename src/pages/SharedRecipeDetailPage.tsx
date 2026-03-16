@@ -122,7 +122,7 @@ function CommentItem({
               <button
                 onClick={() => alert('Report submitted. Thank you for helping keep Mise safe.')}
                 aria-label="Report comment"
-                className="text-xs text-gray-400 dark:text-gray-500 hover:text-orange-500 dark:hover:text-orange-400 transition-colors flex items-center gap-0.5"
+                className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-0.5"
               >
                 <Flag size={12} aria-hidden="true" />
               </button>

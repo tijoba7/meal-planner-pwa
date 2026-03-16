@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { CalendarDays, BookOpen, ShoppingCart } from 'lucide-react'
 
 export default function HomePage() {
   return (
@@ -11,7 +12,9 @@ export default function HomePage() {
           to="/planner"
           className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow flex items-center gap-4"
         >
-          <span className="text-3xl">📅</span>
+          <div className="shrink-0 w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+            <CalendarDays size={24} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
+          </div>
           <div>
             <p className="font-semibold text-gray-800">Weekly Planner</p>
             <p className="text-sm text-gray-500">Plan your meals for the week</p>
@@ -22,7 +25,9 @@ export default function HomePage() {
           to="/recipes"
           className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow flex items-center gap-4"
         >
-          <span className="text-3xl">📖</span>
+          <div className="shrink-0 w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+            <BookOpen size={24} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
+          </div>
           <div>
             <p className="font-semibold text-gray-800">Recipes</p>
             <p className="text-sm text-gray-500">Browse and add your recipes</p>
@@ -33,7 +38,9 @@ export default function HomePage() {
           to="/shopping"
           className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow flex items-center gap-4"
         >
-          <span className="text-3xl">🛒</span>
+          <div className="shrink-0 w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+            <ShoppingCart size={24} strokeWidth={1.75} className="text-green-600" aria-hidden="true" />
+          </div>
           <div>
             <p className="font-semibold text-gray-800">Shopping List</p>
             <p className="text-sm text-gray-500">Auto-generated from your meal plan</p>

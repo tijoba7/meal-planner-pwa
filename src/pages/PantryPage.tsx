@@ -11,10 +11,10 @@ const UNITS = ['', 'g', 'kg', 'ml', 'L', 'tsp', 'tbsp', 'cup', 'cups', 'oz', 'lb
 const CATEGORY_COLORS: Record<IngredientCategory, string> = {
   Produce: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
   'Meat & Seafood': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  'Dairy & Eggs': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  'Dairy & Eggs': 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
   Bakery: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  Frozen: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
-  Pantry: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+  Frozen: 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300',
+  Pantry: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   Other: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
 }
 

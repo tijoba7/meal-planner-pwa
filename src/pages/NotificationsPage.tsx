@@ -37,9 +37,9 @@ function notificationIcon(type: NotificationType) {
       return <Heart size={16} className="text-red-400" />
     case 'recipe_comment':
     case 'comment_reply':
-      return <MessageCircle size={16} className="text-blue-400" />
+      return <MessageCircle size={16} className="text-gray-500" />
     case 'group_invite':
-      return <Users size={16} className="text-purple-400" />
+      return <Users size={16} className="text-green-500" />
     default:
       return <Bell size={16} className="text-gray-400" />
   }

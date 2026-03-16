@@ -103,6 +103,40 @@ function gToMetric(g: number): { amount: number; unit: string } {
   return { amount: g, unit: 'g' }
 }
 
+// ─── Base-unit helpers (used by ingredient merger) ────────────────────────────
+
+/** Convert a volume amount + unit to ml. Returns null for non-volume units. */
+export function volumeToMl(amount: number, unit: string): number | null {
+  const key = unit.toLowerCase().trim()
+  if (key in IMPERIAL_VOL_TO_ML) return amount * IMPERIAL_VOL_TO_ML[key]
+  if (key in METRIC_VOL_TO_ML) return amount * METRIC_VOL_TO_ML[key]
+  return null
+}
+
+/** Convert a weight amount + unit to grams. Returns null for non-weight units. */
+export function weightToG(amount: number, unit: string): number | null {
+  const key = unit.toLowerCase().trim()
+  if (key in IMPERIAL_WT_TO_G) return amount * IMPERIAL_WT_TO_G[key]
+  if (key in METRIC_WT_TO_G) return amount * METRIC_WT_TO_G[key]
+  return null
+}
+
+/** Convert ml back to the given volume display unit. */
+export function mlToDisplayUnit(ml: number, unit: string): number {
+  const key = unit.toLowerCase().trim()
+  if (key in IMPERIAL_VOL_TO_ML) return ml / IMPERIAL_VOL_TO_ML[key]
+  if (key in METRIC_VOL_TO_ML) return ml / METRIC_VOL_TO_ML[key]
+  return ml
+}
+
+/** Convert grams back to the given weight display unit. */
+export function gToDisplayUnit(g: number, unit: string): number {
+  const key = unit.toLowerCase().trim()
+  if (key in IMPERIAL_WT_TO_G) return g / IMPERIAL_WT_TO_G[key]
+  if (key in METRIC_WT_TO_G) return g / METRIC_WT_TO_G[key]
+  return g
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**

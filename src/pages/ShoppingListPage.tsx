@@ -20,6 +20,7 @@ import {
   getPantryItems,
 } from '../lib/db'
 import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
+import { mergeIngredients } from '../lib/ingredientMerger'
 
 // ── Autocomplete suggestion types ─────────────────────────────────────────────
 
@@ -204,8 +205,8 @@ function aggregateIngredients(
   recipesById: Map<string, Recipe>,
   pantryItems: PantryItem[] = []
 ): { items: Omit<ShoppingItem, 'id'>[]; excludedCount: number } {
-  const merged = new Map<string, { name: string; amount: number; unit: string }>()
   const pantryNames = new Set(pantryItems.map((p) => p.name.toLowerCase()))
+  const raw: { name: string; amount: number; unit: string }[] = []
 
   for (const plan of mealPlans) {
     for (const [dateKey, dayPlan] of Object.entries(plan.days)) {
@@ -219,26 +220,17 @@ function aggregateIngredients(
           const yieldNum = parseFloat(recipe.recipeYield) || 1
           const scale = entry.servings / yieldNum
           for (const ing of recipe.recipeIngredient) {
-            const key = `${ing.name.toLowerCase()}|${ing.unit.toLowerCase()}`
-            const existing = merged.get(key)
-            if (existing) {
-              existing.amount += ing.amount * scale
-            } else {
-              merged.set(key, {
-                name: ing.name,
-                amount: ing.amount * scale,
-                unit: ing.unit,
-              })
-            }
+            raw.push({ name: ing.name, amount: ing.amount * scale, unit: ing.unit })
           }
         }
       }
     }
   }
 
+  const merged = mergeIngredients(raw)
   let excludedCount = 0
   const items: Omit<ShoppingItem, 'id'>[] = []
-  for (const item of merged.values()) {
+  for (const item of merged) {
     if (pantryNames.has(item.name.toLowerCase())) {
       excludedCount++
       continue

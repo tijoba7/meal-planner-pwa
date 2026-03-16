@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, ChevronDown, ChevronRight, Share2, Copy, Download } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import { ShoppingCartIllustration, ClipboardIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
@@ -271,6 +271,7 @@ export default function ShoppingListPage() {
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
+  const [showExport, setShowExport] = useState(false)
 
   const reload = useCallback(async () => {
     const all = await getShoppingLists()
@@ -385,6 +386,46 @@ export default function ShoppingListPage() {
     const doneCount = checked.length
     const uncheckedGroups = groupByCategory(unchecked)
 
+    function formatListText(list: ShoppingList): string {
+      const items = list.items.filter((i) => !i.checked)
+      const grouped = groupByCategory(items)
+      const lines: string[] = [`Shopping List: ${list.name}`, '']
+      for (const [cat, catItems] of grouped) {
+        lines.push(cat)
+        for (const item of catItems) {
+          const qty = item.amount ? ` (${item.amount}${item.unit ? ' ' + item.unit : ''})` : ''
+          lines.push(`- ${item.name}${qty}`)
+        }
+        lines.push('')
+      }
+      return lines.join('\n').trim()
+    }
+
+    const handleCopyToClipboard = async () => {
+      const text = formatListText(activeList)
+      await navigator.clipboard.writeText(text)
+      setShowExport(false)
+      toast.success('Copied to clipboard.')
+    }
+
+    const handleShare = async () => {
+      const text = formatListText(activeList)
+      await navigator.share({ title: activeList.name, text })
+      setShowExport(false)
+    }
+
+    const handleDownload = () => {
+      const text = formatListText(activeList)
+      const blob = new Blob([text], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${activeList.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
+      a.click()
+      URL.revokeObjectURL(url)
+      setShowExport(false)
+    }
+
     return (
       <div className="p-4 max-w-2xl mx-auto">
         <button
@@ -401,6 +442,16 @@ export default function ShoppingListPage() {
               {doneCount} of {total} items checked
             </p>
           </div>
+          {total > 0 && (
+            <button
+              onClick={() => setShowExport(true)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors mt-1"
+              aria-label="Share or export list"
+            >
+              <Share2 size={16} strokeWidth={2} aria-hidden="true" />
+              Share
+            </button>
+          )}
         </div>
 
         {total > 0 && (

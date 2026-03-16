@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
   { to: '/friends', label: 'Friends', icon: Users, end: false },
   { to: '/groups', label: 'Groups', icon: UsersRound, end: false },
+  { to: '/notifications', label: 'Alerts', icon: Bell, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
 
@@ -40,6 +41,16 @@ export default function Layout() {
   const supIsAvailable = isSupabaseAvailable()
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!user || !supIsAvailable) return
+    getUnreadCount(user.id).then(setUnreadCount)
+    const unsub = subscribeToNotifications(user.id, () => {
+      setUnreadCount((c) => c + 1)
+    })
+    return unsub
+  }, [user, supIsAvailable])
 
   useKeyboardShortcuts({
     n: () => navigate('/recipes/new'),
@@ -83,7 +94,14 @@ export default function Layout() {
         <nav className="flex flex-col gap-1 p-3 flex-1">
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={sidebarLinkClass}>
-              <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
+              <div className="relative">
+                <item.icon size={16} strokeWidth={1.75} aria-hidden="true" />
+                {item.to === '/notifications' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </div>
               {item.label}
             </NavLink>
           ))}
@@ -177,7 +195,14 @@ export default function Layout() {
       <nav className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10">
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-            <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />
+            <div className="relative">
+              <item.icon size={20} strokeWidth={1.75} aria-hidden="true" />
+              {item.to === '/notifications' && unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
             {item.label}
           </NavLink>
         ))}

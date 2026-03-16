@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart } from 'lucide-react'
+import { Heart, SlidersHorizontal, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { getRecipes, toggleFavorite, durationToMinutes } from '../lib/db'
 import type { Recipe } from '../types'
@@ -25,6 +25,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ]
 
 const SORT_STORAGE_KEY = 'mise-recipe-sort'
+const MAX_COOK_TIME = 180 // slider max in minutes; at this value = no limit
 
 function getSavedSort(): SortKey {
   try {
@@ -85,7 +86,11 @@ export default function RecipesPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [showFilters, setShowFilters] = useState(false)
+  const [ingredientQuery, setIngredientQuery] = useState('')
+  const [maxCookTime, setMaxCookTime] = useState(MAX_COOK_TIME)
   const searchRef = useRef<HTMLInputElement>(null)
+  const ingredientRef = useRef<HTMLInputElement>(null)
 
   useKeyboardShortcuts({
     '/': () => { searchRef.current?.focus(); searchRef.current?.select() },
@@ -140,12 +145,43 @@ export default function RecipesPage() {
     )
   }
 
+  function clearAdvancedFilters() {
+    setSelectedCategories([])
+    setSelectedCuisines([])
+    setSelectedTags([])
+    setIngredientQuery('')
+    setMaxCookTime(MAX_COOK_TIME)
+  }
+
+  function clearAllFilters() {
+    clearAdvancedFilters()
+    setQuery('')
+    setShowFavoritesOnly(false)
+  }
+
+  const activeFilterCount =
+    selectedCategories.length +
+    selectedCuisines.length +
+    selectedTags.length +
+    (ingredientQuery.trim() ? 1 : 0) +
+    (maxCookTime < MAX_COOK_TIME ? 1 : 0)
+
+  const hasAnyFilter = activeFilterCount > 0 || showFavoritesOnly || !!query.trim()
+
   const filtered = sortRecipes(
     recipes.filter((r) => {
       if (showFavoritesOnly && !r.isFavorite) return false
       if (selectedCategories.length > 0 && !selectedCategories.includes(r.recipeCategory?.trim() ?? '')) return false
       if (selectedCuisines.length > 0 && !selectedCuisines.includes(r.recipeCuisine?.trim() ?? '')) return false
-      if (selectedTags.length > 0 && !selectedTags.every((tag) => r.keywords.includes(tag))) return false
+      if (selectedTags.length > 0) {
+        const recipeTags = r.keywords.map((k) => k.toLowerCase())
+        if (!selectedTags.every((tag) => recipeTags.includes(tag))) return false
+      }
+      if (maxCookTime < MAX_COOK_TIME && durationToMinutes(r.cookTime) > maxCookTime) return false
+      if (ingredientQuery.trim()) {
+        const iq = ingredientQuery.toLowerCase()
+        if (!r.recipeIngredient.some((ing) => ing.name.toLowerCase().includes(iq))) return false
+      }
       if (!query.trim()) return true
       const q = query.toLowerCase()
       return (
@@ -183,6 +219,7 @@ export default function RecipesPage() {
             ref={searchRef}
             type="search"
             placeholder="Search recipes..."
+            aria-label="Search recipes"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full px-3 py-2 pr-10 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -208,7 +245,172 @@ export default function RecipesPage() {
           />
           Favorites
         </button>
+        <button
+          onClick={() => {
+            setShowFilters((v) => {
+              if (!v) setTimeout(() => ingredientRef.current?.focus(), 50)
+              return !v
+            })
+          }}
+          aria-expanded={showFilters}
+          aria-label="Toggle advanced filters"
+          className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+            showFilters || activeFilterCount > 0
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400'
+              : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+        >
+          <SlidersHorizontal size={14} aria-hidden="true" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center bg-green-600 text-white text-[10px] font-bold rounded-full px-1">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* Advanced filter panel */}
+      {showFilters && (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4 space-y-4">
+          {/* Ingredient search */}
+          <div>
+            <label htmlFor="ingredient-search" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+              Contains ingredient
+            </label>
+            <div className="relative">
+              <input
+                ref={ingredientRef}
+                id="ingredient-search"
+                type="search"
+                placeholder="e.g. chicken, garlic…"
+                value={ingredientQuery}
+                onChange={(e) => setIngredientQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              {ingredientQuery && (
+                <button
+                  onClick={() => setIngredientQuery('')}
+                  aria-label="Clear ingredient filter"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Max cook time slider */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="max-cook-time" className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Max cook time
+              </label>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
+                {maxCookTime >= MAX_COOK_TIME ? 'Any' : `≤ ${maxCookTime} min`}
+              </span>
+            </div>
+            <input
+              id="max-cook-time"
+              type="range"
+              min={15}
+              max={MAX_COOK_TIME}
+              step={15}
+              value={maxCookTime}
+              onChange={(e) => setMaxCookTime(Number(e.target.value))}
+              className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-full appearance-none cursor-pointer accent-green-600"
+            />
+            <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+              <span>15 min</span>
+              <span>Any</span>
+            </div>
+          </div>
+
+          {/* Category chips */}
+          {allCategories.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Category</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategories((prev) =>
+                      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+                    )}
+                    aria-pressed={selectedCategories.includes(cat)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedCategories.includes(cat)
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cuisine chips */}
+          {allCuisines.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Cuisine</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allCuisines.map((cui) => (
+                  <button
+                    key={cui}
+                    onClick={() => setSelectedCuisines((prev) =>
+                      prev.includes(cui) ? prev.filter((c) => c !== cui) : [...prev, cui]
+                    )}
+                    aria-pressed={selectedCuisines.includes(cui)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedCuisines.includes(cui)
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {cui}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tags & Dietary chips */}
+          {allTags.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Tags & Dietary</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedTags((prev) =>
+                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )}
+                    aria-pressed={selectedTags.includes(tag)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedTags.includes(tag)
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearAdvancedFilters}
+              className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium"
+            >
+              Clear {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4">
         <label htmlFor="recipe-sort" className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
@@ -226,73 +428,12 @@ export default function RecipesPage() {
             </option>
           ))}
         </select>
+        {!loading && filtered.length > 0 && (
+          <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">
+            {filtered.length} recipe{filtered.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
-
-      {/* Category filter chips */}
-      {allCategories.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-2 scrollbar-hide">
-          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Category</span>
-          {allCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategories((prev) =>
-                prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-              )}
-              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                selectedCategories.includes(cat)
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Cuisine filter chips */}
-      {allCuisines.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-2 scrollbar-hide">
-          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Cuisine</span>
-          {allCuisines.map((cui) => (
-            <button
-              key={cui}
-              onClick={() => setSelectedCuisines((prev) =>
-                prev.includes(cui) ? prev.filter((c) => c !== cui) : [...prev, cui]
-              )}
-              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                selectedCuisines.includes(cui)
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              {cui}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Tag filter chips */}
-      {allTags.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-          <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500 font-medium">Tags</span>
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setSelectedTags((prev) =>
-                prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-              )}
-              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                selectedTags.includes(tag)
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      )}
 
       {loading ? (
         <ul className="space-y-3" aria-busy="true" aria-label="Loading recipes">
@@ -301,26 +442,19 @@ export default function RecipesPage() {
           ))}
         </ul>
       ) : filtered.length === 0 ? (
-        showFavoritesOnly ? (
+        showFavoritesOnly && !hasAnyFilter ? (
           <EmptyState
             illustration={<HeartIllustration />}
             title="No favorites yet"
             description="Tap the heart on any recipe to save it here."
             action={{ label: 'Browse all recipes', onClick: () => setShowFavoritesOnly(false) }}
           />
-        ) : selectedCategories.length > 0 || selectedCuisines.length > 0 || selectedTags.length > 0 ? (
+        ) : hasAnyFilter ? (
           <EmptyState
             illustration={<SearchNoResultsIllustration />}
             title="No recipes found"
-            description="No recipes match the selected filters."
-            action={{ label: 'Clear filters', onClick: () => { setSelectedCategories([]); setSelectedCuisines([]); setSelectedTags([]) } }}
-          />
-        ) : query ? (
-          <EmptyState
-            illustration={<SearchNoResultsIllustration />}
-            title="No recipes found"
-            description={`No recipes match "${query}". Try a different search term.`}
-            action={{ label: 'Clear search', onClick: () => setQuery('') }}
+            description="No recipes match your current filters."
+            action={{ label: 'Clear all filters', onClick: clearAllFilters }}
           />
         ) : (
           <EmptyState

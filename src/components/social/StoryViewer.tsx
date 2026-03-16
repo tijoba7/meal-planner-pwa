@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { X, ChefHat } from 'lucide-react'
+import { X, ChefHat, ImageOff } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '../ProfileCard'
 import type { UserStoryGroup } from '../../lib/storiesService'
 
 const STORY_DURATION = 5000 // ms
+const IMAGE_LOAD_TIMEOUT = 8000 // ms — skip story if image doesn't load
 
 interface StoryViewerProps {
   groups: UserStoryGroup[]
@@ -30,6 +31,8 @@ export default function StoryViewer({
   const [groupIdx, setGroupIdx] = useState(initialGroupIndex)
   const [storyIdx, setStoryIdx] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   const progressRef = useRef(0)
   const touchStartX = useRef(0)
@@ -105,10 +108,27 @@ export default function StoryViewer({
     resetProgress()
   }, [groupIdx])
 
-  // ── Auto-advance timer ────────────────────────────────────────────────────
+  // Reset image state when story changes
+  useEffect(() => {
+    setImageLoaded(false)
+    setImageError(false)
+  }, [story?.id])
+
+  // Skip story after timeout if image fails to load
+  useEffect(() => {
+    if (imageLoaded || imageError || !story) return
+    const timer = setTimeout(() => {
+      if (!imageLoaded) {
+        setImageError(true)
+      }
+    }, IMAGE_LOAD_TIMEOUT)
+    return () => clearTimeout(timer)
+  }, [story?.id, imageLoaded, imageError, story])
+
+  // ── Auto-advance timer (paused until image loads) ────────────────────────
 
   useEffect(() => {
-    if (!story) return
+    if (!story || !imageLoaded) return
     const TICK = 50
     const interval = setInterval(() => {
       progressRef.current += TICK / STORY_DURATION
@@ -120,7 +140,7 @@ export default function StoryViewer({
       }
     }, TICK)
     return () => clearInterval(interval)
-  }, [story, goNext])
+  }, [story, goNext, imageLoaded])
 
   // ── Notify viewed ─────────────────────────────────────────────────────────
 
@@ -203,13 +223,35 @@ export default function StoryViewer({
         onClick={handleContainerClick}
       >
         {/* Media */}
-        <img
-          key={story.id}
-          src={story.media_url}
-          alt={story.caption ?? `${group.profile.display_name}'s story`}
-          className="w-full h-full object-cover"
-          draggable={false}
-        />
+        {imageError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 gap-3">
+            <ImageOff size={48} strokeWidth={1.5} className="text-gray-500" />
+            <p className="text-sm text-gray-400">Image couldn't load</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); goNext() }}
+              className="text-xs text-green-400 hover:text-green-300 transition-colors"
+            >
+              Skip to next
+            </button>
+          </div>
+        ) : (
+          <>
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
+                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+            )}
+            <img
+              key={story.id}
+              src={story.media_url}
+              alt={story.caption ?? `${group.profile.display_name}'s story`}
+              className="w-full h-full object-cover"
+              draggable={false}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
+          </>
+        )}
 
         {/* Top gradient */}
         <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />

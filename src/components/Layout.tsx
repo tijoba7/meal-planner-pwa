@@ -5,6 +5,7 @@ import { useProfile } from '../contexts/ProfileContext'
 import { isSupabaseAvailable } from '../lib/supabase'
 import { Avatar } from './ProfileCard'
 import MigrationPrompt from './MigrationPrompt'
+import AppUpdateBanner from './AppUpdateBanner'
 
 interface NavItem {
   to: string
@@ -142,6 +143,9 @@ export default function Layout() {
 
       {/* Cloud migration prompt — shown once when user has local data after sign-in */}
       <MigrationPrompt />
+
+      {/* App update notification — shown when a new service worker is ready */}
+      <AppUpdateBanner />
     </div>
   )
 }

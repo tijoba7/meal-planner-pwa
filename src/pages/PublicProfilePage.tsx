@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Loader2, ChevronLeft, UserPlus, Check, UserMinus, UserX, Clock, MessageCircle, Grid3x3 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -20,6 +20,7 @@ import type { Profile } from '../types/supabase'
 export default function PublicProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -286,12 +287,12 @@ export default function PublicProfilePage() {
               </div>
             )}
 
-            {/* Message button — engineers: wire to DM */}
+            {/* Message button */}
             {(relation === 'friends' || relation === 'none') && (
               <button
-                disabled
-                aria-label="Send message (coming soon)"
-                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                onClick={() => navigate(`/messages/${userId}`)}
+                aria-label="Send direct message"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <MessageCircle size={14} strokeWidth={1.75} />
                 Message

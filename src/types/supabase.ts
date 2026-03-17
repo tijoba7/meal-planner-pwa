@@ -679,6 +679,43 @@ export type Database = {
           },
         ]
       }
+      direct_messages: {
+        Row: {
+          id: string
+          sender_id: string
+          recipient_id: string
+          body: string
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sender_id: string
+          recipient_id: string
+          body: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          read_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'direct_messages_sender_id_fkey'
+            columns: ['sender_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'direct_messages_recipient_id_fkey'
+            columns: ['recipient_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -736,6 +773,7 @@ export type GroupMember = Tables<'group_members'>
 export type GroupRecipe = Tables<'group_recipes'>
 export type AppSetting = Tables<'app_settings'>
 export type Story = Tables<'stories'>
+export type DirectMessage = Tables<'direct_messages'>
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 

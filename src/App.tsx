@@ -36,6 +36,7 @@ const GroupDetailPage = lazy(() => import('./pages/GroupDetailPage'))
 const CollectionsPage = lazy(() => import('./pages/CollectionsPage'))
 const CollectionDetailPage = lazy(() => import('./pages/CollectionDetailPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage'))
 const PantryPage = lazy(() => import('./pages/PantryPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
@@ -107,6 +108,8 @@ export default function App() {
                         <Route path="collections" element={<CollectionsPage />} />
                         <Route path="collections/:id" element={<CollectionDetailPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
+                        <Route path="messages" element={<MessagesPage />} />
+                        <Route path="messages/:userId" element={<MessagesPage />} />
                         <Route path="help" element={<HelpPage />} />
                         <Route path="*" element={<NotFoundPage />} />
                       </Route>

@@ -5,6 +5,7 @@ import {
   BookOpen,
   CalendarDays,
   Library,
+  MessageSquare,
   Rss,
   ShoppingCart,
   Settings,
@@ -33,6 +34,7 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import SearchDialog from './SearchDialog'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
+import { getUnreadDmCount, subscribeToDirectMessages } from '../lib/dmService'
 
 // Prefetch map — warming the chunk cache on hover/focus avoids a loading flash
 // when the user navigates to a lazy-loaded route.
@@ -46,6 +48,7 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/friends': () => import('../pages/FriendsPage'),
   '/groups': () => import('../pages/GroupsPage'),
   '/notifications': () => import('../pages/NotificationsPage'),
+  '/messages': () => import('../pages/MessagesPage'),
   '/settings': () => import('../pages/SettingsPage'),
 }
 
@@ -70,6 +73,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/discover', label: 'Discover', icon: Compass, end: false },
   { to: '/friends', label: 'Friends', icon: Users, end: false },
   { to: '/groups', label: 'Groups', icon: UsersRound, end: false },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, end: false },
   { to: '/notifications', label: 'Notifications', icon: Bell, end: false },
   { to: '/settings', label: 'Settings', icon: Settings, end: false },
 ]
@@ -84,12 +88,22 @@ export default function Layout() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadDmCount, setUnreadDmCount] = useState(0)
 
   useEffect(() => {
     if (!user) return
     getUnreadCount(user.id).then(setUnreadCount)
     const unsub = subscribeToNotifications(user.id, () => {
       setUnreadCount((c) => c + 1)
+    })
+    return unsub
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    getUnreadDmCount(user.id).then(setUnreadDmCount)
+    const unsub = subscribeToDirectMessages(user.id, () => {
+      setUnreadDmCount((c) => c + 1)
     })
     return unsub
   }, [user])
@@ -177,12 +191,25 @@ export default function Layout() {
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
+                {item.to === '/messages' && unreadDmCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none"
+                    aria-hidden="true"
+                  >
+                    {unreadDmCount > 9 ? '9+' : unreadDmCount}
+                  </span>
+                )}
               </div>
               <span className="hidden lg:block">
                 {item.to === '/notifications' && unreadCount > 0 ? (
                   <>
                     {item.label}
                     <span className="sr-only"> ({unreadCount} unread)</span>
+                  </>
+                ) : item.to === '/messages' && unreadDmCount > 0 ? (
+                  <>
+                    {item.label}
+                    <span className="sr-only"> ({unreadDmCount} unread)</span>
                   </>
                 ) : (
                   item.label
@@ -192,7 +219,9 @@ export default function Layout() {
               <span className="sr-only lg:hidden">
                 {item.to === '/notifications' && unreadCount > 0
                   ? `${item.label} (${unreadCount} unread)`
-                  : item.label}
+                  : item.to === '/messages' && unreadDmCount > 0
+                    ? `${item.label} (${unreadDmCount} unread)`
+                    : item.label}
               </span>
             </NavLink>
           ))}
@@ -341,11 +370,24 @@ export default function Layout() {
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
+              {item.to === '/messages' && unreadDmCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-600 text-white text-[9px] font-bold flex items-center justify-center leading-none"
+                  aria-hidden="true"
+                >
+                  {unreadDmCount > 9 ? '9+' : unreadDmCount}
+                </span>
+              )}
             </div>
             {item.to === '/notifications' && unreadCount > 0 ? (
               <>
                 {item.label}
                 <span className="sr-only"> ({unreadCount} unread)</span>
+              </>
+            ) : item.to === '/messages' && unreadDmCount > 0 ? (
+              <>
+                {item.label}
+                <span className="sr-only"> ({unreadDmCount} unread)</span>
               </>
             ) : (
               item.label

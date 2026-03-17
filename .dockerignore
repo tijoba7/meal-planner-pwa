@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+coverage/
+playwright-report/
+test-results/
+test-results-timer/
+
+# Version control
+.git/
+.gitignore
+
+# Environment files (secrets — never bake into image)
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Docker files themselves (not needed in build context)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs / agents (not needed at runtime)
+docs/
+agents/
+scripts/
+e2e/

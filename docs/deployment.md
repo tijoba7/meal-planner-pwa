@@ -262,6 +262,87 @@ Without `VITE_VAPID_PUBLIC_KEY` the push subscription flow is disabled; the app 
 
 `url` is optional and defaults to `/`.
 
+## Self-Hosting with Docker
+
+Mise ships as a static SPA served by nginx inside a Docker container. You can run it on any Linux server, VPS, or home server.
+
+### Prerequisites
+
+- Docker 24+ and Docker Compose v2
+- A `.env` file with your build-time variables (see below)
+
+### Environment Variables
+
+Create a `.env` file at the repo root (never commit this file):
+
+```env
+# Required for social features — app works offline without these
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional
+VITE_SENTRY_DSN=https://...@sentry.io/...
+VITE_APP_VERSION=1.0.0
+VITE_VAPID_PUBLIC_KEY=your-vapid-public-key
+SENTRY_AUTH_TOKEN=
+SENTRY_ORG=
+SENTRY_PROJECT=meal-planner-pwa
+```
+
+> **Important:** `VITE_*` variables are inlined at _build time_ by Vite. They must be present before running `docker build` — not just at runtime. The Dockerfile uses `ARG` + `ENV` to pass them through to the build stage.
+
+### Build and Run
+
+```bash
+# Build the image (reads .env via docker-compose)
+docker compose build
+
+# Start the container
+docker compose up -d
+
+# View logs
+docker compose logs -f app
+
+# Stop
+docker compose down
+```
+
+The app will be available at `http://localhost` (port 80).
+
+To rebuild after a code change:
+```bash
+docker compose build --no-cache && docker compose up -d
+```
+
+### Building with explicit build args (without Compose)
+
+```bash
+docker build \
+  --build-arg VITE_SUPABASE_URL=https://... \
+  --build-arg VITE_SUPABASE_ANON_KEY=... \
+  -t mise:latest .
+
+docker run -d -p 80:80 --name mise mise:latest
+```
+
+### Reverse Proxy (optional)
+
+To run behind nginx or Caddy with TLS on a custom domain, proxy to port 80 of the container. Example Caddy snippet:
+
+```
+mise.yourdomain.com {
+    reverse_proxy localhost:80
+}
+```
+
+Supabase auth requires the **Site URL** and **Redirect URLs** in the Supabase dashboard to match your production domain (see [Supabase auth settings](#supabase-auth-settings)).
+
+### Health Check
+
+The container exposes a health check at `GET /` (HTTP 200). Docker Compose polls it every 30 s; unhealthy containers restart automatically (`restart: unless-stopped`).
+
+---
+
 ## Rollback
 
 To roll back to a previous deployment:

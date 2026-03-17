@@ -6,7 +6,7 @@ interface AuthContextValue {
   user: User | null
   session: Session | null
   loading: boolean
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>
+  signUp: (email: string, password: string, metadata?: Record<string, unknown>) => Promise<{ error: Error | null }>
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<{ error: Error | null }>
@@ -41,8 +41,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({ email, password })
+  async function signUp(email: string, password: string, metadata?: Record<string, unknown>) {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: metadata ? { data: metadata } : undefined,
+    })
     return { error }
   }
 

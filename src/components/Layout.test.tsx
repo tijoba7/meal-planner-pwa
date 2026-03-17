@@ -57,6 +57,14 @@ vi.mock('../lib/notificationService', () => ({
   getUnreadCount: vi.fn().mockResolvedValue(0),
   subscribeToNotifications: vi.fn().mockReturnValue(() => {}),
 }))
+vi.mock('../lib/dmService', () => ({
+  getUnreadDmCount: vi.fn().mockResolvedValue(0),
+  subscribeToDirectMessages: vi.fn().mockReturnValue(() => {}),
+}))
+vi.mock('../hooks/useFeatureFlags', () => ({
+  useFeatureFlags: vi.fn(() => ({ social: true, groups: true, discover: true })),
+}))
+vi.mock('./SearchDialog', () => ({ default: () => null }))
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return { ...actual, useNavigate: () => mockNavigate }
@@ -140,24 +148,24 @@ describe('Layout', () => {
       }
     })
 
-    it('renders exactly 11 navigation items in the mobile tab bar', () => {
+    it('renders exactly 12 navigation items in the mobile tab bar', () => {
       const { container } = renderLayout()
       // The mobile bottom tab bar is the fixed nav at the bottom (md:hidden)
       const mobileNav = container.querySelector('nav.md\\:hidden.fixed')
       expect(mobileNav).toBeInTheDocument()
       const links = mobileNav!.querySelectorAll('a')
-      expect(links).toHaveLength(11)
+      expect(links).toHaveLength(12)
     })
 
-    it('renders exactly 12 navigation items in the desktop sidebar', () => {
+    it('renders exactly 13 navigation items in the desktop sidebar', () => {
       const { container } = renderLayout()
       const sidebar = container.querySelector('aside')
       expect(sidebar).toBeInTheDocument()
-      // sidebar has 11 NAV_ITEMS + 1 Help link (Admin is hidden when isAdmin=false)
+      // sidebar has 12 NAV_ITEMS + 1 Help link (Admin is hidden when isAdmin=false)
       const sidebarNav = sidebar!.querySelector('nav')
       expect(sidebarNav).toBeInTheDocument()
       const navLinks = sidebarNav!.querySelectorAll('a')
-      expect(navLinks).toHaveLength(12)
+      expect(navLinks).toHaveLength(13)
     })
   })
 

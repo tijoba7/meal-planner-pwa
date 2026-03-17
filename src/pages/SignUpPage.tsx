@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { getAppSettingBoolean, APP_SETTING_KEYS } from '../lib/appSettingsService'
 
 export default function SignUpPage() {
   const { signUp } = useAuth()
@@ -28,7 +29,22 @@ export default function SignUpPage() {
     }
 
     setLoading(true)
-    const { error } = await signUp(email, password)
+
+    // Fetch admin-configured notification defaults and pass as user metadata
+    const [pushEnabled, mealReminders] = await Promise.all([
+      getAppSettingBoolean(APP_SETTING_KEYS.DEFAULTS_NOTIF_PUSH),
+      getAppSettingBoolean(APP_SETTING_KEYS.DEFAULTS_NOTIF_REMINDERS),
+    ]).catch(() => [null, null] as [null, null])
+
+    const metadata: Record<string, unknown> = {}
+    if (pushEnabled !== null) metadata.push_enabled = pushEnabled
+    if (mealReminders !== null) metadata.meal_plan_reminders = mealReminders
+
+    const { error } = await signUp(
+      email,
+      password,
+      Object.keys(metadata).length ? metadata : undefined,
+    )
     setLoading(false)
 
     if (error) {

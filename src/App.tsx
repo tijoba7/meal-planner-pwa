@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminProvider } from './contexts/AdminContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { MigrationProvider } from './contexts/MigrationContext'
@@ -7,6 +7,7 @@ import { ProfileProvider } from './contexts/ProfileContext'
 import { SyncProvider } from './contexts/SyncContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { FeatureFlagsProvider, useFeatureFlags } from './hooks/useFeatureFlags'
 import ErrorBoundary from './components/ErrorBoundary'
 import AdminRoute from './components/AdminRoute'
 import Layout from './components/Layout'
@@ -60,6 +61,84 @@ function PageLoader() {
   )
 }
 
+// Renders children when the feature flag is enabled, otherwise redirects home.
+function FeatureRoute({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  if (!enabled) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+// Separate component so it can consume FeatureFlagsContext (provider is above it).
+function AppRoutes() {
+  const { social, groups, discover } = useFeatureFlags()
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Auth pages — full-screen, outside the main Layout */}
+        <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/signup" element={<SignUpPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+
+        {/* Main app — requires authentication */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<FeatureRoute enabled={social}><FeedPage /></FeatureRoute>} />
+          <Route path="recipes" element={<RecipesPage />} />
+          <Route path="recipes/new" element={<RecipeFormPage />} />
+          <Route path="recipes/import" element={<RecipeImportPage />} />
+          <Route path="recipes/:id" element={<RecipeDetailPage />} />
+          <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
+          <Route path="meal-plan" element={<PlannerPage />} />
+          <Route path="shopping" element={<ShoppingListPage />} />
+          <Route path="pantry" element={<PantryPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="users/:userId" element={<PublicProfilePage />} />
+          <Route path="friends" element={<FeatureRoute enabled={social}><FriendsPage /></FeatureRoute>} />
+          <Route path="invite/:token" element={<InvitePage />} />
+          <Route path="discover" element={<FeatureRoute enabled={discover}><DiscoverPage /></FeatureRoute>} />
+          <Route path="feed" element={<FeatureRoute enabled={social}><FeedPage /></FeatureRoute>} />
+          <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
+          <Route path="groups" element={<FeatureRoute enabled={groups}><GroupsPage /></FeatureRoute>} />
+          <Route path="groups/:id" element={<FeatureRoute enabled={groups}><GroupDetailPage /></FeatureRoute>} />
+          <Route path="collections" element={<CollectionsPage />} />
+          <Route path="collections/:id" element={<CollectionDetailPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="messages" element={<FeatureRoute enabled={social}><MessagesPage /></FeatureRoute>} />
+          <Route path="messages/:userId" element={<FeatureRoute enabled={social}><MessagesPage /></FeatureRoute>} />
+          <Route path="help" element={<HelpPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+
+        {/* Admin panel — requires auth + admin role */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="scraping" element={<AdminScrapingPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
+        </Route>
+
+        {/* Top-level catch-all (e.g. /auth/unknown) */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
+  )
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -69,72 +148,11 @@ export default function App() {
             <MigrationProvider>
               <ProfileProvider>
                 <AdminProvider>
-                <ErrorBoundary>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      {/* Auth pages — full-screen, outside the main Layout */}
-                      <Route path="/auth/login" element={<LoginPage />} />
-                      <Route path="/auth/signup" element={<SignUpPage />} />
-                      <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
-
-                      {/* Main app — requires authentication */}
-                      <Route
-                        path="/"
-                        element={
-                          <ProtectedRoute>
-                            <Layout />
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route index element={<FeedPage />} />
-                        <Route path="recipes" element={<RecipesPage />} />
-                        <Route path="recipes/new" element={<RecipeFormPage />} />
-                        <Route path="recipes/import" element={<RecipeImportPage />} />
-                        <Route path="recipes/:id" element={<RecipeDetailPage />} />
-                        <Route path="recipes/:id/edit" element={<RecipeFormPage />} />
-                        <Route path="meal-plan" element={<PlannerPage />} />
-                        <Route path="shopping" element={<ShoppingListPage />} />
-                        <Route path="pantry" element={<PantryPage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
-                        <Route path="users/:userId" element={<PublicProfilePage />} />
-                        <Route path="friends" element={<FriendsPage />} />
-                        <Route path="invite/:token" element={<InvitePage />} />
-                        <Route path="discover" element={<DiscoverPage />} />
-                        <Route path="feed" element={<FeedPage />} />
-                        <Route path="shared/:id" element={<SharedRecipeDetailPage />} />
-                        <Route path="groups" element={<GroupsPage />} />
-                        <Route path="groups/:id" element={<GroupDetailPage />} />
-                        <Route path="collections" element={<CollectionsPage />} />
-                        <Route path="collections/:id" element={<CollectionDetailPage />} />
-                        <Route path="notifications" element={<NotificationsPage />} />
-                        <Route path="messages" element={<MessagesPage />} />
-                        <Route path="messages/:userId" element={<MessagesPage />} />
-                        <Route path="help" element={<HelpPage />} />
-                        <Route path="*" element={<NotFoundPage />} />
-                      </Route>
-
-                      {/* Admin panel — requires auth + admin role */}
-                      <Route
-                        path="/admin"
-                        element={
-                          <ProtectedRoute>
-                            <AdminRoute>
-                              <AdminLayout />
-                            </AdminRoute>
-                          </ProtectedRoute>
-                        }
-                      >
-                        <Route index element={<AdminDashboardPage />} />
-                        <Route path="scraping" element={<AdminScrapingPage />} />
-                        <Route path="settings" element={<AdminSettingsPage />} />
-                      </Route>
-
-                      {/* Top-level catch-all (e.g. /auth/unknown) */}
-                      <Route path="*" element={<NotFoundPage />} />
-                    </Routes>
-                  </Suspense>
-                </ErrorBoundary>
+                  <FeatureFlagsProvider>
+                    <ErrorBoundary>
+                      <AppRoutes />
+                    </ErrorBoundary>
+                  </FeatureFlagsProvider>
                 </AdminProvider>
               </ProfileProvider>
             </MigrationProvider>

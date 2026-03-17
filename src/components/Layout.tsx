@@ -33,6 +33,7 @@ import OfflineBanner from './OfflineBanner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import SearchDialog from './SearchDialog'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useFeatureFlags } from '../hooks/useFeatureFlags'
 import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
 import { getUnreadDmCount, subscribeToDirectMessages } from '../lib/dmService'
 
@@ -82,8 +83,16 @@ export default function Layout() {
   const { user, signOut } = useAuth()
   const { profile } = useProfile()
   const { isAdmin } = useAdmin()
+  const { social, groups, discover } = useFeatureFlags()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (item.to === '/discover') return discover
+    if (item.to === '/groups') return groups
+    if (item.to === '/' || item.to === '/friends' || item.to === '/messages') return social
+    return true
+  })
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone())
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
@@ -171,7 +180,7 @@ export default function Layout() {
           </div>
         </div>
         <nav aria-label="Main navigation" className="flex flex-col gap-1 p-2 lg:p-3 flex-1">
-          {NAV_ITEMS.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -351,7 +360,7 @@ export default function Layout() {
         aria-label="Mobile navigation"
         className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10 pb-[env(safe-area-inset-bottom)]"
       >
-        {NAV_ITEMS.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

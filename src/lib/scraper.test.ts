@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { extractRecipeFromUrl } from './scraper'
+import { extractRecipeFromUrl, _resetScraperCache } from './scraper'
 import type { ExtractedRecipe } from './scraper'
+import { getAppSettingString, getAppSettingNumber } from './appSettingsService'
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -10,10 +11,12 @@ vi.mock('./appSettingsService', () => ({
     if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
     return Promise.resolve(null)
   }),
+  getAppSettingNumber: vi.fn().mockResolvedValue(null),
   APP_SETTING_KEYS: {
     SCRAPING_API_KEY: 'scraping.api_key',
     SCRAPING_MODEL: 'scraping.model',
     SCRAPING_PROVIDER: 'scraping.provider',
+    SCRAPING_RATE_LIMIT: 'scraping.rate_limit',
   },
 }))
 
@@ -75,6 +78,8 @@ describe('extractRecipeFromUrl', () => {
   beforeEach(() => {
     mockFetch = vi.fn()
     vi.stubGlobal('fetch', mockFetch)
+    // Reset admin config cache so each test gets a fresh load from the mock.
+    _resetScraperCache()
   })
 
   afterEach(() => {
@@ -305,7 +310,7 @@ describe('extractRecipeFromUrl', () => {
       expect(result.error).toContain('No recipe found')
     })
 
-    it('returns an AI API error when Claude responds with HTTP 401', async () => {
+    it('returns an invalid key error when Claude responds with HTTP 401', async () => {
       mockFetch
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
         .mockResolvedValueOnce(makeClaudeError('Invalid API key', 401))
@@ -314,8 +319,8 @@ describe('extractRecipeFromUrl', () => {
 
       expect(result.ok).toBe(false)
       if (result.ok) return
-      expect(result.error).toContain('AI API error')
-      expect(result.error).toContain('Invalid API key')
+      expect(result.error).toContain('Invalid AI API key')
+      expect(result.error).toContain('Admin settings')
     })
 
     it('returns a generic HTTP error message when the API error body has no message', async () => {
@@ -479,6 +484,220 @@ describe('extractRecipeFromUrl', () => {
       expect(result.ok).toBe(true)
       if (!result.ok) return
       expect(result.recipe.url).toBe(RECIPE_URL)
+    })
+  })
+
+  // ── AI call timeout ────────────────────────────────────────────────────────
+
+  describe('AI call timeout', () => {
+    it('returns a timeout error when the Claude API call times out', async () => {
+      const timeoutError = new DOMException('The operation timed out.', 'TimeoutError')
+
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockRejectedValueOnce(timeoutError)
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('timed out')
+      expect(result.error).toContain('30 seconds')
+    })
+
+    it('returns a rate-limit error when the Claude API responds with HTTP 429', async () => {
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockResolvedValueOnce(makeClaudeError('Rate limit exceeded', 429))
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('rate limit exceeded')
+    })
+  })
+
+  // ── OpenAI provider ────────────────────────────────────────────────────────
+
+  describe('OpenAI provider', () => {
+    beforeEach(() => {
+      _resetScraperCache()
+      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
+        if (key === 'scraping.api_key') return Promise.resolve('sk-openai-test-key')
+        if (key === 'scraping.provider') return Promise.resolve('openai')
+        return Promise.resolve(null)
+      })
+    })
+
+    afterEach(() => {
+      // Restore default mock
+      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
+        if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
+        return Promise.resolve(null)
+      })
+      _resetScraperCache()
+    })
+
+    it('parses OpenAI response format (choices[0].message.content) correctly', async () => {
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(validRecipePayload) } }],
+          }),
+        })
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.recipe.name).toBe('Spaghetti Carbonara')
+    })
+
+    it('sends Authorization Bearer header for OpenAI', async () => {
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(validRecipePayload) } }],
+          }),
+        })
+
+      await extractRecipeFromUrl(RECIPE_URL)
+
+      const [, aiCall] = mockFetch.mock.calls
+      expect(aiCall[1].headers['Authorization']).toBe('Bearer sk-openai-test-key')
+    })
+
+    it('returns a timeout error when the OpenAI call times out', async () => {
+      const timeoutError = new DOMException('The operation timed out.', 'TimeoutError')
+
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockRejectedValueOnce(timeoutError)
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('timed out')
+    })
+  })
+
+  // ── Gemini provider ────────────────────────────────────────────────────────
+
+  describe('Gemini provider', () => {
+    beforeEach(() => {
+      _resetScraperCache()
+      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
+        if (key === 'scraping.api_key') return Promise.resolve('gemini-test-key')
+        if (key === 'scraping.provider') return Promise.resolve('gemini')
+        return Promise.resolve(null)
+      })
+    })
+
+    afterEach(() => {
+      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
+        if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
+        return Promise.resolve(null)
+      })
+      _resetScraperCache()
+    })
+
+    it('parses Gemini response format (candidates[0].content.parts[0].text) correctly', async () => {
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            candidates: [
+              { content: { parts: [{ text: JSON.stringify(validRecipePayload) }] } },
+            ],
+          }),
+        })
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.recipe.name).toBe('Spaghetti Carbonara')
+    })
+
+    it('returns a timeout error when the Gemini call times out', async () => {
+      const timeoutError = new DOMException('The operation timed out.', 'TimeoutError')
+
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockRejectedValueOnce(timeoutError)
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('timed out')
+    })
+
+    it('returns an invalid key error when Gemini responds with HTTP 403', async () => {
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+          json: vi.fn().mockResolvedValue({ error: { message: 'API key not valid.' } }),
+        })
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('Invalid AI API key')
+    })
+  })
+
+  // ── Admin rate limit setting ───────────────────────────────────────────────
+
+  describe('admin rate limit setting', () => {
+    const STORAGE_KEY = 'mise_import_timestamps'
+
+    afterEach(() => {
+      localStorage.removeItem(STORAGE_KEY)
+      vi.mocked(getAppSettingNumber).mockResolvedValue(null)
+      _resetScraperCache()
+    })
+
+    it('blocks requests when admin rate limit is lower than the default', async () => {
+      // Admin has set rate limit to 2
+      vi.mocked(getAppSettingNumber).mockResolvedValue(2)
+      _resetScraperCache()
+
+      // Pre-fill storage with 2 recent timestamps (within the last hour)
+      const now = Date.now()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([now - 2000, now - 1000]))
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('Too many import requests')
+    })
+
+    it('allows requests when count is below admin rate limit', async () => {
+      // Admin has set rate limit to 5; only 2 recent requests exist
+      vi.mocked(getAppSettingNumber).mockResolvedValue(5)
+      _resetScraperCache()
+
+      const now = Date.now()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([now - 2000, now - 1000]))
+
+      mockFetch
+        .mockResolvedValueOnce(makePageResponse('<html></html>'))
+        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+      expect(result.ok).toBe(true)
     })
   })
 })

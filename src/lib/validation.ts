@@ -80,8 +80,10 @@ export interface RateLimitResult {
 /**
  * Checks and records a recipe-import attempt.
  * Records the attempt if allowed so subsequent calls within the window count it.
+ * Pass `max` to override the default limit (e.g. from an admin setting).
  */
-export function checkImportRateLimit(): RateLimitResult {
+export function checkImportRateLimit(max?: number): RateLimitResult {
+  const effectiveMax = max ?? RATE_LIMIT_MAX
   const now = Date.now()
   let timestamps: number[] = []
 
@@ -97,7 +99,7 @@ export function checkImportRateLimit(): RateLimitResult {
   const windowStart = now - RATE_LIMIT_WINDOW_MS
   timestamps = timestamps.filter((t) => typeof t === 'number' && t > windowStart)
 
-  if (timestamps.length >= RATE_LIMIT_MAX) {
+  if (timestamps.length >= effectiveMax) {
     const oldest = Math.min(...timestamps)
     return {
       allowed: false,

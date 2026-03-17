@@ -6,7 +6,7 @@ import {
   formatRetryAfter,
   sanitizeRecipeData,
 } from './validation'
-import { APP_SETTING_KEYS, getAppSettingString } from './appSettingsService'
+import { APP_SETTING_KEYS, getAppSettingString, getAppSettingNumber } from './appSettingsService'
 
 export interface ExtractedRecipe {
   name: string
@@ -56,35 +56,51 @@ const EXTRACT_JSON_SCHEMA = `{
   "recipeCuisine": string | undefined
 }`
 
-const SYSTEM_PROMPT = `You are a recipe extraction assistant. Given a URL (and optionally page content), extract all available recipe information and return it as a single JSON object matching exactly this TypeScript interface:
+const EXAMPLE_OUTPUT = `{"name":"Pasta Carbonara","description":"Classic Roman pasta with eggs and pancetta.","recipeYield":"4 servings","prepTime":"PT10M","cookTime":"PT20M","recipeIngredient":[{"name":"spaghetti","amount":400,"unit":"g"},{"name":"eggs","amount":3,"unit":""}],"recipeInstructions":[{"@type":"HowToStep","text":"Boil pasta in well-salted water until al dente."},{"@type":"HowToStep","text":"Whisk eggs with grated cheese and pepper."}],"keywords":["pasta","italian","quick"],"image":"https://example.com/carbonara.jpg","author":"Chef Mario","url":"https://example.com/carbonara","recipeCategory":"Main Course","recipeCuisine":"Italian"}`
 
+const SYSTEM_PROMPT = `You are a recipe extraction assistant. Given a URL (and optionally page content), extract all available recipe information and return it as a single JSON object.
+
+Output schema (TypeScript):
 ${EXTRACT_JSON_SCHEMA}
 
 Rules:
-- Return ONLY a valid JSON object, no markdown fences, no explanation.
-- For amounts in ingredients, use 0 if not specified.
-- For units, use empty string "" if not specified.
+- Output ONLY the raw JSON object — no markdown fences, no explanation, no trailing text.
+- The very first character of your response must be "{" and the last must be "}".
+- Times use ISO 8601 duration format: "PT15M" = 15 minutes, "PT1H30M" = 1 hour 30 minutes.
+- For ingredient amounts, use 0 if not specified. For units, use "" if not specified.
 - If you cannot find any recipe in the content, return: {"error": "No recipe found at this URL"}
-- For social media posts (Instagram, TikTok, Pinterest), extract from any captions, descriptions, or use your knowledge of commonly shared recipes matching the URL context.`
+- For social media posts (Instagram, TikTok, Pinterest), extract from captions/descriptions or use your knowledge of recipes commonly associated with the URL context.
 
-const TEXT_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given raw recipe text, extract all recipe information and return it as a single JSON object matching exactly this TypeScript interface:
+Example output:
+${EXAMPLE_OUTPUT}`
 
+const TEXT_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given raw recipe text, extract all recipe information and return it as a single JSON object.
+
+Output schema (TypeScript):
 ${EXTRACT_JSON_SCHEMA}
 
 Rules:
-- Return ONLY a valid JSON object, no markdown fences, no explanation.
-- For amounts in ingredients, use 0 if not specified.
-- For units, use empty string "" if not specified.
+- Output ONLY the raw JSON object — no markdown fences, no explanation, no trailing text.
+- The very first character of your response must be "{" and the last must be "}".
+- Times use ISO 8601 duration format: "PT15M" = 15 minutes, "PT1H30M" = 1 hour 30 minutes.
+- For ingredient amounts, use 0 if not specified. For units, use "" if not specified.
+- Preserve original ingredient amounts and units as closely as possible.
 - If you cannot find any recipe in the text, return: {"error": "No recipe found in this text"}
-- Preserve the original ingredient amounts and units as closely as possible.`
+
+Example output:
+${EXAMPLE_OUTPUT}`
 
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
 
 // Cache admin scraping config for 60 s to avoid a Supabase round-trip on every URL in a batch.
-let _adminConfig: { apiKey: string | null; model: string | null; provider: string | null } | null =
-  null
+let _adminConfig: {
+  apiKey: string | null
+  model: string | null
+  provider: string | null
+  rateLimit: number | null
+} | null = null
 let _adminConfigAt = 0
 const ADMIN_CONFIG_TTL_MS = 60_000
 
@@ -92,36 +108,25 @@ async function loadAdminScrapingConfig(): Promise<{
   apiKey: string | null
   model: string | null
   provider: string | null
+  rateLimit: number | null
 }> {
   const now = Date.now()
   if (_adminConfig && now - _adminConfigAt < ADMIN_CONFIG_TTL_MS) return _adminConfig
-  const [apiKey, model, provider] = await Promise.all([
+  const [apiKey, model, provider, rateLimit] = await Promise.all([
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY),
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_MODEL),
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_PROVIDER),
+    getAppSettingNumber(APP_SETTING_KEYS.SCRAPING_RATE_LIMIT),
   ])
-  _adminConfig = { apiKey, model, provider }
+  _adminConfig = { apiKey, model, provider, rateLimit }
   _adminConfigAt = now
   return _adminConfig
 }
 
-async function resolveApiKeyAndModel(): Promise<
-  { apiKey: string; model: string; provider: string } | { error: string }
-> {
-  const admin = await loadAdminScrapingConfig()
-  if (!admin.apiKey) {
-    return {
-      error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
-    }
-  }
-  const provider = admin.provider ?? 'anthropic'
-  const defaultModel =
-    provider === 'openai'
-      ? DEFAULT_OPENAI_MODEL
-      : provider === 'gemini'
-        ? DEFAULT_GEMINI_MODEL
-        : DEFAULT_MODEL
-  return { apiKey: admin.apiKey, model: admin.model ?? defaultModel, provider }
+/** Exported for test cache invalidation only — do not call in production code. */
+export function _resetScraperCache(): void {
+  _adminConfig = null
+  _adminConfigAt = 0
 }
 
 function truncate(text: string, maxChars: number): string {
@@ -211,6 +216,7 @@ async function callClaude(
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
@@ -228,12 +234,17 @@ async function callClaude(
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
+      if (res.status === 401) return { ok: false, error: `Invalid AI API key — check the key in Admin settings. (${msg})` }
+      if (res.status === 429) return { ok: false, error: `AI provider rate limit exceeded — try again in a few minutes. (${msg})` }
       return { ok: false, error: `AI API error: ${msg}` }
     }
 
     const data = (await res.json()) as { content: Array<{ type: string; text: string }> }
     raw = data.content.find((b) => b.type === 'text')?.text ?? ''
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { ok: false, error: 'AI request timed out after 30 seconds. Please try again.' }
+    }
     return {
       ok: false,
       error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
@@ -253,6 +264,7 @@ async function callOpenAI(
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
@@ -271,6 +283,8 @@ async function callOpenAI(
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
+      if (res.status === 401) return { ok: false, error: `Invalid AI API key — check the key in Admin settings. (${msg})` }
+      if (res.status === 429) return { ok: false, error: `AI provider rate limit exceeded — try again in a few minutes. (${msg})` }
       return { ok: false, error: `AI API error: ${msg}` }
     }
 
@@ -279,6 +293,9 @@ async function callOpenAI(
     }
     raw = data.choices[0]?.message?.content ?? ''
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { ok: false, error: 'AI request timed out after 30 seconds. Please try again.' }
+    }
     return {
       ok: false,
       error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
@@ -299,6 +316,7 @@ async function callGemini(
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
     const res = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -310,6 +328,8 @@ async function callGemini(
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
+      if (res.status === 401 || res.status === 403) return { ok: false, error: `Invalid AI API key — check the key in Admin settings. (${msg})` }
+      if (res.status === 429) return { ok: false, error: `AI provider rate limit exceeded — try again in a few minutes. (${msg})` }
       return { ok: false, error: `AI API error: ${msg}` }
     }
 
@@ -318,6 +338,9 @@ async function callGemini(
     }
     raw = data.candidates[0]?.content?.parts[0]?.text ?? ''
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      return { ok: false, error: 'AI request timed out after 30 seconds. Please try again.' }
+    }
     return {
       ok: false,
       error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
@@ -343,17 +366,33 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
   const urlError = validateImportUrl(url)
   if (urlError) return { ok: false, error: URL_VALIDATION_MESSAGES[urlError] }
 
-  const rateLimit = checkImportRateLimit()
-  if (!rateLimit.allowed) {
-    const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
+  // Load admin config first (cached) so we can use the configured rate limit.
+  const admin = await loadAdminScrapingConfig()
+
+  const rateCheck = checkImportRateLimit(admin.rateLimit ?? undefined)
+  if (!rateCheck.allowed) {
+    const wait = rateCheck.retryAfterMs ? formatRetryAfter(rateCheck.retryAfterMs) : 'an hour'
     return {
       ok: false,
       error: `Too many import requests. Please wait ${wait} before trying again.`,
     }
   }
 
-  const resolved = await resolveApiKeyAndModel()
-  if ('error' in resolved) return { ok: false, error: resolved.error }
+  if (!admin.apiKey) {
+    return {
+      ok: false,
+      error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
+    }
+  }
+
+  const provider = admin.provider ?? 'anthropic'
+  const defaultModel =
+    provider === 'openai'
+      ? DEFAULT_OPENAI_MODEL
+      : provider === 'gemini'
+        ? DEFAULT_GEMINI_MODEL
+        : DEFAULT_MODEL
+  const model = admin.model ?? defaultModel
 
   const pageText = await fetchPageText(url)
   const MAX_PAGE_CHARS = 12_000
@@ -361,13 +400,7 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
     ? `URL: ${url}\n\nPage content:\n${truncate(pageText, MAX_PAGE_CHARS)}`
     : `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
 
-  const result = await callAI(
-    SYSTEM_PROMPT,
-    userMessage,
-    resolved.apiKey,
-    resolved.model,
-    resolved.provider
-  )
+  const result = await callAI(SYSTEM_PROMPT, userMessage, admin.apiKey, model, provider)
   if (result.ok && !result.recipe.url) {
     return { ok: true, recipe: { ...result.recipe, url } }
   }
@@ -375,25 +408,40 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
 }
 
 export async function extractRecipeFromText(text: string): Promise<ScrapeResult> {
-  const rateLimit = checkImportRateLimit()
-  if (!rateLimit.allowed) {
-    const wait = rateLimit.retryAfterMs ? formatRetryAfter(rateLimit.retryAfterMs) : 'an hour'
+  const admin = await loadAdminScrapingConfig()
+
+  const rateCheck = checkImportRateLimit(admin.rateLimit ?? undefined)
+  if (!rateCheck.allowed) {
+    const wait = rateCheck.retryAfterMs ? formatRetryAfter(rateCheck.retryAfterMs) : 'an hour'
     return {
       ok: false,
       error: `Too many import requests. Please wait ${wait} before trying again.`,
     }
   }
 
-  const resolved = await resolveApiKeyAndModel()
-  if ('error' in resolved) return { ok: false, error: resolved.error }
+  if (!admin.apiKey) {
+    return {
+      ok: false,
+      error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
+    }
+  }
+
+  const provider = admin.provider ?? 'anthropic'
+  const defaultModel =
+    provider === 'openai'
+      ? DEFAULT_OPENAI_MODEL
+      : provider === 'gemini'
+        ? DEFAULT_GEMINI_MODEL
+        : DEFAULT_MODEL
+  const model = admin.model ?? defaultModel
 
   const MAX_TEXT_CHARS = 12_000
   return callAI(
     TEXT_SYSTEM_PROMPT,
     `Recipe text:\n\n${truncate(text, MAX_TEXT_CHARS)}`,
-    resolved.apiKey,
-    resolved.model,
-    resolved.provider
+    admin.apiKey,
+    model,
+    provider
   )
 }
 

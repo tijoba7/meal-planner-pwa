@@ -42,7 +42,9 @@ export default function StoryViewer({
   const touchHandled = useRef(false)
   // Stable ref for onStoryViewed to avoid re-render loops from parent callback changes
   const onStoryViewedRef = useRef(onStoryViewed)
-  onStoryViewedRef.current = onStoryViewed
+  useEffect(() => {
+    onStoryViewedRef.current = onStoryViewed
+  })
 
   const group = groups[groupIdx]
   const story = group?.stories[storyIdx]

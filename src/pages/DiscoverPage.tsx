@@ -345,7 +345,7 @@ export default function DiscoverPage() {
     isFetchingNextPage: exploreFetchingMore,
   } = usePublicFeed()
 
-  const exploreItems = exploreData?.pages.flat() ?? []
+  const exploreItems = useMemo(() => exploreData?.pages.flat() ?? [], [exploreData])
   const exploreIds = exploreItems.map((i) => i.id)
   const { data: exploreEngagement = {} } = useEngagementStats(exploreIds)
 

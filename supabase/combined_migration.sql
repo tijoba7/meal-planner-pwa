@@ -1605,3 +1605,100 @@ on conflict (key) do nothing;
 insert into storage.buckets (id, name, public)
 values ('recipe-images', 'recipe-images', true)
 on conflict (id) do nothing;
+
+-- ─── Direct Messages (MEA-189) ────────────────────────────────────────────────
+
+create table if not exists public.direct_messages (
+  id           uuid primary key default gen_random_uuid(),
+  sender_id    uuid not null references public.profiles (id) on delete cascade,
+  recipient_id uuid not null references public.profiles (id) on delete cascade,
+  body         text not null check (char_length(body) between 1 and 2000),
+  read_at      timestamptz,
+  created_at   timestamptz not null default now(),
+  constraint direct_messages_no_self_message check (sender_id <> recipient_id)
+);
+
+create index if not exists dm_sender_idx       on public.direct_messages (sender_id,    created_at desc);
+create index if not exists dm_recipient_idx    on public.direct_messages (recipient_id, created_at desc);
+create index if not exists dm_conversation_idx on public.direct_messages (
+  least(sender_id, recipient_id),
+  greatest(sender_id, recipient_id),
+  created_at desc
+);
+
+alter table public.direct_messages enable row level security;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'direct_messages' and policyname = 'dm: participants can select'
+  ) then
+    create policy "dm: participants can select"
+      on public.direct_messages for select
+      to authenticated
+      using (sender_id = auth.uid() or recipient_id = auth.uid());
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'direct_messages' and policyname = 'dm: sender can insert'
+  ) then
+    create policy "dm: sender can insert"
+      on public.direct_messages for insert
+      to authenticated
+      with check (sender_id = auth.uid());
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'direct_messages' and policyname = 'dm: recipient can mark read'
+  ) then
+    create policy "dm: recipient can mark read"
+      on public.direct_messages for update
+      to authenticated
+      using (recipient_id = auth.uid())
+      with check (recipient_id = auth.uid());
+  end if;
+end $$;
+
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'direct_messages' and policyname = 'dm: participants can delete'
+  ) then
+    create policy "dm: participants can delete"
+      on public.direct_messages for delete
+      to authenticated
+      using (sender_id = auth.uid() or recipient_id = auth.uid());
+  end if;
+end $$;
+
+create or replace function public.on_direct_message_created()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_notification_muted(new.recipient_id, 'direct_message') then
+    insert into public.notifications (user_id, type, payload)
+    values (
+      new.recipient_id,
+      'direct_message',
+      jsonb_build_object(
+        'sender_id',   new.sender_id,
+        'message_id',  new.id
+      )
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_direct_message_created on public.direct_messages;
+create trigger on_direct_message_created
+  after insert on public.direct_messages
+  for each row execute procedure public.on_direct_message_created();

@@ -3,9 +3,15 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Playwright E2E test configuration for Mise.
  *
- * Two web servers, both using fake Supabase credentials:
- *  - Port 5173: feature test server — tests inject sessions via localStorage
+ * Three web servers, all using fake Supabase credentials:
+ *  - Port 5175: feature test server — tests inject sessions via localStorage
  *  - Port 5174: auth flow test server — tests exercise login/redirect/logout flows
+ *
+ * Port 5175 is deliberately different from the default Vite dev port (5173) so
+ * that a running dev server never pollutes the E2E test environment.  When a
+ * dev server is alive on 5173 it is started with real Supabase credentials
+ * (from .env.local), which causes the Supabase JS client to use a different
+ * localStorage key than the one fixtures.ts injects — breaking session injection.
  *
  * Covers Chrome (desktop), Firefox (desktop), and mobile Chrome/Safari for feature tests.
  * Auth flow tests run on Chromium only (auth logic is browser-agnostic).
@@ -44,19 +50,22 @@ export default defineConfig({
 
   /* Shared settings for all projects */
   use: {
-    /* Base URL for feature tests (auth-bypass server) */
-    baseURL: 'http://localhost:5173',
+    /* Base URL for feature tests (auth-bypass server on dedicated test port) */
+    baseURL: 'http://localhost:5175',
 
     /* Collect traces on first retry */
     trace: 'on-first-retry',
 
     /* Screenshot only on failure */
     screenshot: 'only-on-failure',
+
+    /* Disable CSS animations so slide-up/fade-in don't interfere with click hit-testing */
+    reducedMotion: 'reduce',
   },
 
   /* Test projects */
   projects: [
-    // Feature tests — run against the auth-bypass server (port 5173).
+    // Feature tests — run against the auth-bypass server (port 5175).
     // All routes are accessible; no Supabase credentials required.
     {
       name: 'chromium',
@@ -95,10 +104,12 @@ export default defineConfig({
   webServer: [
     {
       // Feature test server — session injected per-test via localStorage.
+      // Runs on port 5175 (not 5173) so it never conflicts with a live dev
+      // server started from .env.local with real Supabase credentials.
       // Fake Supabase credentials satisfy supabase.ts startup check;
       // actual API calls are intercepted by page.route() in fixtures.ts.
-      command: 'pnpm dev',
-      url: 'http://localhost:5173',
+      command: 'pnpm dev --port 5175',
+      url: 'http://localhost:5175',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {

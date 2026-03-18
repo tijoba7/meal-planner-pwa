@@ -174,7 +174,7 @@ export default function Layout() {
           <img src="/favicon.svg" alt="mise" className="w-8 h-8 rounded-lg" />
           <div className="hidden lg:block">
             <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 -mt-0.5 tracking-wide uppercase">
+            <p className="text-[10px] text-gray-600 dark:text-gray-400 -mt-0.5 tracking-wide uppercase">
               cook &middot; share &middot; enjoy
             </p>
           </div>

@@ -1,6 +1,8 @@
 # Deployment
 
-Mise is a static SPA that builds to a `dist/` directory and deploys to Vercel.
+Mise is a static SPA that builds to a `dist/` directory. It can be deployed to Vercel, Docker, or any static host.
+
+For a full setup walkthrough including prerequisites, environment variables, and Supabase configuration, see [README.md](../README.md).
 
 ## Hosting: Vercel
 
@@ -155,6 +157,39 @@ The `vercel.json` at the repo root handles:
 - SPA routing (all paths → `index.html`)
 - Long-lived cache headers for hashed assets (`/assets/*`)
 - Security headers
+
+## Hosting: Docker
+
+A `Dockerfile` and `docker-compose.yml` are included for self-hosted deployments. The image is a two-stage build: Node 22 builds the app, nginx serves the static output.
+
+**Build args** (Vite inlines `VITE_*` at build time — they must be passed as build args, not runtime env vars):
+
+```bash
+docker build \
+  --build-arg VITE_SUPABASE_URL=https://your-ref.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=your-anon-key \
+  -t mise .
+
+docker run -p 80:80 mise
+```
+
+**Or with Docker Compose** (reads from `.env.local` or shell environment):
+
+```bash
+docker compose up
+```
+
+The app is served on port 80. nginx is configured via `nginx.conf` at the repo root (SPA fallback routing, gzip compression, cache headers).
+
+## Hosting: Any static host
+
+```bash
+pnpm build
+```
+
+Serve the `dist/` directory from Netlify, Cloudflare Pages, S3 + CloudFront, or any host that supports SPAs. Configure a catch-all rule to serve `index.html` for all unmatched routes.
+
+---
 
 ## Environment Variables
 

@@ -12,6 +12,23 @@ import { test, expect } from './fixtures'
 const RUN_ID = Date.now()
 
 /**
+ * On mobile, Edit and Delete are hidden behind the "More options" sheet.
+ * Opens the sheet if the button is present.
+ */
+async function openMoreOptionsIfMobile(page: import('@playwright/test').Page) {
+  const moreBtn = page.getByRole('button', { name: 'More options' })
+  // On desktop the button is CSS-hidden (md:hidden), so isVisible returns false immediately.
+  // On mobile the page may still be rendering — use a longer timeout so we catch it once
+  // the RecipeDetailPage component has mounted.
+  const isVisible = await moreBtn.isVisible({ timeout: 8000 }).catch(() => false)
+  if (isVisible) {
+    await moreBtn.click()
+    // Wait for the sheet to be present in the DOM
+    await page.locator('[aria-label="Recipe options"]').waitFor({ state: 'visible', timeout: 5000 })
+  }
+}
+
+/**
  * Helper: fill in and submit the recipe form.
  * Assumes the page is already on /recipes/new or /recipes/:id/edit.
  */
@@ -80,9 +97,14 @@ test.describe('Recipe CRUD', () => {
     await expect(page.getByText(ingredient, { exact: true })).toBeVisible()
     await expect(page.getByText(step)).toBeVisible()
 
-    // Edit and Delete actions should be present
-    await expect(page.getByRole('link', { name: /edit/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible()
+    // Edit and Delete actions should be accessible (behind "More options" on mobile)
+    const moreOptionsBtn = page.getByRole('button', { name: 'More options' })
+    if (await moreOptionsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(moreOptionsBtn).toBeVisible()
+    } else {
+      await expect(page.getByRole('link', { name: /edit/i })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible()
+    }
   })
 
   test('can edit a recipe', async ({ page }) => {
@@ -94,9 +116,12 @@ test.describe('Recipe CRUD', () => {
     await fillRecipeForm(page, { name: originalName })
     await page.getByRole('button', { name: 'Add Recipe' }).click()
     await expect(page).toHaveURL(/recipes\/[^/]+$/)
+    // Wait for the detail page to fully render before interacting with action buttons
+    await expect(page.getByRole('heading', { name: originalName })).toBeVisible()
 
-    // Navigate to edit
-    await page.getByRole('link', { name: /edit/i }).click()
+    // Navigate to edit — open "More options" first on mobile
+    await openMoreOptionsIfMobile(page)
+    await page.getByRole('link', { name: /edit( recipe)?/i }).click()
     await expect(page).toHaveURL(/recipes\/.+\/edit/)
     await expect(page.getByRole('heading', { name: /edit recipe/i })).toBeVisible()
 
@@ -119,13 +144,15 @@ test.describe('Recipe CRUD', () => {
     await fillRecipeForm(page, { name })
     await page.getByRole('button', { name: 'Add Recipe' }).click()
     await expect(page).toHaveURL(/recipes\/[^/]+$/)
+    // Wait for the detail page to fully render before interacting with action buttons
+    await expect(page.getByRole('heading', { name })).toBeVisible()
 
-    // Delete it via confirm dialog
-    await page.getByRole('button', { name: 'Delete' }).click()
+    // Delete it via confirm dialog — open "More options" first on mobile
+    await openMoreOptionsIfMobile(page)
+    await page.getByRole('button', { name: /^delete( recipe)?$/i }).first().click()
     await expect(page.getByText('Delete recipe?')).toBeVisible()
-    // Two Delete buttons: header + dialog confirm — click the confirm one
-    const deleteButtons = page.getByRole('button', { name: 'Delete' })
-    await deleteButtons.last().click()
+    // Confirm delete in the dialog
+    await page.getByRole('button', { name: /^delete$/i }).last().click()
 
     // Should redirect to recipes list
     await expect(page).toHaveURL('/')
@@ -141,9 +168,12 @@ test.describe('Recipe CRUD', () => {
     await fillRecipeForm(page, { name })
     await page.getByRole('button', { name: 'Add Recipe' }).click()
     await expect(page).toHaveURL(/recipes\/[^/]+$/)
+    // Wait for the detail page to fully render before interacting with action buttons
+    await expect(page.getByRole('heading', { name })).toBeVisible()
 
-    // Open delete dialog then cancel
-    await page.getByRole('button', { name: 'Delete' }).click()
+    // Open delete dialog then cancel — open "More options" first on mobile
+    await openMoreOptionsIfMobile(page)
+    await page.getByRole('button', { name: /^delete( recipe)?$/i }).first().click()
     await expect(page.getByText('Delete recipe?')).toBeVisible()
     await page.getByRole('button', { name: 'Cancel' }).click()
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -933,8 +934,8 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {/* Copy week modal */}
-      {copyModalOpen && (
+      {/* Copy week modal — portal to document.body to escape flex stacking context */}
+      {copyModalOpen && createPortal(
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={() => setCopyModalOpen(false)}
@@ -1017,11 +1018,12 @@ export default function PlannerPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Recipe picker modal */}
-      {pickerTarget && (
+      {/* Recipe picker modal — portal to document.body to escape flex stacking context */}
+      {pickerTarget && createPortal(
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={closePicker}
@@ -1136,11 +1138,12 @@ export default function PlannerPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Template gallery modal */}
-      {templateGalleryOpen && (
+      {/* Template gallery modal — portal to document.body to escape flex stacking context */}
+      {templateGalleryOpen && createPortal(
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={() => setTemplateGalleryOpen(false)}
@@ -1229,11 +1232,12 @@ export default function PlannerPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Save template dialog */}
-      {saveTemplateOpen && (
+      {/* Save template dialog — portal to document.body to escape flex stacking context */}
+      {saveTemplateOpen && createPortal(
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => {
@@ -1281,11 +1285,12 @@ export default function PlannerPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* History modal */}
-      {historyOpen && (
+      {/* History modal — portal to document.body to escape flex stacking context */}
+      {historyOpen && createPortal(
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
           onClick={() => setHistoryOpen(false)}
@@ -1361,11 +1366,12 @@ export default function PlannerPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Apply template confirmation */}
-      {applyTemplateConfirm && (
+      {/* Apply template confirmation — portal to document.body to escape flex stacking context */}
+      {applyTemplateConfirm && createPortal(
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setApplyTemplateConfirm(null)}
@@ -1395,7 +1401,8 @@ export default function PlannerPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

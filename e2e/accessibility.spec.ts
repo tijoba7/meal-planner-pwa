@@ -168,7 +168,8 @@ test.describe('Accessibility — Discover page', () => {
     await page.goto('/discover')
     // When Supabase is not configured the page shows a "Connect to Supabase" message
     // instead of the h2/tablist; wait for either state to be ready.
-    await page.waitForSelector('h2, [role="tablist"], p', { timeout: 15000 })
+    // Scope to main to avoid matching the sidebar tagline <p> that is CSS-hidden on mobile.
+    await page.waitForSelector('main h2, [role="tablist"], main p', { timeout: 15000 })
     await assertNoViolations(page, 'Discover page')
   })
 })

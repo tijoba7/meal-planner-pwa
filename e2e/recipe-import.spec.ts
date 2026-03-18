@@ -183,12 +183,12 @@ test.describe('Recipe Import — URL import', () => {
   test('shows import form when an API key is present', async ({ page }) => {
     await page.goto('/recipes/import')
     await expect(page.getByRole('textbox', { name: /Recipe URL or text/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Import' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeVisible()
   })
 
   test('Import button is disabled when input is empty', async ({ page }) => {
     await page.goto('/recipes/import')
-    await expect(page.getByRole('button', { name: 'Import' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled()
   })
 
   test('shows loading state while extracting', async ({ page }) => {
@@ -201,7 +201,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/loading-test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByRole('status', { name: /Extracting recipe/i })).toBeVisible()
   })
@@ -212,7 +212,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByText('Recipe extracted! Review before saving.')).toBeVisible({ timeout: 10000 })
     await expect(page.getByRole('heading', { level: 3, name: MOCK_RECIPE.name })).toBeVisible()
@@ -226,7 +226,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByText(/by Test Chef/i)).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/Serves 4/i)).toBeVisible()
@@ -238,7 +238,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByText('Recipe extracted! Review before saving.')).toBeVisible({ timeout: 10000 })
     await page.getByRole('button', { name: 'Save Recipe' }).click()
@@ -254,7 +254,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByText('Recipe extracted! Review before saving.')).toBeVisible({ timeout: 10000 })
     await page.getByRole('button', { name: 'Save Recipe' }).click()
@@ -271,7 +271,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByText('Recipe extracted! Review before saving.')).toBeVisible({ timeout: 10000 })
     await page.getByRole('button', { name: 'Try another' }).click()
@@ -294,7 +294,7 @@ test.describe('Recipe Import — URL import', () => {
 
     await page.goto('/recipes/import')
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill('https://example.com/recipe/test')
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     // An error message should appear (either inline or as a toast)
     await expect(page.getByRole('alert')).toBeVisible({ timeout: 10000 })
@@ -328,7 +328,7 @@ test.describe('Recipe Import — JSON-LD', () => {
     await page.goto('/recipes/import')
 
     await page.getByRole('textbox', { name: /Recipe URL or text/i }).fill(jsonLd)
-    await page.getByRole('button', { name: 'Import' }).click()
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
 
     await expect(page.getByText('Recipe extracted! Review before saving.')).toBeVisible({ timeout: 10000 })
     await expect(page.getByRole('heading', { level: 3, name: jsonLdName })).toBeVisible()

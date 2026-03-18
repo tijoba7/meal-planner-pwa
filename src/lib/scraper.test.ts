@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { extractRecipeFromUrl, _resetScraperCache } from './scraper'
-import type { ExtractedRecipe } from './scraper'
+import {
+  extractRecipeFromUrl,
+  extractRecipeFromText,
+  extractRecipesFromUrls,
+  parsePaprikaRecipe,
+  parseCroutonExport,
+  _resetScraperCache,
+} from './scraper'
+import type { ExtractedRecipe, BatchItemState } from './scraper'
 import { getAppSettingString, getAppSettingNumber } from './appSettingsService'
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -699,6 +706,392 @@ describe('extractRecipeFromUrl', () => {
       const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
     })
+  })
+})
+
+// ─── extractRecipeFromText ─────────────────────────────────────────────────────
+
+describe('extractRecipeFromText', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+    _resetScraperCache()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    _resetScraperCache()
+  })
+
+  it('returns a recipe when the AI successfully extracts from text', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }),
+    })
+
+    const result = await extractRecipeFromText('Spaghetti Carbonara recipe: 400g pasta, 3 eggs...')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.recipe.name).toBe('Spaghetti Carbonara')
+  })
+
+  it('sends the text to the AI without fetching a URL', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }),
+    })
+
+    await extractRecipeFromText('some recipe text')
+
+    // Only one fetch call — no page fetch, only AI call
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const [url] = mockFetch.mock.calls[0] as [string]
+    expect(url).toContain('anthropic.com')
+  })
+
+  it('truncates very long text before sending to the AI', async () => {
+    const longText = 'x'.repeat(20000)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }),
+    })
+
+    await extractRecipeFromText(longText)
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string)
+    expect(body.messages[0].content).toContain('[truncated]')
+  })
+
+  it('returns an error when no API key is configured', async () => {
+    vi.mocked(getAppSettingString).mockResolvedValueOnce(null)
+    _resetScraperCache()
+
+    const result = await extractRecipeFromText('some text')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('API key not configured')
+  })
+
+  it('returns an error when the AI cannot find a recipe in the text', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        content: [{ type: 'text', text: JSON.stringify({ error: 'No recipe found in this text' }) }],
+      }),
+    })
+
+    const result = await extractRecipeFromText('This is not a recipe.')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toBe('No recipe found in this text')
+  })
+})
+
+// ─── extractRecipesFromUrls ────────────────────────────────────────────────────
+
+describe('extractRecipesFromUrls', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+    _resetScraperCache()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    _resetScraperCache()
+  })
+
+  it('processes each URL and returns a BatchItemState array', async () => {
+    const urls = [
+      'https://example.com/recipe/pasta',
+      'https://example.com/recipe/soup',
+    ]
+
+    // Each URL: page fetch + AI call
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify({ ...validRecipePayload, name: 'Pasta' }) }] }) })
+      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify({ ...validRecipePayload, name: 'Soup' }) }] }) })
+
+    const progressUpdates: BatchItemState[][] = []
+    const results = await extractRecipesFromUrls(urls, (items) => {
+      progressUpdates.push([...items])
+    })
+
+    expect(results).toHaveLength(2)
+    expect(results[0].status).toBe('done')
+    expect(results[0].recipe?.name).toBe('Pasta')
+    expect(results[1].status).toBe('done')
+    expect(results[1].recipe?.name).toBe('Soup')
+  })
+
+  it('calls onProgress with initial pending state, then loading, then done/error', async () => {
+    const urls = ['https://example.com/recipe/pasta']
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }) })
+
+    const statuses: string[] = []
+    await extractRecipesFromUrls(urls, (items) => {
+      statuses.push(items[0].status)
+    })
+
+    expect(statuses[0]).toBe('pending')
+    expect(statuses[1]).toBe('loading')
+    expect(statuses[statuses.length - 1]).toBe('done')
+  })
+
+  it('marks a URL as error when extraction fails', async () => {
+    const urls = ['https://example.com/bad-url']
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: vi.fn().mockResolvedValue({}) })
+
+    const results = await extractRecipesFromUrls(urls, () => {})
+
+    expect(results[0].status).toBe('error')
+    expect(results[0].error).toBeDefined()
+  })
+
+  it('processes URLs sequentially — does not start the next until the first is done', async () => {
+    const callOrder: number[] = []
+    const urls = [
+      'https://example.com/recipe/first',
+      'https://example.com/recipe/second',
+    ]
+
+    mockFetch
+      .mockImplementationOnce(() => {
+        callOrder.push(1)
+        return Promise.resolve({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+      })
+      .mockImplementationOnce(() => {
+        callOrder.push(2)
+        return Promise.resolve({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }) })
+      })
+      .mockImplementationOnce(() => {
+        callOrder.push(3)
+        return Promise.resolve({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+      })
+      .mockImplementationOnce(() => {
+        callOrder.push(4)
+        return Promise.resolve({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }) })
+      })
+
+    await extractRecipesFromUrls(urls, () => {})
+
+    // First URL's fetches (1, 2) must complete before second URL's fetches (3, 4)
+    expect(callOrder).toEqual([1, 2, 3, 4])
+  })
+})
+
+// ─── parsePaprikaRecipe ────────────────────────────────────────────────────────
+
+describe('parsePaprikaRecipe', () => {
+  it('parses a valid Paprika recipe object', () => {
+    const data = {
+      name: 'Chicken Soup',
+      description: 'A classic comfort food.',
+      servings: '4',
+      prepTime: '15 min',
+      cookTime: '1 hour',
+      ingredients: 'Chicken\n2 cups Broth\n1 Carrot',
+      directions: 'Combine all ingredients.\n\nSimmer for 1 hour.',
+      categories: ['Soup', 'Comfort Food'],
+      imageUrl: 'https://example.com/chicken.jpg',
+      sourceUrl: 'https://example.com/chicken-soup',
+    }
+
+    const result = parsePaprikaRecipe(data)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.recipe.name).toBe('Chicken Soup')
+    expect(result.recipe.recipeYield).toBe('4')
+    expect(result.recipe.prepTime).toBe('PT15M')
+    expect(result.recipe.cookTime).toBe('PT1H')
+    expect(result.recipe.recipeIngredient.length).toBeGreaterThan(0)
+    expect(result.recipe.recipeInstructions).toHaveLength(2)
+    expect(result.recipe.keywords).toContain('soup')
+    expect(result.recipe.image).toBe('https://example.com/chicken.jpg')
+    expect(result.recipe.url).toBe('https://example.com/chicken-soup')
+  })
+
+  it('returns an error when the recipe has no name', () => {
+    const result = parsePaprikaRecipe({ name: '', ingredients: '' })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('no name')
+  })
+
+  it('returns an error for non-object inputs', () => {
+    expect(parsePaprikaRecipe(null).ok).toBe(false)
+    expect(parsePaprikaRecipe('string').ok).toBe(false)
+    expect(parsePaprikaRecipe([]).ok).toBe(false)
+  })
+
+  it('parses time strings with hours and minutes', () => {
+    const result = parsePaprikaRecipe({
+      name: 'Stew',
+      prepTime: '1 hour 30 min',
+      cookTime: '2 hours',
+      ingredients: '',
+      directions: '',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.recipe.prepTime).toBe('PT1H30M')
+    expect(result.recipe.cookTime).toBe('PT2H')
+  })
+
+  it('accepts snake_case time fields (prep_time, cook_time)', () => {
+    const result = parsePaprikaRecipe({
+      name: 'Test Recipe',
+      prep_time: '10 min',
+      cook_time: '30 min',
+      ingredients: '',
+      directions: '',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.recipe.prepTime).toBe('PT10M')
+    expect(result.recipe.cookTime).toBe('PT30M')
+  })
+
+  it('uses description field before notes for recipe description', () => {
+    const result = parsePaprikaRecipe({
+      name: 'Recipe',
+      description: 'Primary description',
+      notes: 'Some notes',
+      ingredients: '',
+      directions: '',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.recipe.description).toBe('Primary description')
+  })
+
+  it('falls back to notes when description is absent', () => {
+    const result = parsePaprikaRecipe({
+      name: 'Recipe',
+      notes: 'Fall-back notes',
+      ingredients: '',
+      directions: '',
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.recipe.description).toBe('Fall-back notes')
+  })
+})
+
+// ─── parseCroutonExport ────────────────────────────────────────────────────────
+
+describe('parseCroutonExport', () => {
+  const croutonRecipe = {
+    name: 'Avocado Toast',
+    description: 'Simple and delicious.',
+    yield: '2',
+    prepTime: 5,
+    cookTime: 0,
+    ingredients: [
+      { name: 'Avocado', quantity: '1' },
+      { name: 'Bread', quantity: '2 slices' },
+    ],
+    steps: ['Toast the bread.', 'Mash the avocado and spread.'],
+    tags: ['Breakfast', 'Quick'],
+    image: 'https://example.com/avocado.jpg',
+    source: 'https://example.com/avocado-toast',
+  }
+
+  it('parses a Crouton export array with one recipe', () => {
+    const results = parseCroutonExport([croutonRecipe])
+
+    expect(results).toHaveLength(1)
+    expect(results[0].ok).toBe(true)
+    if (!results[0].ok) return
+    expect(results[0].recipe.name).toBe('Avocado Toast')
+    expect(results[0].recipe.prepTime).toBe('PT5M')
+    expect(results[0].recipe.cookTime).toBe('PT0M')
+    expect(results[0].recipe.recipeInstructions).toHaveLength(2)
+    expect(results[0].recipe.keywords).toContain('breakfast')
+    expect(results[0].recipe.image).toBe('https://example.com/avocado.jpg')
+    expect(results[0].recipe.url).toBe('https://example.com/avocado-toast')
+  })
+
+  it('parses a Crouton export wrapped in { recipes: [...] }', () => {
+    const results = parseCroutonExport({ recipes: [croutonRecipe] })
+
+    expect(results).toHaveLength(1)
+    expect(results[0].ok).toBe(true)
+  })
+
+  it('returns multiple results when multiple recipes are in the array', () => {
+    const second = { ...croutonRecipe, name: 'Scrambled Eggs' }
+    const results = parseCroutonExport([croutonRecipe, second])
+
+    expect(results).toHaveLength(2)
+    const r0 = results[0]
+    const r1 = results[1]
+    expect(r0.ok).toBe(true)
+    if (r0.ok) expect(r0.recipe.name).toBe('Avocado Toast')
+    expect(r1.ok).toBe(true)
+    if (r1.ok) expect(r1.recipe.name).toBe('Scrambled Eggs')
+  })
+
+  it('returns an error for a recipe missing a name', () => {
+    const results = parseCroutonExport([{ ...croutonRecipe, name: '' }])
+
+    expect(results[0].ok).toBe(false)
+    if (results[0].ok) return
+    expect(results[0].error).toContain('no name')
+  })
+
+  it('returns an error when given a non-array, non-object input', () => {
+    const results = parseCroutonExport('not an export')
+
+    expect(results).toHaveLength(1)
+    expect(results[0].ok).toBe(false)
+  })
+
+  it('returns an error when the recipes array is empty', () => {
+    const results = parseCroutonExport([])
+
+    expect(results).toHaveLength(1)
+    expect(results[0].ok).toBe(false)
+    if (results[0].ok) return
+    expect(results[0].error).toContain('No recipes found')
+  })
+
+  it('parses string ingredients as well as object ingredients', () => {
+    const results = parseCroutonExport([{ ...croutonRecipe, ingredients: ['2 cups flour', '1 egg'] }])
+
+    expect(results[0].ok).toBe(true)
+    if (!results[0].ok) return
+    expect(results[0].recipe.recipeIngredient.length).toBeGreaterThan(0)
+  })
+
+  it('uses the servings field as a fallback for yield', () => {
+    const { yield: _y, ...withoutYield } = croutonRecipe
+    const results = parseCroutonExport([{ ...withoutYield, servings: '4' }])
+
+    expect(results[0].ok).toBe(true)
+    if (!results[0].ok) return
+    expect(results[0].recipe.recipeYield).toBe('4')
   })
 })
 

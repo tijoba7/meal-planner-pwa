@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -354,7 +355,7 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-8">
-      {cookingMode && <CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />}
+      {cookingMode && createPortal(<CookingMode recipe={recipe} onClose={() => setCookingMode(false)} />, document.body)}
 
       {/* Back link */}
       <Link
@@ -928,8 +929,8 @@ export default function RecipeDetailPage() {
         </div>
       )}
 
-      {/* Mobile "more options" bottom sheet */}
-      {showMoreSheet && (
+      {/* Mobile "more options" bottom sheet — portal to document.body to escape flex stacking context */}
+      {showMoreSheet && createPortal(
         <div
           className="print:hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center animate-fade-in md:hidden"
           onClick={() => setShowMoreSheet(false)}
@@ -1034,11 +1035,12 @@ export default function RecipeDetailPage() {
             </div>
             <div className="pb-[env(safe-area-inset-bottom)]" />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Delete confirm dialog */}
-      {showDeleteConfirm && (
+      {/* Delete confirm dialog — portal to document.body to escape flex stacking context */}
+      {showDeleteConfirm && createPortal(
         <div className="print:hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div
             className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-sm w-full shadow-xl animate-scale-in"
@@ -1072,7 +1074,8 @@ export default function RecipeDetailPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

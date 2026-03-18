@@ -1702,3 +1702,29 @@ drop trigger if exists on_direct_message_created on public.direct_messages;
 create trigger on_direct_message_created
   after insert on public.direct_messages
   for each row execute procedure public.on_direct_message_created();
+
+-- ─── Security fixes (MEA-196 audit) ────────────────────────────────────────
+
+-- C-1: Prevent privilege escalation — lock role column for non-admin users
+DROP POLICY IF EXISTS "profiles: owner can update" ON public.profiles;
+CREATE POLICY "profiles: owner can update"
+  ON public.profiles FOR UPDATE
+  TO authenticated
+  USING (id = auth.uid())
+  WITH CHECK (
+    id = auth.uid()
+    AND role = (SELECT role FROM public.profiles WHERE id = auth.uid())
+  );
+
+-- M-1: Lock search_path on security-definer function
+CREATE OR REPLACE FUNCTION public.are_friends(user_a uuid, user_b uuid)
+RETURNS boolean LANGUAGE sql STABLE
+SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.friendships
+    WHERE status = 'accepted'
+      AND ((requester_id = user_a AND addressee_id = user_b)
+           OR (requester_id = user_b AND addressee_id = user_a))
+  );
+$$;

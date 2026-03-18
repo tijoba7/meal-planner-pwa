@@ -20,7 +20,7 @@ const MAX_THUMB_PX = 400
 /** WebP quality (0–1). */
 const QUALITY = 0.82
 /** Max input file size the user may select (bytes). */
-export const MAX_INPUT_BYTES = 20 * 1024 * 1024 // 20 MB
+export const MAX_INPUT_BYTES = 5 * 1024 * 1024 // 5 MB (matches Supabase Storage bucket limit)
 
 export interface UploadedImage {
   /** Public URL of the full-size image. */

@@ -1,5 +1,5 @@
 import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Globe, Settings, ArrowLeft, type LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Globe, Settings, Monitor, ArrowLeft, type LucideIcon } from 'lucide-react'
 
 interface AdminNavItem {
   to: string
@@ -12,6 +12,7 @@ const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/scraping', label: 'Scraping', icon: Globe, end: false },
   { to: '/admin/settings', label: 'Settings', icon: Settings, end: false },
+  { to: '/admin/system', label: 'System', icon: Monitor, end: false },
 ]
 
 export default function AdminLayout() {

@@ -46,6 +46,7 @@ const AdminLayout = lazy(() => import('./components/AdminLayout'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminScrapingPage = lazy(() => import('./pages/admin/AdminScrapingPage'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'))
+const AdminSystemPage = lazy(() => import('./pages/admin/AdminSystemPage'))
 
 function PageLoader() {
   return (
@@ -130,6 +131,7 @@ function AppRoutes() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="scraping" element={<AdminScrapingPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="system" element={<AdminSystemPage />} />
         </Route>
 
         {/* Top-level catch-all (e.g. /auth/unknown) */}

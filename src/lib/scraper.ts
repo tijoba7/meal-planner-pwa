@@ -313,11 +313,11 @@ async function callGemini(
 ): Promise<ScrapeResult> {
   let raw: string
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
     const res = await fetch(url, {
       method: 'POST',
       signal: AbortSignal.timeout(30_000),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],

@@ -16,8 +16,11 @@ values (
 on conflict (id) do nothing;
 
 -- ─── Storage policies ─────────────────────────────────────────────────────────
+-- Use drop-if-exists + create to be idempotent (public buckets auto-create
+-- a default SELECT policy in some Supabase versions).
 
 -- Public read (the bucket is public, but be explicit).
+drop policy if exists "recipe-images: public read" on storage.objects;
 create policy "recipe-images: public read"
   on storage.objects for select
   to public
@@ -25,6 +28,7 @@ create policy "recipe-images: public read"
 
 -- Authenticated users can upload to their own folder only.
 -- Path must start with the caller's user ID.
+drop policy if exists "recipe-images: owner can upload" on storage.objects;
 create policy "recipe-images: owner can upload"
   on storage.objects for insert
   to authenticated
@@ -34,6 +38,7 @@ create policy "recipe-images: owner can upload"
   );
 
 -- Owner can replace (upsert) their own images.
+drop policy if exists "recipe-images: owner can update" on storage.objects;
 create policy "recipe-images: owner can update"
   on storage.objects for update
   to authenticated
@@ -43,6 +48,7 @@ create policy "recipe-images: owner can update"
   );
 
 -- Owner can delete their own images.
+drop policy if exists "recipe-images: owner can delete" on storage.objects;
 create policy "recipe-images: owner can delete"
   on storage.objects for delete
   to authenticated

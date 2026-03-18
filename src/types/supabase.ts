@@ -723,6 +723,18 @@ export type Database = {
         Args: Record<string, never>
         Returns: boolean
       }
+      are_friends: {
+        Args: { user_a: string; user_b: string }
+        Returns: boolean
+      }
+      check_scrape_rate_limit: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      get_scraping_config: {
+        Args: Record<string, never>
+        Returns: Json
+      }
     }
     Enums: {
       recipe_visibility: 'private' | 'friends' | 'public'

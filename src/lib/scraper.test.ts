@@ -12,6 +12,26 @@ import { getAppSettingString, getAppSettingNumber } from './appSettingsService'
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
+// Mock Supabase client — RPC calls for server-side rate limiting and config.
+const mockRpc = vi.fn().mockImplementation((fn: string) => {
+  if (fn === 'get_scraping_config') {
+    return Promise.resolve({
+      data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null },
+      error: null,
+    })
+  }
+  if (fn === 'check_scrape_rate_limit') {
+    return Promise.resolve({
+      data: { allowed: true, remaining: 9, retry_after_sec: 0 },
+      error: null,
+    })
+  }
+  return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+})
+vi.mock('./supabase', () => ({
+  supabase: { rpc: (...args: unknown[]) => mockRpc(...args) },
+}))
+
 // Mock admin scraping config — return the fake API key so extractRecipeFromUrl works.
 vi.mock('./appSettingsService', () => ({
   getAppSettingString: vi.fn().mockImplementation((key: string) => {
@@ -530,6 +550,18 @@ describe('extractRecipeFromUrl', () => {
   describe('OpenAI provider', () => {
     beforeEach(() => {
       _resetScraperCache()
+      mockRpc.mockImplementation((fn: string) => {
+        if (fn === 'get_scraping_config') {
+          return Promise.resolve({
+            data: { api_key: 'sk-openai-test-key', provider: 'openai', model: null },
+            error: null,
+          })
+        }
+        if (fn === 'check_scrape_rate_limit') {
+          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+        }
+        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+      })
       vi.mocked(getAppSettingString).mockImplementation((key: string) => {
         if (key === 'scraping.api_key') return Promise.resolve('sk-openai-test-key')
         if (key === 'scraping.provider') return Promise.resolve('openai')
@@ -539,6 +571,15 @@ describe('extractRecipeFromUrl', () => {
 
     afterEach(() => {
       // Restore default mock
+      mockRpc.mockImplementation((fn: string) => {
+        if (fn === 'get_scraping_config') {
+          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
+        }
+        if (fn === 'check_scrape_rate_limit') {
+          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+        }
+        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+      })
       vi.mocked(getAppSettingString).mockImplementation((key: string) => {
         if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
         return Promise.resolve(null)
@@ -599,6 +640,18 @@ describe('extractRecipeFromUrl', () => {
   describe('Gemini provider', () => {
     beforeEach(() => {
       _resetScraperCache()
+      mockRpc.mockImplementation((fn: string) => {
+        if (fn === 'get_scraping_config') {
+          return Promise.resolve({
+            data: { api_key: 'gemini-test-key', provider: 'gemini', model: null },
+            error: null,
+          })
+        }
+        if (fn === 'check_scrape_rate_limit') {
+          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+        }
+        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+      })
       vi.mocked(getAppSettingString).mockImplementation((key: string) => {
         if (key === 'scraping.api_key') return Promise.resolve('gemini-test-key')
         if (key === 'scraping.provider') return Promise.resolve('gemini')
@@ -607,6 +660,15 @@ describe('extractRecipeFromUrl', () => {
     })
 
     afterEach(() => {
+      mockRpc.mockImplementation((fn: string) => {
+        if (fn === 'get_scraping_config') {
+          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
+        }
+        if (fn === 'check_scrape_rate_limit') {
+          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+        }
+        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+      })
       vi.mocked(getAppSettingString).mockImplementation((key: string) => {
         if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
         return Promise.resolve(null)
@@ -676,28 +738,38 @@ describe('extractRecipeFromUrl', () => {
     })
 
     it('blocks requests when admin rate limit is lower than the default', async () => {
-      // Admin has set rate limit to 2
-      vi.mocked(getAppSettingNumber).mockResolvedValue(2)
       _resetScraperCache()
-
-      // Pre-fill storage with 2 recent timestamps (within the last hour)
-      const now = Date.now()
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([now - 2000, now - 1000]))
+      // Server-side rate limit returns blocked
+      mockRpc.mockImplementation((fn: string) => {
+        if (fn === 'get_scraping_config') {
+          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
+        }
+        if (fn === 'check_scrape_rate_limit') {
+          return Promise.resolve({ data: { allowed: false, remaining: 0, retry_after_sec: 2700 }, error: null })
+        }
+        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+      })
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
       expect(result.error).toContain('Too many import requests')
+
+      // Restore default mock
+      mockRpc.mockImplementation((fn: string) => {
+        if (fn === 'get_scraping_config') {
+          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
+        }
+        if (fn === 'check_scrape_rate_limit') {
+          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+        }
+        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+      })
     })
 
     it('allows requests when count is below admin rate limit', async () => {
-      // Admin has set rate limit to 5; only 2 recent requests exist
-      vi.mocked(getAppSettingNumber).mockResolvedValue(5)
       _resetScraperCache()
-
-      const now = Date.now()
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([now - 2000, now - 1000]))
 
       mockFetch
         .mockResolvedValueOnce(makePageResponse('<html></html>'))
@@ -766,14 +838,39 @@ describe('extractRecipeFromText', () => {
   })
 
   it('returns an error when no API key is configured', async () => {
-    vi.mocked(getAppSettingString).mockResolvedValueOnce(null)
     _resetScraperCache()
+    // Mock RPC to return no API key
+    mockRpc.mockImplementation((fn: string) => {
+      if (fn === 'get_scraping_config') {
+        return Promise.resolve({ data: { error: 'AI scraping not configured' }, error: null })
+      }
+      if (fn === 'check_scrape_rate_limit') {
+        return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+      }
+      return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+    })
+    vi.mocked(getAppSettingString).mockResolvedValue(null)
 
     const result = await extractRecipeFromText('some text')
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toContain('API key not configured')
+
+    // Restore default mocks
+    mockRpc.mockImplementation((fn: string) => {
+      if (fn === 'get_scraping_config') {
+        return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
+      }
+      if (fn === 'check_scrape_rate_limit') {
+        return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
+      }
+      return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
+    })
+    vi.mocked(getAppSettingString).mockImplementation((key: string) => {
+      if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
+      return Promise.resolve(null)
+    })
   })
 
   it('returns an error when the AI cannot find a recipe in the text', async () => {

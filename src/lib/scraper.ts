@@ -7,6 +7,7 @@ import {
   sanitizeRecipeData,
 } from './validation'
 import { APP_SETTING_KEYS, getAppSettingString, getAppSettingNumber } from './appSettingsService'
+import { supabase } from './supabase'
 
 export interface ExtractedRecipe {
   name: string
@@ -112,6 +113,19 @@ async function loadAdminScrapingConfig(): Promise<{
 }> {
   const now = Date.now()
   if (_adminConfig && now - _adminConfigAt < ADMIN_CONFIG_TTL_MS) return _adminConfig
+
+  // Try secure RPC first (works for all authenticated users, not just admins)
+  const { data: rpcData } = await supabase.rpc('get_scraping_config')
+  if (rpcData && typeof rpcData === 'object' && !('error' in rpcData)) {
+    const cfg = rpcData as { api_key: string; provider: string; model: string | null }
+    // Still need rate limit from non-sensitive setting
+    const rateLimit = await getAppSettingNumber(APP_SETTING_KEYS.SCRAPING_RATE_LIMIT)
+    _adminConfig = { apiKey: cfg.api_key, model: cfg.model, provider: cfg.provider, rateLimit }
+    _adminConfigAt = now
+    return _adminConfig
+  }
+
+  // Fallback: direct reads (works for admins only due to RLS on sensitive keys)
   const [apiKey, model, provider, rateLimit] = await Promise.all([
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY),
     getAppSettingString(APP_SETTING_KEYS.SCRAPING_MODEL),
@@ -127,6 +141,27 @@ async function loadAdminScrapingConfig(): Promise<{
 export function _resetScraperCache(): void {
   _adminConfig = null
   _adminConfigAt = 0
+}
+
+/**
+ * Server-side rate limit check via Supabase RPC.
+ * Falls back to client-side check if RPC is unavailable.
+ */
+async function checkServerRateLimit(clientMax?: number): Promise<{ allowed: boolean; retryAfterMs?: number }> {
+  try {
+    const { data, error } = await supabase.rpc('check_scrape_rate_limit')
+    if (!error && data && typeof data === 'object') {
+      const result = data as { allowed: boolean; remaining: number; retry_after_sec: number }
+      if (!result.allowed) {
+        return { allowed: false, retryAfterMs: result.retry_after_sec * 1000 }
+      }
+      return { allowed: true }
+    }
+  } catch {
+    // RPC unavailable — fall through to client-side
+  }
+  // Fallback to client-side rate limiting
+  return checkImportRateLimit(clientMax)
 }
 
 function truncate(text: string, maxChars: number): string {
@@ -369,7 +404,7 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
   // Load admin config first (cached) so we can use the configured rate limit.
   const admin = await loadAdminScrapingConfig()
 
-  const rateCheck = checkImportRateLimit(admin.rateLimit ?? undefined)
+  const rateCheck = await checkServerRateLimit(admin.rateLimit ?? undefined)
   if (!rateCheck.allowed) {
     const wait = rateCheck.retryAfterMs ? formatRetryAfter(rateCheck.retryAfterMs) : 'an hour'
     return {
@@ -410,7 +445,7 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
 export async function extractRecipeFromText(text: string): Promise<ScrapeResult> {
   const admin = await loadAdminScrapingConfig()
 
-  const rateCheck = checkImportRateLimit(admin.rateLimit ?? undefined)
+  const rateCheck = await checkServerRateLimit(admin.rateLimit ?? undefined)
   if (!rateCheck.allowed) {
     const wait = rateCheck.retryAfterMs ? formatRetryAfter(rateCheck.retryAfterMs) : 'an hour'
     return {

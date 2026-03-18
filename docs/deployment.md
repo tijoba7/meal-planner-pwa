@@ -51,6 +51,11 @@ runs without it (local-only mode), but social features require a live project.
      20260316000011_notification_triggers.sql
      20260316000012_admin_role.sql
      20260316000013_app_settings.sql
+     20260316000014_stories.sql
+     20260316000015_reposts.sql
+     20260317000001_direct_messages.sql
+     20260318000001_security_fixes.sql
+     20260318000002_server_rate_limit.sql
    ```
 
    **Or** use the Supabase CLI (requires Docker):

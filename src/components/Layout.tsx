@@ -18,6 +18,7 @@ import {
   Package,
   HelpCircle,
   ShieldCheck,
+  CloudUpload,
   type LucideIcon,
 } from 'lucide-react'
 import { useAdmin } from '../contexts/AdminContext'
@@ -34,6 +35,7 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import SearchDialog from './SearchDialog'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useFeatureFlags } from '../hooks/useFeatureFlags'
+import { useSync } from '../contexts/SyncContext'
 import { getUnreadCount, subscribeToNotifications } from '../lib/notificationService'
 import { getUnreadDmCount, subscribeToDirectMessages } from '../lib/dmService'
 
@@ -84,6 +86,7 @@ export default function Layout() {
   const { profile } = useProfile()
   const { isAdmin } = useAdmin()
   const { social, groups, discover } = useFeatureFlags()
+  const { pendingCount, flushNow } = useSync()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -210,12 +213,39 @@ export default function Layout() {
       <aside className="print:hidden hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 min-h-screen">
         <div className="flex items-center justify-center lg:justify-start gap-2.5 px-2 lg:px-4 py-5 border-b border-gray-100 dark:border-gray-700">
           <img src="/favicon.svg" alt="mise" className="w-8 h-8 rounded-lg" />
-          <div className="hidden lg:block">
-            <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
-            <p className="text-[10px] text-gray-600 dark:text-gray-400 -mt-0.5 tracking-wide uppercase">
-              cook &middot; share &middot; enjoy
-            </p>
+          <div className="hidden lg:flex lg:flex-1 items-center justify-between min-w-0">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400 -mt-0.5 tracking-wide uppercase">
+                cook &middot; share &middot; enjoy
+              </p>
+            </div>
+            {pendingCount > 0 && (
+              <button
+                onClick={flushNow}
+                title={`${pendingCount} pending change${pendingCount === 1 ? '' : 's'} — tap to sync`}
+                aria-label={`${pendingCount} pending change${pendingCount === 1 ? '' : 's'}, tap to sync`}
+                className="relative flex-shrink-0 p-1 rounded-md text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+              >
+                <CloudUpload size={16} strokeWidth={1.75} aria-hidden="true" />
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white text-[8px] font-bold flex items-center justify-center leading-none">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              </button>
+            )}
           </div>
+          {/* Tablet: show sync dot when there are pending mutations */}
+          {pendingCount > 0 && (
+            <button
+              onClick={flushNow}
+              title={`${pendingCount} pending changes`}
+              aria-label={`${pendingCount} pending changes, tap to sync`}
+              className="lg:hidden relative p-1 rounded-md text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+            >
+              <CloudUpload size={14} strokeWidth={1.75} aria-hidden="true" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500" aria-hidden="true" />
+            </button>
+          )}
         </div>
         <nav aria-label="Main navigation" className="flex flex-col gap-1 p-2 lg:p-3 flex-1">
           {visibleNavItems.map((item) => (
@@ -360,27 +390,42 @@ export default function Layout() {
           <img src="/favicon.svg" alt="mise" className="w-7 h-7 rounded-lg" />
           <h1 className="text-lg font-bold tracking-tight text-gray-800 dark:text-gray-100">mise</h1>
         </div>
-        {user ? (
-          <Link
-            to="/profile"
-            aria-label="View profile"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            {profile ? (
-              <Avatar profile={profile} size="sm" />
-            ) : (
-              <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
-            )}
-          </Link>
-        ) : (
-          <Link
-            to="/auth/login"
-            aria-label="Sign in"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <LogIn size={18} strokeWidth={1.75} />
-          </Link>
-        )}
+        <div className="flex items-center gap-1">
+          {pendingCount > 0 && (
+            <button
+              onClick={flushNow}
+              title={`${pendingCount} pending change${pendingCount === 1 ? '' : 's'} — tap to sync`}
+              aria-label={`${pendingCount} pending change${pendingCount === 1 ? '' : 's'}, tap to sync`}
+              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+            >
+              <CloudUpload size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span className="absolute top-2 right-2 w-3 h-3 rounded-full bg-amber-500 text-white text-[7px] font-bold flex items-center justify-center leading-none">
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </span>
+            </button>
+          )}
+          {user ? (
+            <Link
+              to="/profile"
+              aria-label="View profile"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              {profile ? (
+                <Avatar profile={profile} size="sm" />
+              ) : (
+                <User size={18} strokeWidth={1.75} className="text-gray-400 dark:text-gray-500" />
+              )}
+            </Link>
+          ) : (
+            <Link
+              to="/auth/login"
+              aria-label="Sign in"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <LogIn size={18} strokeWidth={1.75} />
+            </Link>
+          )}
+        </div>
       </header>
 
       {/* Main content — pb accounts for bottom tab bar + iOS safe area inset */}

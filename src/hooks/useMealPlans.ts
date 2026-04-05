@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { db } from '../lib/db'
 import { fromJson, toJson } from '../lib/jsonUtils'
+import { enqueueMutation, isNetworkError } from '../lib/mutationQueue'
 import type { MealPlan, MealPlanTemplate } from '../types'
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
@@ -32,7 +33,10 @@ async function fetchMealPlans(userId: string): Promise<MealPlan[]> {
     .eq('owner_id', userId)
     .order('created_at', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    // Fallback to Dexie on network error
+    return db.mealPlans.orderBy('weekStartDate').toArray()
+  }
 
   const plans = data.map((row) => fromJson<MealPlan>(row.data))
   await db.mealPlans.bulkPut(plans)
@@ -120,15 +124,40 @@ export function useCreateMealPlan() {
     mutationFn: async (data: Omit<MealPlan, 'id' | 'createdAt' | 'updatedAt'>) => {
       const plan: MealPlan = { ...data, id: id(), createdAt: now(), updatedAt: now() }
 
+      // Always apply locally first
+      await db.mealPlans.put(plan)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'mealPlan',
+          operation: 'create',
+          entityId: plan.id,
+          payload: plan,
+        })
+        return plan
+      }
+
       const { error } = await supabase.from('meal_plans_cloud').insert({
         id: plan.id,
         owner_id: user!.id,
         data: toJson(plan),
       })
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'mealPlan',
+            operation: 'create',
+            entityId: plan.id,
+            payload: plan,
+          })
+          return plan
+        }
+        throw new Error(error.message)
+      }
 
-      await db.mealPlans.put(plan)
       return plan
     },
     onSuccess: (plan) => {
@@ -153,10 +182,24 @@ export function useUpdateMealPlan() {
       planId: string
       data: Partial<Omit<MealPlan, 'id' | 'createdAt'>>
     }) => {
-      const existing = await fetchMealPlan(planId, user!.id)
+      const existing = await db.mealPlans.get(planId)
       if (!existing) throw new Error('Meal plan not found')
 
       const updated: MealPlan = { ...existing, ...data, updatedAt: now() }
+
+      // Always apply locally first
+      await db.mealPlans.put(updated)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'mealPlan',
+          operation: 'update',
+          entityId: planId,
+          payload: updated,
+        })
+        return updated
+      }
 
       const { error } = await supabase
         .from('meal_plans_cloud')
@@ -164,9 +207,20 @@ export function useUpdateMealPlan() {
         .eq('id', planId)
         .eq('owner_id', user!.id)
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'mealPlan',
+            operation: 'update',
+            entityId: planId,
+            payload: updated,
+          })
+          return updated
+        }
+        throw new Error(error.message)
+      }
 
-      await db.mealPlans.put(updated)
       return updated
     },
     onSuccess: (plan) => {
@@ -185,15 +239,39 @@ export function useDeleteMealPlan() {
 
   return useMutation({
     mutationFn: async (planId: string) => {
+      // Always apply locally first
+      await db.mealPlans.delete(planId)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'mealPlan',
+          operation: 'delete',
+          entityId: planId,
+          payload: null,
+        })
+        return
+      }
+
       const { error } = await supabase
         .from('meal_plans_cloud')
         .delete()
         .eq('id', planId)
         .eq('owner_id', user!.id)
 
-      if (error) throw new Error(error.message)
-
-      await db.mealPlans.delete(planId)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'mealPlan',
+            operation: 'delete',
+            entityId: planId,
+            payload: null,
+          })
+          return
+        }
+        throw new Error(error.message)
+      }
     },
     onSuccess: (_v, planId) => {
       qc.removeQueries({ queryKey: mealPlanKeys.detail(planId) })

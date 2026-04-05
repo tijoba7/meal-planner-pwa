@@ -5,7 +5,9 @@ import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { registerRoute } from 'workbox-routing'
 
-declare const self: ServiceWorkerGlobalScope
+declare const self: ServiceWorkerGlobalScope & {
+  __WB_MANIFEST: { url: string; revision: string | null }[]
+}
 
 // Clean up caches from previous SW versions
 cleanupOutdatedCaches()
@@ -102,4 +104,20 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
       return self.clients.openWindow(url)
     })
   )
+})
+
+// ─── Background sync ────────────────────────────────────────────────────────
+// When the browser has connectivity and the 'sync-mutations' tag fires,
+// notify all active clients so they can flush their Dexie mutation queues.
+// (Dexie and Supabase credentials live in the client, not the SW.)
+
+self.addEventListener('sync', (event) => {
+  const syncEvent = event as SyncEvent
+  if (syncEvent.tag === 'sync-mutations') {
+    syncEvent.waitUntil(
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: 'BACKGROUND_SYNC' }))
+      })
+    )
+  }
 })

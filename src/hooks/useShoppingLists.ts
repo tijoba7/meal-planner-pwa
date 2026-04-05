@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { db } from '../lib/db'
 import { fromJson, toJson } from '../lib/jsonUtils'
 import { shareShoppingListWithHousehold, unshareShoppingList } from '../lib/householdService'
+import { enqueueMutation, isNetworkError } from '../lib/mutationQueue'
 import type { ShoppingList, ShoppingItem } from '../types'
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
@@ -23,14 +24,15 @@ function id(): string {
   return crypto.randomUUID()
 }
 
-async function fetchShoppingLists(userId: string): Promise<ShoppingList[]> {
+async function fetchShoppingLists(_userId: string): Promise<ShoppingList[]> {
   const { data, error } = await supabase
     .from('shopping_lists_cloud')
     .select('id, data, household_id')
-    .eq('owner_id', userId)
     .order('created_at', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    return db.shoppingLists.orderBy('createdAt').toArray()
+  }
 
   const lists = data.map((row) => {
     const list = fromJson<ShoppingList>(row.data)
@@ -43,12 +45,11 @@ async function fetchShoppingLists(userId: string): Promise<ShoppingList[]> {
   return lists
 }
 
-async function fetchShoppingList(listId: string, userId: string): Promise<ShoppingList | null> {
+async function fetchShoppingList(listId: string, _userId: string): Promise<ShoppingList | null> {
   const { data, error } = await supabase
     .from('shopping_lists_cloud')
     .select('id, data, household_id')
     .eq('id', listId)
-    .eq('owner_id', userId)
     .single()
 
   if (error) {
@@ -96,15 +97,40 @@ export function useCreateShoppingList() {
     mutationFn: async (data: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt'>) => {
       const list: ShoppingList = { ...data, id: id(), createdAt: now(), updatedAt: now() }
 
+      // Always apply locally first
+      await db.shoppingLists.put(list)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'shoppingList',
+          operation: 'create',
+          entityId: list.id,
+          payload: list,
+        })
+        return list
+      }
+
       const { error } = await supabase.from('shopping_lists_cloud').insert({
         id: list.id,
         owner_id: user!.id,
         data: toJson(list),
       })
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'shoppingList',
+            operation: 'create',
+            entityId: list.id,
+            payload: list,
+          })
+          return list
+        }
+        throw new Error(error.message)
+      }
 
-      await db.shoppingLists.put(list)
       return list
     },
     onSuccess: (list) => {
@@ -126,20 +152,44 @@ export function useUpdateShoppingList() {
       listId: string
       data: Partial<Omit<ShoppingList, 'id' | 'createdAt'>>
     }) => {
-      const existing = await fetchShoppingList(listId, user!.id)
+      const existing = await db.shoppingLists.get(listId)
       if (!existing) throw new Error('Shopping list not found')
 
       const updated: ShoppingList = { ...existing, ...data, updatedAt: now() }
+
+      // Always apply locally first
+      await db.shoppingLists.put(updated)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'shoppingList',
+          operation: 'update',
+          entityId: listId,
+          payload: updated,
+        })
+        return updated
+      }
 
       const { error } = await supabase
         .from('shopping_lists_cloud')
         .update({ data: toJson(updated), updated_at: now() })
         .eq('id', listId)
-        .eq('owner_id', user!.id)
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'shoppingList',
+            operation: 'update',
+            entityId: listId,
+            payload: updated,
+          })
+          return updated
+        }
+        throw new Error(error.message)
+      }
 
-      await db.shoppingLists.put(updated)
       return updated
     },
     onSuccess: (list) => {
@@ -155,15 +205,39 @@ export function useDeleteShoppingList() {
 
   return useMutation({
     mutationFn: async (listId: string) => {
+      // Always apply locally first
+      await db.shoppingLists.delete(listId)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'shoppingList',
+          operation: 'delete',
+          entityId: listId,
+          payload: null,
+        })
+        return
+      }
+
       const { error } = await supabase
         .from('shopping_lists_cloud')
         .delete()
         .eq('id', listId)
         .eq('owner_id', user!.id)
 
-      if (error) throw new Error(error.message)
-
-      await db.shoppingLists.delete(listId)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'shoppingList',
+            operation: 'delete',
+            entityId: listId,
+            payload: null,
+          })
+          return
+        }
+        throw new Error(error.message)
+      }
     },
     onSuccess: (_v, listId) => {
       qc.removeQueries({ queryKey: shoppingListKeys.detail(listId) })
@@ -178,7 +252,7 @@ export function useToggleShoppingItem() {
 
   return useMutation({
     mutationFn: async ({ listId, itemId }: { listId: string; itemId: string }) => {
-      const existing = await fetchShoppingList(listId, user!.id)
+      const existing = await db.shoppingLists.get(listId)
       if (!existing) throw new Error('Shopping list not found')
 
       const items = existing.items.map((item: ShoppingItem) =>
@@ -186,15 +260,39 @@ export function useToggleShoppingItem() {
       )
       const updated: ShoppingList = { ...existing, items, updatedAt: now() }
 
+      // Always apply locally first
+      await db.shoppingLists.put(updated)
+
+      if (!navigator.onLine) {
+        await enqueueMutation({
+          userId: user!.id,
+          entityType: 'shoppingList',
+          operation: 'update',
+          entityId: listId,
+          payload: updated,
+        })
+        return updated
+      }
+
       const { error } = await supabase
         .from('shopping_lists_cloud')
         .update({ data: toJson(updated), updated_at: now() })
         .eq('id', listId)
-        .eq('owner_id', user!.id)
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        if (isNetworkError(new Error(error.message))) {
+          await enqueueMutation({
+            userId: user!.id,
+            entityType: 'shoppingList',
+            operation: 'update',
+            entityId: listId,
+            payload: updated,
+          })
+          return updated
+        }
+        throw new Error(error.message)
+      }
 
-      await db.shoppingLists.put(updated)
       return updated
     },
     onSuccess: (list) => {

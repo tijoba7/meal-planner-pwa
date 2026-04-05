@@ -8,6 +8,11 @@ import {
 } from '../test/supabaseMocks'
 import type { ShoppingList, ShoppingItem } from '../types'
 
+const { mockShareShoppingListWithHousehold, mockUnshareShoppingList } = vi.hoisted(() => ({
+  mockShareShoppingListWithHousehold: vi.fn(),
+  mockUnshareShoppingList: vi.fn(),
+}))
+
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
 vi.mock('../lib/supabase', () => ({
@@ -26,13 +31,21 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => fakeUser(),
 }))
 
+vi.mock('../lib/householdService', () => ({
+  shareShoppingListWithHousehold: mockShareShoppingListWithHousehold,
+  unshareShoppingList: mockUnshareShoppingList,
+}))
+
 import { supabase } from '../lib/supabase'
 import {
   useShoppingLists,
   useShoppingList,
   useCreateShoppingList,
+  useUpdateShoppingList,
   useDeleteShoppingList,
   useToggleShoppingItem,
+  useShareShoppingList,
+  useUnshareShoppingList,
 } from './useShoppingLists'
 import { db } from '../lib/db'
 
@@ -62,6 +75,10 @@ function makeItem(overrides: Partial<ShoppingItem> = {}): ShoppingItem {
 
 beforeEach(async () => {
   vi.mocked(supabase.from).mockReset()
+  mockShareShoppingListWithHousehold.mockReset()
+  mockUnshareShoppingList.mockReset()
+  mockShareShoppingListWithHousehold.mockResolvedValue(true)
+  mockUnshareShoppingList.mockResolvedValue(true)
   if (!db.isOpen()) await db.open()
   await db.shoppingLists.clear()
 })
@@ -84,6 +101,38 @@ describe('useShoppingLists', () => {
     expect(result.current.data![0].name).toBe('Weekly Shopping')
   })
 
+  it('merges household_id from Supabase rows', async () => {
+    const list = makeList({ id: 'list-shared' })
+    const builder = buildBuilder({
+      data: [{ id: list.id, data: list, household_id: 'house-123' }],
+      error: null,
+    })
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+
+    const { result } = renderHook(() => useShoppingLists(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.[0].householdId).toBe('house-123')
+  })
+
+  it('relies on RLS and does not filter by owner_id client-side', async () => {
+    const list = makeList({ id: 'list-rls' })
+    const builder = buildBuilder({
+      data: [{ id: list.id, data: list, household_id: 'house-abc' }],
+      error: null,
+    })
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+
+    const { result } = renderHook(() => useShoppingLists(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(builder.eq).not.toHaveBeenCalled()
+  })
+
   it('writes fetched lists to Dexie cache', async () => {
     const list = makeList({ id: 'list-cache' })
     vi.mocked(supabase.from).mockReturnValue(
@@ -99,7 +148,14 @@ describe('useShoppingLists', () => {
     expect(cached?.name).toBe('Weekly Shopping')
   })
 
-  it('enters error state when Supabase fails', async () => {
+  it('falls back to Dexie cache when Supabase fails', async () => {
+    const cachedList = makeList({
+      id: 'list-offline-shared',
+      name: 'Offline Shared',
+      householdId: 'house-offline',
+    })
+    await db.shoppingLists.put(cachedList)
+
     vi.mocked(supabase.from).mockReturnValue(
       buildBuilder({ data: null, error: { message: 'fetch failed' } }) as never,
     )
@@ -108,7 +164,8 @@ describe('useShoppingLists', () => {
       wrapper: createWrapper(createTestQueryClient()),
     })
 
-    await waitFor(() => expect(result.current.isError).toBe(true))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual([cachedList])
   })
 })
 
@@ -127,6 +184,41 @@ describe('useShoppingList', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data?.name).toBe('Single List')
+  })
+
+  it('maps household_id into householdId for shared lists', async () => {
+    const list = makeList({ id: 'list-shared-detail', name: 'Shared Detail' })
+    const builder = buildBuilder({
+      data: { id: list.id, data: list, household_id: 'house-detail' },
+      error: null,
+    })
+    builder.single.mockResolvedValue({
+      data: { id: list.id, data: list, household_id: 'house-detail' },
+      error: null,
+    })
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+
+    const { result } = renderHook(() => useShoppingList(list.id), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.householdId).toBe('house-detail')
+  })
+
+  it('filters only by list id and leaves membership checks to RLS', async () => {
+    const list = makeList({ id: 'list-rls-detail' })
+    const builder = buildBuilder({ data: { id: list.id, data: list }, error: null })
+    builder.single.mockResolvedValue({ data: { id: list.id, data: list }, error: null })
+    vi.mocked(supabase.from).mockReturnValue(builder as never)
+
+    const { result } = renderHook(() => useShoppingList(list.id), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(builder.eq).toHaveBeenCalledTimes(1)
+    expect(builder.eq).toHaveBeenCalledWith('id', list.id)
   })
 
   it('falls back to Dexie when Supabase errors', async () => {
@@ -189,6 +281,33 @@ describe('useCreateShoppingList', () => {
   })
 })
 
+// ─── useUpdateShoppingList ────────────────────────────────────────────────────
+
+describe('useUpdateShoppingList', () => {
+  it('updates a shared list without owner_id client filtering', async () => {
+    const list = makeList({ id: 'list-update', name: 'Original', householdId: 'house-1' })
+    // Pre-seed Dexie — mutations now read from local cache first
+    await db.shoppingLists.put(list)
+
+    const updateBuilder = buildBuilder({ data: null, error: null })
+    vi.mocked(supabase.from).mockReturnValue(updateBuilder as never)
+
+    const { result } = renderHook(() => useUpdateShoppingList(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    result.current.mutate({
+      listId: list.id,
+      data: { name: 'Updated Name' },
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.name).toBe('Updated Name')
+    expect(updateBuilder.eq).toHaveBeenCalledTimes(1)
+    expect(updateBuilder.eq).toHaveBeenCalledWith('id', list.id)
+  })
+})
+
 // ─── useDeleteShoppingList ────────────────────────────────────────────────────
 
 describe('useDeleteShoppingList', () => {
@@ -217,16 +336,11 @@ describe('useToggleShoppingItem', () => {
   it('toggles an item from unchecked to checked', async () => {
     const item = makeItem({ id: 'item-toggle', checked: false })
     const list = makeList({ id: 'list-toggle', items: [item] })
+    // Pre-seed Dexie — toggle reads from local cache first
+    await db.shoppingLists.put(list)
 
-    // First call: fetchShoppingList (single) → returns the list
-    const fetchBuilder = buildBuilder({ data: { id: list.id, data: list }, error: null })
-    fetchBuilder.single.mockResolvedValue({ data: { id: list.id, data: list }, error: null })
-    // Second call: update → success
     const updateBuilder = buildBuilder({ data: null, error: null })
-
-    vi.mocked(supabase.from)
-      .mockReturnValueOnce(fetchBuilder as never)
-      .mockReturnValueOnce(updateBuilder as never)
+    vi.mocked(supabase.from).mockReturnValue(updateBuilder as never)
 
     const { result } = renderHook(() => useToggleShoppingItem(), {
       wrapper: createWrapper(createTestQueryClient()),
@@ -238,19 +352,18 @@ describe('useToggleShoppingItem', () => {
     const updated = result.current.data!
     const toggledItem = updated.items.find((i) => i.id === 'item-toggle')
     expect(toggledItem?.checked).toBe(true)
+    expect(updateBuilder.eq).toHaveBeenCalledTimes(1)
+    expect(updateBuilder.eq).toHaveBeenCalledWith('id', 'list-toggle')
   })
 
   it('toggles an item from checked to unchecked', async () => {
     const item = makeItem({ id: 'item-uncheck', checked: true })
     const list = makeList({ id: 'list-uncheck', items: [item] })
+    // Pre-seed Dexie — toggle reads from local cache first
+    await db.shoppingLists.put(list)
 
-    const fetchBuilder = buildBuilder({ data: { id: list.id, data: list }, error: null })
-    fetchBuilder.single.mockResolvedValue({ data: { id: list.id, data: list }, error: null })
     const updateBuilder = buildBuilder({ data: null, error: null })
-
-    vi.mocked(supabase.from)
-      .mockReturnValueOnce(fetchBuilder as never)
-      .mockReturnValueOnce(updateBuilder as never)
+    vi.mocked(supabase.from).mockReturnValue(updateBuilder as never)
 
     const { result } = renderHook(() => useToggleShoppingItem(), {
       wrapper: createWrapper(createTestQueryClient()),
@@ -261,5 +374,59 @@ describe('useToggleShoppingItem', () => {
 
     const toggledItem = result.current.data!.items.find((i) => i.id === 'item-uncheck')
     expect(toggledItem?.checked).toBe(false)
+  })
+})
+
+// ─── useShareShoppingList ─────────────────────────────────────────────────────
+
+describe('useShareShoppingList', () => {
+  it('shares a list with a household', async () => {
+    const { result } = renderHook(() => useShareShoppingList(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    result.current.mutate({ listId: 'list-share', householdId: 'house-share' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockShareShoppingListWithHousehold).toHaveBeenCalledWith('list-share', 'house-share')
+  })
+
+  it('throws when sharing fails', async () => {
+    mockShareShoppingListWithHousehold.mockResolvedValue(false)
+
+    const { result } = renderHook(() => useShareShoppingList(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    result.current.mutate({ listId: 'list-share-fail', householdId: 'house-share' })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toBe('Failed to share shopping list')
+  })
+})
+
+// ─── useUnshareShoppingList ───────────────────────────────────────────────────
+
+describe('useUnshareShoppingList', () => {
+  it('removes household sharing from a list', async () => {
+    const { result } = renderHook(() => useUnshareShoppingList(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    result.current.mutate('list-unshare')
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(mockUnshareShoppingList).toHaveBeenCalledWith('list-unshare')
+  })
+
+  it('throws when unshare fails', async () => {
+    mockUnshareShoppingList.mockResolvedValue(false)
+
+    const { result } = renderHook(() => useUnshareShoppingList(), {
+      wrapper: createWrapper(createTestQueryClient()),
+    })
+
+    result.current.mutate('list-unshare-fail')
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toBe('Failed to unshare shopping list')
   })
 })

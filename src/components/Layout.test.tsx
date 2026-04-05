@@ -64,6 +64,9 @@ vi.mock('../lib/dmService', () => ({
 vi.mock('../hooks/useFeatureFlags', () => ({
   useFeatureFlags: vi.fn(() => ({ social: true, groups: true, discover: true })),
 }))
+vi.mock('../contexts/SyncContext', () => ({
+  useSync: vi.fn(() => ({ isOnline: true, pendingCount: 0, flushNow: vi.fn() })),
+}))
 vi.mock('./SearchDialog', () => ({ default: () => null }))
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()

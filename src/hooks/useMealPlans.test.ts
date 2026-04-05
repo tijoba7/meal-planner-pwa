@@ -91,7 +91,10 @@ describe('useMealPlans', () => {
     expect(cached?.weekStartDate).toBe('2026-03-16')
   })
 
-  it('enters error state when Supabase returns an error', async () => {
+  it('falls back to Dexie when Supabase returns an error', async () => {
+    const plan = makePlan({ id: 'plan-fallback', weekStartDate: '2026-04-07' })
+    await db.mealPlans.put(plan)
+
     vi.mocked(supabase.from).mockReturnValue(
       buildBuilder({ data: null, error: { message: 'fetch failed' } }) as never,
     )
@@ -100,7 +103,8 @@ describe('useMealPlans', () => {
       wrapper: createWrapper(createTestQueryClient()),
     })
 
-    await waitFor(() => expect(result.current.isError).toBe(true))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.some((p) => p.id === 'plan-fallback')).toBe(true)
   })
 })
 

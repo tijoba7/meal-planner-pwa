@@ -9,6 +9,23 @@ import type {
   PantryItem,
 } from '../types'
 
+// ─── Offline mutation queue types ─────────────────────────────────────────────
+
+export type MutationEntityType = 'shoppingList' | 'mealPlan'
+export type MutationOperation = 'create' | 'update' | 'delete'
+
+export interface PendingMutation {
+  id: string
+  userId: string
+  entityType: MutationEntityType
+  operation: MutationOperation
+  entityId: string
+  payload: unknown
+  createdAt: string
+  retries: number
+  lastError?: string
+}
+
 // ─── Database ────────────────────────────────────────────────────────────────
 
 class MealPlannerDB extends Dexie {
@@ -18,6 +35,7 @@ class MealPlannerDB extends Dexie {
   mealPlanTemplates!: Table<MealPlanTemplate>
   collections!: Table<Collection>
   pantryItems!: Table<PantryItem>
+  pendingMutations!: Table<PendingMutation>
 
   constructor() {
     super('meal-planner')
@@ -90,6 +108,15 @@ class MealPlannerDB extends Dexie {
       mealPlanTemplates: '&id, name, createdAt',
       collections: '&id, name, createdAt',
       pantryItems: '&id, name, expiryDate, createdAt',
+    })
+    this.version(7).stores({
+      recipes: '&id, name, *keywords, dateCreated, isFavorite',
+      mealPlans: '&id, weekStartDate, createdAt',
+      shoppingLists: '&id, name, mealPlanId, createdAt',
+      mealPlanTemplates: '&id, name, createdAt',
+      collections: '&id, name, createdAt',
+      pantryItems: '&id, name, expiryDate, createdAt',
+      pendingMutations: '&id, userId, entityType, createdAt',
     })
   }
 }

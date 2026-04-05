@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X, ChevronLeft, ChevronRight, UtensilsCrossed, Timer } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, UtensilsCrossed, Timer, Sparkles } from 'lucide-react'
 import type { Recipe } from '../types'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useAuth } from '../contexts/AuthContext'
@@ -312,6 +312,13 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
 
             {/* Timers */}
             <StepTimers text={step.text} />
+
+            {/* Navigation hint — visible on first step only */}
+            {isFirst && steps.length > 1 && (
+              <p className="mt-8 text-xs text-gray-600 dark:text-gray-600 select-none">
+                Swipe or use arrow keys to move between steps
+              </p>
+            )}
           </div>
         </div>
 
@@ -351,13 +358,17 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
           <div className="bg-gray-900 rounded-2xl p-8 mx-4 w-full max-w-sm text-center shadow-2xl">
             {ratingSubmitted ? (
               <div className="py-4">
-                <p className="text-3xl mb-2">🎉</p>
+                <div className="flex justify-center mb-2">
+                  <Sparkles size={32} className="text-green-400" aria-hidden="true" />
+                </div>
                 <p className="text-white font-semibold text-lg">Thanks for rating!</p>
                 <StarRating value={ratingScore} readOnly size="lg" />
               </div>
             ) : (
               <>
-                <p className="text-2xl mb-1">🍽️</p>
+                <div className="flex justify-center mb-1">
+                  <UtensilsCrossed size={28} className="text-gray-300" aria-hidden="true" />
+                </div>
                 <h3 className="text-white font-bold text-xl mb-1">How was it?</h3>
                 <p className="text-gray-400 text-sm mb-6">Rate {recipe.name}</p>
                 <div className="flex justify-center mb-6">

@@ -11,6 +11,7 @@ import {
   Trash2,
   GripVertical,
   History,
+  Sparkles,
 } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Skeleton from '../components/Skeleton'
@@ -28,7 +29,10 @@ import {
   useDeleteMealPlanTemplate,
 } from '../hooks/useMealPlans'
 import { useRecipes } from '../hooks/useRecipes'
+import { usePantryItems } from '../hooks/usePantryItems'
 import { getDietaryPrefs, detectAllergenIngredients } from '../lib/dietary'
+import { getSuggestions } from '../lib/suggestionService'
+import type { ScoredRecipe } from '../lib/suggestionService'
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -139,6 +143,11 @@ export default function PlannerPage() {
   // History state
   const [historyOpen, setHistoryOpen] = useState(false)
 
+  // Suggestion state
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const [suggestMealType, setSuggestMealType] = useState<MealType | undefined>(undefined)
+  const [suggestSeed, setSuggestSeed] = useState(0)
+
   // Drag-and-drop state
   const [dragSource, setDragSource] = useState<DragSource | null>(null)
   const [dragOver, setDragOver] = useState<{ date: string; meal: MealType } | null>(null)
@@ -148,6 +157,7 @@ export default function PlannerPage() {
 
   // TanStack Query hooks
   const { data: recipes = [] } = useRecipes()
+  const { data: pantryItems = [] } = usePantryItems()
   const { data: mealPlan, isLoading: planLoading } = useMealPlanForWeek(weekStart)
   const { data: copyTargetPlan } = useMealPlanForWeek(copyTarget)
   const { data: templates = [] } = useMealPlanTemplates()
@@ -247,7 +257,8 @@ export default function PlannerPage() {
     templateGalleryOpen ||
     saveTemplateOpen ||
     applyTemplateConfirm !== null ||
-    historyOpen
+    historyOpen ||
+    suggestOpen
 
   useKeyboardShortcuts({
     ArrowLeft: () => {
@@ -265,6 +276,7 @@ export default function PlannerPage() {
       else if (saveTemplateOpen) setSaveTemplateOpen(false)
       else if (templateGalleryOpen) setTemplateGalleryOpen(false)
       else if (historyOpen) setHistoryOpen(false)
+      else if (suggestOpen) setSuggestOpen(false)
     },
   })
 
@@ -590,6 +602,17 @@ export default function PlannerPage() {
     return { date: toISODate(d), label: formatDayHeader(d) }
   })
 
+  // Suggestions: computed when the suggest modal is open
+  const suggestions = useMemo((): ScoredRecipe[] => {
+    if (!suggestOpen || recipes.length === 0) return []
+    const recentPlans = allMealPlans
+      .filter((p) => p.weekStartDate !== weekStart)
+      .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
+      .slice(0, 8)
+    return getSuggestions(recipes, pantryItems, recentPlans, suggestMealType, 6)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestOpen, suggestMealType, suggestSeed, recipes, pantryItems, allMealPlans, weekStart])
+
   // favoriteRecipes and recentRecipes are computed for a planned "smart picker"
   // UI that surfaces favorites + recents ahead of the full list. Inline the deps
   // here so they're ready when that section is wired up.
@@ -717,7 +740,7 @@ export default function PlannerPage() {
         </button>
       </div>
 
-      {/* Toolbar: History + Templates */}
+      {/* Toolbar: History + Templates + Suggest */}
       <div className="flex justify-end gap-2 mb-4">
         <button
           onClick={() => setHistoryOpen(true)}
@@ -732,6 +755,14 @@ export default function PlannerPage() {
         >
           <LayoutTemplate size={13} strokeWidth={2} aria-hidden="true" />
           Templates{templates.length > 0 && ` (${templates.length})`}
+        </button>
+        <button
+          onClick={() => { setSuggestMealType(undefined); setSuggestOpen(true) }}
+          className="flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400 border border-purple-400 dark:border-purple-500 px-2.5 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+          aria-label="What should I cook?"
+        >
+          <Sparkles size={13} strokeWidth={2} aria-hidden="true" />
+          Suggest
         </button>
       </div>
 
@@ -1365,6 +1396,131 @@ export default function PlannerPage() {
                 })
               )}
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Suggestion modal — "What should I cook?" */}
+      {suggestOpen && createPortal(
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
+          onClick={() => setSuggestOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[80vh] animate-slide-up sm:animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={18} className="text-purple-500" aria-hidden="true" />
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100">What should I cook?</h3>
+                </div>
+                <button
+                  onClick={() => setSuggestOpen(false)}
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={20} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </div>
+              {/* Meal type filter */}
+              <div className="flex gap-1.5 flex-wrap">
+                {([undefined, ...MEAL_TYPES] as (MealType | undefined)[]).map((mt) => (
+                  <button
+                    key={mt ?? 'any'}
+                    onClick={() => setSuggestMealType(mt)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      suggestMealType === mt
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {mt ? MEAL_LABELS[mt] : 'Any meal'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Suggestion list */}
+            <div className="overflow-y-auto flex-1">
+              {recipes.length === 0 ? (
+                <div className="flex flex-col items-center text-center py-10 px-4">
+                  <BookOpen size={32} strokeWidth={1.5} className="text-gray-300 dark:text-gray-600 mb-3" aria-hidden="true" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No recipes yet</p>
+                  <Link
+                    to="/recipes/new"
+                    onClick={() => setSuggestOpen(false)}
+                    className="mt-3 bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-800 transition-colors"
+                  >
+                    Add your first recipe
+                  </Link>
+                </div>
+              ) : (
+                suggestions.map(({ recipe, reason, pantryMatches }) => (
+                  <div
+                    key={recipe.id}
+                    className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 flex items-start gap-3"
+                  >
+                    {/* Thumbnail or initials */}
+                    <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      {recipe.imageThumbnailUrl ? (
+                        <img src={recipe.imageThumbnailUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        <span className="text-sm font-bold text-gray-400 dark:text-gray-500">
+                          {recipe.name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{recipe.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{recipe.description}</p>
+                      {reason === 'pantry' && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                          {pantryMatches} ingredient{pantryMatches !== 1 ? 's' : ''} in pantry
+                        </p>
+                      )}
+                      {reason === 'favorite' && (
+                        <p className="text-xs text-amber-500 dark:text-amber-400 mt-0.5">Favourite</p>
+                      )}
+                    </div>
+                    {/* Add to today button */}
+                    <button
+                      onClick={() => {
+                        const todayStr = toISODate(new Date())
+                        const targetDate = weekDays.find((d) => d.date === todayStr)?.date ?? weekDays[0].date
+                        const targetMeal = suggestMealType ?? 'dinner'
+                        void addRecipeToSlot(targetDate, targetMeal, recipe.id)
+                        setSuggestOpen(false)
+                      }}
+                      className="shrink-0 flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400 border border-green-600 dark:border-green-500 px-2.5 py-1 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    >
+                      <Plus size={12} strokeWidth={2.5} aria-hidden="true" />
+                      Add
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer hint */}
+            {recipes.length > 0 && (
+              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  {pantryItems.length > 0
+                    ? 'Ranked by pantry overlap, favourites, and variety'
+                    : 'Ranked by favourites and variety'}
+                </p>
+                <button
+                  onClick={() => setSuggestSeed((s) => s + 1)}
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline shrink-0"
+                >
+                  Refresh
+                </button>
+              </div>
+            )}
           </div>
         </div>,
         document.body

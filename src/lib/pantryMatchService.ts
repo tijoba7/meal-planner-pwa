@@ -1,5 +1,5 @@
 import type { Recipe, PantryItem } from '../types'
-import { loadAdminScrapingConfig } from './scraper'
+import { supabase } from './supabase'
 
 export interface PantryMatchResult {
   recipe: Recipe
@@ -142,30 +142,6 @@ export async function getAiPantrySuggestions(
     return { ok: false, error: 'No pantry items to suggest from.' }
   }
 
-  let config: { apiKey: string | null; provider: string | null; model: string | null }
-  try {
-    config = await loadAdminScrapingConfig()
-  } catch {
-    return { ok: false, error: 'Could not load AI configuration.' }
-  }
-
-  if (!config.apiKey) {
-    return {
-      ok: false,
-      error:
-        'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
-    }
-  }
-
-  const provider = config.provider ?? 'anthropic'
-  const model =
-    config.model ??
-    (provider === 'openai'
-      ? 'gpt-4o-mini'
-      : provider === 'gemini'
-        ? 'gemini-2.0-flash'
-        : 'claude-haiku-4-5-20251001')
-
   const pantryList = pantryItems.map((p) => p.name).join(', ')
   const savedList = savedRecipeNames.length > 0 ? savedRecipeNames.join(', ') : 'none'
   const userMessage = `My pantry contains: ${pantryList}
@@ -175,69 +151,17 @@ I already have these recipes saved: ${savedList}
 Suggest ${count} new recipe ideas I could make. Do NOT suggest recipes I already have. Return exactly ${count} suggestions.`
 
   try {
-    let raw: string
+    // AI call is handled server-side so the API key never reaches the browser.
+    const { data, error } = await supabase.functions.invoke<{ ok: boolean; text?: string; error?: string }>(
+      'suggest-pantry',
+      { body: { systemPrompt: AI_SUGGESTION_SYSTEM_PROMPT, userMessage } },
+    )
 
-    if (provider === 'openai') {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: AI_SUGGESTION_SYSTEM_PROMPT },
-            { role: 'user', content: userMessage },
-          ],
-          max_tokens: 1024,
-        }),
-      })
-      if (!res.ok) return { ok: false, error: `AI request failed: ${res.statusText}` }
-      const data = (await res.json()) as {
-        choices?: { message?: { content?: string } }[]
-      }
-      raw = data.choices?.[0]?.message?.content ?? ''
-    } else if (provider === 'gemini') {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: AI_SUGGESTION_SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: userMessage }] }],
-          generationConfig: { maxOutputTokens: 1024 },
-        }),
-      })
-      if (!res.ok) return { ok: false, error: `AI request failed: ${res.statusText}` }
-      const data = (await res.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[]
-      }
-      raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-    } else {
-      // Default: Anthropic / Claude
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': config.apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1024,
-          system: AI_SUGGESTION_SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userMessage }],
-        }),
-      })
-      if (!res.ok) return { ok: false, error: `AI request failed: ${res.statusText}` }
-      const data = (await res.json()) as {
-        content?: { text?: string }[]
-      }
-      raw = data.content?.[0]?.text ?? ''
-    }
+    if (error) return { ok: false, error: 'AI suggestion service unavailable. Please try again later.' }
+    if (!data) return { ok: false, error: 'No response from AI suggestion service.' }
+    if (!data.ok) return { ok: false, error: data.error ?? 'AI suggestion failed.' }
 
-    raw = raw.trim()
+    let raw = (data.text ?? '').trim()
     // Strip markdown fences if the model wrapped the JSON anyway
     if (raw.startsWith('```')) {
       raw = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()

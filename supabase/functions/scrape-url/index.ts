@@ -7,8 +7,10 @@
  * Request:  POST { url: string }
  * Response: { text: string | null, sourceType: 'social_video' | 'html' | null }
  *
- * Auth: Any valid Supabase JWT (anon key or user session).
+ * Auth: Valid Supabase user JWT (M-2 fix: JWT is verified, not just presence-checked).
  */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -140,8 +142,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response('ok', { headers: CORS_HEADERS })
   }
 
-  // Require an Authorization header (anon key or user JWT passed by supabase-js)
-  if (!req.headers.get('Authorization')) {
+  // M-2: Verify JWT validity, not just presence of the Authorization header.
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) {
+    return json({ error: 'Unauthorized' }, 401)
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  })
+  const {
+    data: { user },
+    error: authError,
+  } = await userClient.auth.getUser()
+  if (authError || !user) {
     return json({ error: 'Unauthorized' }, 401)
   }
 
@@ -164,9 +180,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!['http:', 'https:'].includes(parsed.protocol)) {
     return json({ error: 'Only HTTP/HTTPS URLs are supported' }, 400)
   }
-  // Block local/private addresses (SSRF prevention)
+
+  // M-4: Block private/loopback hostnames by name first (fast path), then resolve
+  // the hostname via DNS and check the resolved IP to prevent DNS rebinding SSRF.
   const host = parsed.hostname
-  if (
+  if (isPrivateHostname(host)) {
+    return json({ error: 'Private network URLs are not allowed' }, 400)
+  }
+
+  // DNS rebinding protection: resolve the hostname and verify the resolved IP is public.
+  // This prevents an attacker from using a public hostname that resolves to a private IP.
+  if (!isIpAddress(host)) {
+    const dnsBlocked = await resolvedIpIsPrivate(host)
+    if (dnsBlocked) {
+      return json({ error: 'Private network URLs are not allowed' }, 400)
+    }
+  }
+
+  const result = await fetchUrlText(url)
+  return json({ text: result.text, sourceType: result.sourceType })
+})
+
+/** Returns true if the hostname string itself looks like a private/loopback address. */
+function isPrivateHostname(host: string): boolean {
+  return (
     host === 'localhost' ||
     host === '0.0.0.0' ||
     host === '127.0.0.1' ||
@@ -178,13 +215,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
     host.startsWith('192.168.') ||
     host.startsWith('10.') ||
     /^172\.(1[6-9]|2\d|3[01])\./.test(host) // RFC 1918: 172.16.0.0–172.31.255.255
-  ) {
-    return json({ error: 'Private network URLs are not allowed' }, 400)
-  }
+  )
+}
 
-  const result = await fetchUrlText(url)
-  return json({ text: result.text, sourceType: result.sourceType })
-})
+/** Returns true if the string is an IP address literal (IPv4 or IPv6). */
+function isIpAddress(host: string): boolean {
+  // IPv4
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true
+  // IPv6 (with or without brackets)
+  if (host.startsWith('[') || host.includes(':')) return true
+  return false
+}
+
+/** Resolves a hostname and returns true if any resolved IP is private/loopback. */
+async function resolvedIpIsPrivate(host: string): Promise<boolean> {
+  try {
+    const addresses = await Deno.resolveDns(host, 'A').catch(() => [] as string[])
+    const addresses6 = await Deno.resolveDns(host, 'AAAA').catch(() => [] as string[])
+    for (const ip of [...addresses, ...addresses6]) {
+      if (isPrivateHostname(ip)) return true
+    }
+    return false
+  } catch {
+    // If DNS resolution fails entirely, block the request to be safe.
+    return true
+  }
+}
 
 async function fetchUrlText(url: string): Promise<{ text: string | null; sourceType: SourceType | null }> {
   const socialType = detectSocialVideoType(url)

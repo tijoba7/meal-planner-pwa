@@ -10,56 +10,21 @@ import {
   extractLinkedUrls,
 } from './scraper'
 import type { ExtractedRecipe, BatchItemState } from './scraper'
-import { getAppSettingString, getAppSettingNumber } from './appSettingsService'
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-// Mock Supabase client — RPC calls for server-side rate limiting and config.
-const mockRpc = vi.fn().mockImplementation((fn: string) => {
-  if (fn === 'get_scraping_config') {
-    return Promise.resolve({
-      data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null },
-      error: null,
-    })
-  }
-  if (fn === 'check_scrape_rate_limit') {
-    return Promise.resolve({
-      data: { allowed: true, remaining: 9, retry_after_sec: 0 },
-      error: null,
-    })
-  }
-  return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-})
-
-// By default the edge function proxy returns null (unavailable), so tests fall through
-// to the direct browser fetch mock and the existing fetch-ordering assumptions hold.
-export const mockFunctionsInvoke = vi.fn().mockResolvedValue({ data: { text: null }, error: null })
+// AI calls are now handled server-side in the extract-recipe edge function.
+// The frontend only calls supabase.functions.invoke — no direct AI API calls.
+export const mockFunctionsInvoke = vi.fn()
 
 vi.mock('./supabase', () => ({
   supabase: {
-    rpc: (...args: unknown[]) => mockRpc(...args),
     functions: { invoke: (...args: unknown[]) => mockFunctionsInvoke(...args) },
-  },
-}))
-
-// Mock admin scraping config — return the fake API key so extractRecipeFromUrl works.
-vi.mock('./appSettingsService', () => ({
-  getAppSettingString: vi.fn().mockImplementation((key: string) => {
-    if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
-    return Promise.resolve(null)
-  }),
-  getAppSettingNumber: vi.fn().mockResolvedValue(null),
-  APP_SETTING_KEYS: {
-    SCRAPING_API_KEY: 'scraping.api_key',
-    SCRAPING_MODEL: 'scraping.model',
-    SCRAPING_PROVIDER: 'scraping.provider',
-    SCRAPING_RATE_LIMIT: 'scraping.rate_limit',
   },
 }))
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ADMIN_API_KEY = 'sk-ant-test-key'
 const RECIPE_URL = 'https://example.com/recipe/pasta'
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -92,18 +57,36 @@ function makePageResponse(html: string, ok = true) {
   return { ok, text: vi.fn().mockResolvedValue(html) }
 }
 
-function makeClaudeSuccess(text: string) {
-  return {
-    ok: true,
-    json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text }] }),
+/** Default functions.invoke implementation: scrape-url unavailable, extract-recipe succeeds. */
+function defaultFunctionsInvoke(fn: string) {
+  if (fn === 'scrape-url') {
+    return Promise.resolve({ data: { text: null, sourceType: null }, error: null })
+  }
+  // extract-recipe
+  return Promise.resolve({ data: { ok: true, recipe: validRecipePayload }, error: null })
+}
+
+/** Make extract-recipe return a custom recipe. scrape-url still returns null. */
+function makeExtractSuccess(recipe: ExtractedRecipe) {
+  return (fn: string) => {
+    if (fn === 'scrape-url') return Promise.resolve({ data: { text: null, sourceType: null }, error: null })
+    return Promise.resolve({ data: { ok: true, recipe }, error: null })
   }
 }
 
-function makeClaudeError(message: string, status = 400) {
-  return {
-    ok: false,
-    status,
-    json: vi.fn().mockResolvedValue({ error: { message } }),
+/** Make extract-recipe return an error. scrape-url still returns null. */
+function makeExtractError(error: string) {
+  return (fn: string) => {
+    if (fn === 'scrape-url') return Promise.resolve({ data: { text: null, sourceType: null }, error: null })
+    return Promise.resolve({ data: { ok: false, error }, error: null })
+  }
+}
+
+/** Make extract-recipe itself fail (network/service error). */
+function makeExtractServiceError() {
+  return (fn: string) => {
+    if (fn === 'scrape-url') return Promise.resolve({ data: { text: null, sourceType: null }, error: null })
+    return Promise.resolve({ data: null, error: new Error('Edge Function returned a non-2xx status code') })
   }
 }
 
@@ -115,8 +98,9 @@ describe('extractRecipeFromUrl', () => {
   beforeEach(() => {
     mockFetch = vi.fn()
     vi.stubGlobal('fetch', mockFetch)
-    // Reset admin config cache so each test gets a fresh load from the mock.
     _resetScraperCache()
+    mockFunctionsInvoke.mockClear()
+    mockFunctionsInvoke.mockImplementation(defaultFunctionsInvoke)
   })
 
   afterEach(() => {
@@ -126,10 +110,8 @@ describe('extractRecipeFromUrl', () => {
   // ── Successful extraction ──────────────────────────────────────────────────
 
   describe('successful extraction', () => {
-    it('returns a recipe with correct fields when page content and Claude response are valid', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html><body>pasta recipe content</body></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+    it('returns a recipe with correct fields when page content and edge function succeed', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html><body>pasta recipe content</body></html>'))
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
@@ -151,180 +133,168 @@ describe('extractRecipeFromUrl', () => {
       expect(result.recipe.recipeCuisine).toBe('Italian')
     })
 
-    it('sends the API key in the x-api-key header', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+    it('calls extract-recipe edge function with systemPrompt and userMessage', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html><body>pasta</body></html>'))
 
       await extractRecipeFromUrl(RECIPE_URL)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      expect(claudeCall[1].headers['x-api-key']).toBe(ADMIN_API_KEY)
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')
+      expect(extractCall).toBeDefined()
+      const body = extractCall![1].body as { systemPrompt: string; userMessage: string }
+      expect(typeof body.systemPrompt).toBe('string')
+      expect(body.systemPrompt.length).toBeGreaterThan(0)
+      expect(body.userMessage).toContain(RECIPE_URL)
     })
 
-    it('uses the claude-haiku-4-5-20251001 model', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+    it('includes page text in the userMessage sent to extract-recipe', async () => {
+      mockFetch.mockResolvedValueOnce(
+        makePageResponse('<html><body>pasta recipe content here</body></html>')
+      )
 
       await extractRecipeFromUrl(RECIPE_URL)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      expect(body.model).toBe('claude-haiku-4-5-20251001')
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+      const body = extractCall[1].body as { userMessage: string }
+      expect(body.userMessage).toContain('Page content:')
+      expect(body.userMessage).toContain('pasta recipe content here')
     })
 
-    it('includes the URL in the user message sent to Claude', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html><body>pasta</body></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+    it('marks extractionSource as structured_data when page text is available', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html><body>recipe content</body></html>'))
 
-      await extractRecipeFromUrl(RECIPE_URL)
+      const result = await extractRecipeFromUrl(RECIPE_URL)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      expect(body.messages[0].content).toContain(RECIPE_URL)
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.recipe.extractionSource).toBe('structured_data')
     })
   })
 
-  // ── CORS fallback behaviour ────────────────────────────────────────────────
+  // ── Page text proxy + CORS fallback ───────────────────────────────────────
 
   describe('CORS fallback behaviour', () => {
     it('falls back to URL-only context when the page fetch throws', async () => {
-      mockFetch
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'))
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      expect(body.messages[0].content).toContain('Page content could not be fetched')
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+      const body = extractCall[1].body as { userMessage: string }
+      expect(body.userMessage).toContain('Page content could not be fetched')
     })
 
     it('falls back to URL-only context when the page returns a non-ok status', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('', false))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+      mockFetch.mockResolvedValueOnce(makePageResponse('', false))
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      expect(body.messages[0].content).toContain('Page content could not be fetched')
-    })
-
-    it('includes page text in the Claude prompt when the page fetch succeeds', async () => {
-      mockFetch
-        .mockResolvedValueOnce(
-          makePageResponse('<html><body>pasta recipe content here</body></html>')
-        )
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
-
-      await extractRecipeFromUrl(RECIPE_URL)
-
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      expect(body.messages[0].content).toContain('Page content:')
-      expect(body.messages[0].content).toContain('pasta recipe content here')
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+      const body = extractCall[1].body as { userMessage: string }
+      expect(body.userMessage).toContain('Page content could not be fetched')
     })
 
     it('still resolves successfully when a social-media page fetch is blocked by CORS', async () => {
-      mockFetch
-        .mockRejectedValueOnce(new TypeError('CORS error'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+      mockFetch.mockRejectedValueOnce(new TypeError('CORS error'))
 
       const result = await extractRecipeFromUrl('https://instagram.com/p/abc123')
       expect(result.ok).toBe(true)
     })
 
-    it('truncates very long page content before sending to Claude', async () => {
+    it('truncates very long page content before sending to the edge function', async () => {
       const longHtml = '<html><body>' + 'x'.repeat(20000) + '</body></html>'
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse(longHtml))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+      mockFetch.mockResolvedValueOnce(makePageResponse(longHtml))
 
       await extractRecipeFromUrl(RECIPE_URL)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      // Content should be truncated (12000 chars + marker, not 20000)
-      expect(body.messages[0].content).toContain('[truncated]')
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+      const body = extractCall[1].body as { userMessage: string }
+      expect(body.userMessage).toContain('[truncated]')
     })
-  })
 
-  // ── Timeout handling ───────────────────────────────────────────────────────
-
-  describe('timeout handling', () => {
-    it('treats a page fetch AbortError as a CORS/timeout failure and falls back to URL context', async () => {
+    it('treats a page fetch AbortError as a failure and falls back to URL context', async () => {
       const abortError = new DOMException('The operation was aborted.', 'AbortError')
-
-      mockFetch
-        .mockRejectedValueOnce(abortError)
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
+      mockFetch.mockRejectedValueOnce(abortError)
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
       expect(result.ok).toBe(true)
 
-      const [, claudeCall] = mockFetch.mock.calls
-      const body = JSON.parse(claudeCall[1].body as string)
-      expect(body.messages[0].content).toContain('Page content could not be fetched')
-    })
-
-    it('returns a network error when the Claude API fetch itself throws', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('Network error')
-      expect(result.error).toContain('Failed to fetch')
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+      const body = extractCall[1].body as { userMessage: string }
+      expect(body.userMessage).toContain('Page content could not be fetched')
     })
   })
 
-  // ── Malformed response handling ────────────────────────────────────────────
+  // ── Social video handling ──────────────────────────────────────────────────
 
-  describe('malformed response handling', () => {
-    it('returns an error when Claude responds with unparseable text', async () => {
-      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'Not JSON at all!' }] }),
+  describe('social video handling', () => {
+    it('uses the social-video system prompt when scrape-url returns sourceType=social_video', async () => {
+      // Mock the proxy to return social video content (real behavior when Reels can be fetched)
+      mockFunctionsInvoke.mockImplementation((fn: string) => {
+        if (fn === 'scrape-url') {
+          return Promise.resolve({
+            data: { text: 'Social Media Metadata\nog:title: Pasta Carbonara\n...', sourceType: 'social_video' },
+            error: null,
+          })
+        }
+        return Promise.resolve({ data: { ok: true, recipe: validRecipePayload }, error: null })
       })
+
+      await extractRecipeFromUrl('https://instagram.com/reel/abc123')
+
+      const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+      const body = extractCall[1].body as { systemPrompt: string; userMessage: string }
+      // Social video prompt is different from the regular recipe prompt
+      expect(body.systemPrompt).toContain('social media video')
+    })
+
+    it('marks extractionSource as social_metadata when sourceType is social_video', async () => {
+      mockFunctionsInvoke.mockImplementation((fn: string) => {
+        if (fn === 'scrape-url') {
+          return Promise.resolve({
+            data: { text: 'video metadata content', sourceType: 'social_video' },
+            error: null,
+          })
+        }
+        return Promise.resolve({ data: { ok: true, recipe: validRecipePayload }, error: null })
+      })
+
+      const result = await extractRecipeFromUrl('https://instagram.com/reel/abc123')
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.recipe.extractionSource).toBe('social_metadata')
+    })
+
+    it('marks extractionSource as ai_inferred when page text could not be fetched', async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError('CORS'))
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.recipe.extractionSource).toBe('ai_inferred')
+    })
+  })
+
+  // ── Error handling ─────────────────────────────────────────────────────────
+
+  describe('error handling', () => {
+    it('returns an error when the extract-recipe service is unavailable', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+      mockFunctionsInvoke.mockImplementation(makeExtractServiceError())
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
-      expect(result.error).toContain('Could not parse AI response as JSON.')
+      expect(result.error).toContain('unavailable')
     })
 
-    it('strips markdown code fences before parsing the JSON', async () => {
-      const withFences = '```json\n' + JSON.stringify(validRecipePayload) + '\n```'
-
-      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: withFences }] }),
-      })
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-      expect(result.ok).toBe(true)
-    })
-
-    it('returns an error when Claude responds with {"error": "..."}', async () => {
-      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          content: [
-            { type: 'text', text: JSON.stringify({ error: 'No recipe found at this URL' }) },
-          ],
-        }),
-      })
+    it('returns the error message from the edge function on failure', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+      mockFunctionsInvoke.mockImplementation(makeExtractError('No recipe found at this URL'))
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
@@ -333,188 +303,71 @@ describe('extractRecipeFromUrl', () => {
       expect(result.error).toBe('No recipe found at this URL')
     })
 
-    it('returns an error when the extracted recipe name is empty', async () => {
-      const noName = { ...validRecipePayload, name: '' }
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(noName)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('No recipe found')
-    })
-
-    it('returns an invalid key error when Claude responds with HTTP 401', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeError('Invalid API key', 401))
+    it('returns a rate limit error when the edge function responds with rate limit exceeded', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+      mockFunctionsInvoke.mockImplementation(
+        makeExtractError('Too many import requests. Please wait 2700 seconds before trying again.')
+      )
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
-      expect(result.error).toContain('Invalid AI API key')
-      expect(result.error).toContain('Admin settings')
+      expect(result.error).toContain('Too many import requests')
     })
 
-    it('returns a generic HTTP error message when the API error body has no message', async () => {
-      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: vi.fn().mockResolvedValue({}),
+    it('returns an error when the edge function indicates API key not configured', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+      mockFunctionsInvoke.mockImplementation(
+        makeExtractError('AI scraping not configured — ask your admin to set up an API key.')
+      )
+
+      const result = await extractRecipeFromUrl(RECIPE_URL)
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toContain('API key')
+    })
+
+    it('returns an error when the edge function returns no recipe object', async () => {
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+      mockFunctionsInvoke.mockImplementation((fn: string) => {
+        if (fn === 'scrape-url') return Promise.resolve({ data: { text: null }, error: null })
+        // ok: true but no recipe field
+        return Promise.resolve({ data: { ok: true }, error: null })
       })
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
       expect(result.ok).toBe(false)
       if (result.ok) return
-      expect(result.error).toContain('HTTP 500')
+      expect(result.error).toContain('No recipe returned')
+    })
+  })
+
+  // ── URL validation ─────────────────────────────────────────────────────────
+
+  describe('URL validation', () => {
+    it('rejects non-HTTP URLs', async () => {
+      const result = await extractRecipeFromUrl('ftp://example.com/recipe')
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toBeDefined()
     })
 
-    it('returns an error when the Claude response content array is empty', async () => {
-      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>')).mockResolvedValueOnce({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ content: [] }),
-      })
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-      // Empty text → empty string → JSON.parse('') throws → parse error
+    it('rejects empty strings', async () => {
+      const result = await extractRecipeFromUrl('')
       expect(result.ok).toBe(false)
     })
   })
 
-  // ── Data normalisation ─────────────────────────────────────────────────────
+  // ── URL and extractionSource in result ─────────────────────────────────────
 
-  describe('data normalisation', () => {
-    it('drops ingredients with no name', async () => {
-      const payload = {
-        ...validRecipePayload,
-        recipeIngredient: [
-          { name: 'pasta', amount: 200, unit: 'g' },
-          { name: '', amount: 1, unit: 'cup' },
-          { name: '   ', amount: 0, unit: '' },
-        ],
-      }
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.recipeIngredient).toHaveLength(1)
-      expect(result.recipe.recipeIngredient[0].name).toBe('pasta')
-    })
-
-    it('drops instruction steps with no text', async () => {
-      const payload = {
-        ...validRecipePayload,
-        recipeInstructions: [
-          { '@type': 'HowToStep', text: 'Boil water.' },
-          { '@type': 'HowToStep', text: '' },
-        ],
-      }
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.recipeInstructions).toHaveLength(1)
-      expect(result.recipe.recipeInstructions[0]['@type']).toBe('HowToStep')
-    })
-
-    it('normalises keywords to lowercase and trims whitespace', async () => {
-      const payload = {
-        ...validRecipePayload,
-        keywords: ['  PASTA  ', 'Italian', '  easy   '],
-      }
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.keywords).toEqual(['pasta', 'italian', 'easy'])
-    })
-
-    it('returns empty arrays when ingredients, instructions and keywords are not arrays', async () => {
-      const payload = {
-        ...validRecipePayload,
-        recipeIngredient: 'not an array',
-        recipeInstructions: null,
-        keywords: 42,
-      }
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(payload)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.recipeIngredient).toEqual([])
-      expect(result.recipe.recipeInstructions).toEqual([])
-      expect(result.recipe.keywords).toEqual([])
-    })
-
-    it('uses fallback defaults for missing recipeYield, prepTime and cookTime', async () => {
-      const { recipeYield: _y, prepTime: _p, cookTime: _c, ...minimal } = validRecipePayload
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(minimal)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.recipeYield).toBe('2')
-      expect(result.recipe.prepTime).toBe('PT0M')
-      expect(result.recipe.cookTime).toBe('PT0M')
-    })
-
-    it('leaves optional fields undefined when absent from the response', async () => {
-      const {
-        image: _i,
-        author: _a,
-        recipeCategory: _rc,
-        recipeCuisine: _rcu,
-        ...minimal
-      } = validRecipePayload
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(minimal)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.image).toBeUndefined()
-      expect(result.recipe.author).toBeUndefined()
-      expect(result.recipe.recipeCategory).toBeUndefined()
-      expect(result.recipe.recipeCuisine).toBeUndefined()
-    })
-
-    it('falls back to the input URL when the response omits the url field', async () => {
+  describe('result metadata', () => {
+    it('falls back to the input URL when the recipe omits the url field', async () => {
       const { url: _u, ...withoutUrl } = validRecipePayload
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(withoutUrl)))
+      mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+      mockFunctionsInvoke.mockImplementation(makeExtractSuccess(withoutUrl as ExtractedRecipe))
 
       const result = await extractRecipeFromUrl(RECIPE_URL)
 
@@ -523,296 +376,18 @@ describe('extractRecipeFromUrl', () => {
       expect(result.recipe.url).toBe(RECIPE_URL)
     })
   })
-
-  // ── AI call timeout ────────────────────────────────────────────────────────
-
-  describe('AI call timeout', () => {
-    it('returns a timeout error when the Claude API call times out', async () => {
-      const timeoutError = new DOMException('The operation timed out.', 'TimeoutError')
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockRejectedValueOnce(timeoutError)
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('timed out')
-      expect(result.error).toContain('30 seconds')
-    })
-
-    it('returns a rate-limit error when the Claude API responds with HTTP 429', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeError('Rate limit exceeded', 429))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('rate limit exceeded')
-    })
-  })
-
-  // ── OpenAI provider ────────────────────────────────────────────────────────
-
-  describe('OpenAI provider', () => {
-    beforeEach(() => {
-      _resetScraperCache()
-      mockRpc.mockImplementation((fn: string) => {
-        if (fn === 'get_scraping_config') {
-          return Promise.resolve({
-            data: { api_key: 'sk-openai-test-key', provider: 'openai', model: null },
-            error: null,
-          })
-        }
-        if (fn === 'check_scrape_rate_limit') {
-          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-        }
-        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-      })
-      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
-        if (key === 'scraping.api_key') return Promise.resolve('sk-openai-test-key')
-        if (key === 'scraping.provider') return Promise.resolve('openai')
-        return Promise.resolve(null)
-      })
-    })
-
-    afterEach(() => {
-      // Restore default mock
-      mockRpc.mockImplementation((fn: string) => {
-        if (fn === 'get_scraping_config') {
-          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
-        }
-        if (fn === 'check_scrape_rate_limit') {
-          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-        }
-        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-      })
-      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
-        if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
-        return Promise.resolve(null)
-      })
-      _resetScraperCache()
-    })
-
-    it('parses OpenAI response format (choices[0].message.content) correctly', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            choices: [{ message: { content: JSON.stringify(validRecipePayload) } }],
-          }),
-        })
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.name).toBe('Spaghetti Carbonara')
-    })
-
-    it('sends Authorization Bearer header for OpenAI', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            choices: [{ message: { content: JSON.stringify(validRecipePayload) } }],
-          }),
-        })
-
-      await extractRecipeFromUrl(RECIPE_URL)
-
-      const [, aiCall] = mockFetch.mock.calls
-      expect(aiCall[1].headers['Authorization']).toBe('Bearer sk-openai-test-key')
-    })
-
-    it('returns a timeout error when the OpenAI call times out', async () => {
-      const timeoutError = new DOMException('The operation timed out.', 'TimeoutError')
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockRejectedValueOnce(timeoutError)
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('timed out')
-    })
-  })
-
-  // ── Gemini provider ────────────────────────────────────────────────────────
-
-  describe('Gemini provider', () => {
-    beforeEach(() => {
-      _resetScraperCache()
-      mockRpc.mockImplementation((fn: string) => {
-        if (fn === 'get_scraping_config') {
-          return Promise.resolve({
-            data: { api_key: 'gemini-test-key', provider: 'gemini', model: null },
-            error: null,
-          })
-        }
-        if (fn === 'check_scrape_rate_limit') {
-          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-        }
-        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-      })
-      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
-        if (key === 'scraping.api_key') return Promise.resolve('gemini-test-key')
-        if (key === 'scraping.provider') return Promise.resolve('gemini')
-        return Promise.resolve(null)
-      })
-    })
-
-    afterEach(() => {
-      mockRpc.mockImplementation((fn: string) => {
-        if (fn === 'get_scraping_config') {
-          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
-        }
-        if (fn === 'check_scrape_rate_limit') {
-          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-        }
-        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-      })
-      vi.mocked(getAppSettingString).mockImplementation((key: string) => {
-        if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
-        return Promise.resolve(null)
-      })
-      _resetScraperCache()
-    })
-
-    it('parses Gemini response format (candidates[0].content.parts[0].text) correctly', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            candidates: [
-              { content: { parts: [{ text: JSON.stringify(validRecipePayload) }] } },
-            ],
-          }),
-        })
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(true)
-      if (!result.ok) return
-      expect(result.recipe.name).toBe('Spaghetti Carbonara')
-    })
-
-    it('returns a timeout error when the Gemini call times out', async () => {
-      const timeoutError = new DOMException('The operation timed out.', 'TimeoutError')
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockRejectedValueOnce(timeoutError)
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('timed out')
-    })
-
-    it('returns an invalid key error when Gemini responds with HTTP 403', async () => {
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 403,
-          json: vi.fn().mockResolvedValue({ error: { message: 'API key not valid.' } }),
-        })
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('Invalid AI API key')
-    })
-  })
-
-  // ── Admin rate limit setting ───────────────────────────────────────────────
-
-  describe('admin rate limit setting', () => {
-    const STORAGE_KEY = 'mise_import_timestamps'
-
-    afterEach(() => {
-      localStorage.removeItem(STORAGE_KEY)
-      vi.mocked(getAppSettingNumber).mockResolvedValue(null)
-      _resetScraperCache()
-    })
-
-    it('blocks requests when admin rate limit is lower than the default', async () => {
-      _resetScraperCache()
-      // Server-side rate limit returns blocked
-      mockRpc.mockImplementation((fn: string) => {
-        if (fn === 'get_scraping_config') {
-          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
-        }
-        if (fn === 'check_scrape_rate_limit') {
-          return Promise.resolve({ data: { allowed: false, remaining: 0, retry_after_sec: 2700 }, error: null })
-        }
-        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-      })
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-
-      expect(result.ok).toBe(false)
-      if (result.ok) return
-      expect(result.error).toContain('Too many import requests')
-
-      // Restore default mock
-      mockRpc.mockImplementation((fn: string) => {
-        if (fn === 'get_scraping_config') {
-          return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
-        }
-        if (fn === 'check_scrape_rate_limit') {
-          return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-        }
-        return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-      })
-    })
-
-    it('allows requests when count is below admin rate limit', async () => {
-      _resetScraperCache()
-
-      mockFetch
-        .mockResolvedValueOnce(makePageResponse('<html></html>'))
-        .mockResolvedValueOnce(makeClaudeSuccess(JSON.stringify(validRecipePayload)))
-
-      const result = await extractRecipeFromUrl(RECIPE_URL)
-      expect(result.ok).toBe(true)
-    })
-  })
 })
 
 // ─── extractRecipeFromText ─────────────────────────────────────────────────────
 
 describe('extractRecipeFromText', () => {
-  let mockFetch: ReturnType<typeof vi.fn>
-
   beforeEach(() => {
-    mockFetch = vi.fn()
-    vi.stubGlobal('fetch', mockFetch)
     _resetScraperCache()
+    mockFunctionsInvoke.mockClear()
+    mockFunctionsInvoke.mockImplementation(defaultFunctionsInvoke)
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    _resetScraperCache()
-  })
-
-  it('returns a recipe when the AI successfully extracts from text', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }),
-    })
-
+  it('returns a recipe when the edge function successfully extracts from text', async () => {
     const result = await extractRecipeFromText('Spaghetti Carbonara recipe: 400g pasta, 3 eggs...')
 
     expect(result.ok).toBe(true)
@@ -820,82 +395,55 @@ describe('extractRecipeFromText', () => {
     expect(result.recipe.name).toBe('Spaghetti Carbonara')
   })
 
-  it('sends the text to the AI without fetching a URL', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }),
-    })
-
+  it('calls extract-recipe with systemPrompt and the text as userMessage', async () => {
     await extractRecipeFromText('some recipe text')
 
-    // Only one fetch call — no page fetch, only AI call
-    expect(mockFetch).toHaveBeenCalledTimes(1)
-    const [url] = mockFetch.mock.calls[0] as [string]
-    expect(url).toContain('anthropic.com')
+    const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+    expect(extractCall).toBeDefined()
+    const body = extractCall[1].body as { systemPrompt: string; userMessage: string }
+    expect(typeof body.systemPrompt).toBe('string')
+    expect(body.userMessage).toContain('some recipe text')
   })
 
-  it('truncates very long text before sending to the AI', async () => {
+  it('truncates very long text before sending to the edge function', async () => {
     const longText = 'x'.repeat(20000)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }),
-    })
-
     await extractRecipeFromText(longText)
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string)
-    expect(body.messages[0].content).toContain('[truncated]')
+    const extractCall = mockFunctionsInvoke.mock.calls.find(([fn]) => fn === 'extract-recipe')!
+    const body = extractCall[1].body as { userMessage: string }
+    expect(body.userMessage).toContain('[truncated]')
   })
 
-  it('returns an error when no API key is configured', async () => {
-    _resetScraperCache()
-    // Mock RPC to return no API key
-    mockRpc.mockImplementation((fn: string) => {
-      if (fn === 'get_scraping_config') {
-        return Promise.resolve({ data: { error: 'AI scraping not configured' }, error: null })
-      }
-      if (fn === 'check_scrape_rate_limit') {
-        return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-      }
-      return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-    })
-    vi.mocked(getAppSettingString).mockResolvedValue(null)
-
-    const result = await extractRecipeFromText('some text')
-
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.error).toContain('API key not configured')
-
-    // Restore default mocks
-    mockRpc.mockImplementation((fn: string) => {
-      if (fn === 'get_scraping_config') {
-        return Promise.resolve({ data: { api_key: 'sk-ant-test-key', provider: 'anthropic', model: null }, error: null })
-      }
-      if (fn === 'check_scrape_rate_limit') {
-        return Promise.resolve({ data: { allowed: true, remaining: 9, retry_after_sec: 0 }, error: null })
-      }
-      return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
-    })
-    vi.mocked(getAppSettingString).mockImplementation((key: string) => {
-      if (key === 'scraping.api_key') return Promise.resolve('sk-ant-test-key')
-      return Promise.resolve(null)
-    })
-  })
-
-  it('returns an error when the AI cannot find a recipe in the text', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: vi.fn().mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify({ error: 'No recipe found in this text' }) }],
-      }),
-    })
+  it('returns an error when the edge function reports no recipe found', async () => {
+    mockFunctionsInvoke.mockImplementation(makeExtractError('No recipe found in this text'))
 
     const result = await extractRecipeFromText('This is not a recipe.')
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toBe('No recipe found in this text')
+  })
+
+  it('returns an error when the edge function service is unavailable', async () => {
+    mockFunctionsInvoke.mockImplementation(makeExtractServiceError())
+
+    const result = await extractRecipeFromText('some text')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('unavailable')
+  })
+
+  it('returns an error when the edge function indicates API key not configured', async () => {
+    mockFunctionsInvoke.mockImplementation(
+      makeExtractError('AI scraping not configured — ask your admin to set up an API key.')
+    )
+
+    const result = await extractRecipeFromText('some text')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('API key')
   })
 })
 
@@ -908,11 +456,12 @@ describe('extractRecipesFromUrls', () => {
     mockFetch = vi.fn()
     vi.stubGlobal('fetch', mockFetch)
     _resetScraperCache()
+    mockFunctionsInvoke.mockClear()
+    mockFunctionsInvoke.mockImplementation(defaultFunctionsInvoke)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
-    _resetScraperCache()
   })
 
   it('processes each URL and returns a BatchItemState array', async () => {
@@ -921,12 +470,19 @@ describe('extractRecipesFromUrls', () => {
       'https://example.com/recipe/soup',
     ]
 
-    // Each URL: page fetch + AI call
+    // Page text for each URL (scrape-url returns null, direct fetch is used)
     mockFetch
-      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify({ ...validRecipePayload, name: 'Pasta' }) }] }) })
-      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify({ ...validRecipePayload, name: 'Soup' }) }] }) })
+      .mockResolvedValueOnce(makePageResponse('<html></html>'))
+      .mockResolvedValueOnce(makePageResponse('<html></html>'))
+
+    // extract-recipe returns different names for each URL
+    let callCount = 0
+    mockFunctionsInvoke.mockImplementation((fn: string) => {
+      if (fn === 'scrape-url') return Promise.resolve({ data: { text: null }, error: null })
+      callCount++
+      const name = callCount === 1 ? 'Pasta' : 'Soup'
+      return Promise.resolve({ data: { ok: true, recipe: { ...validRecipePayload, name } }, error: null })
+    })
 
     const progressUpdates: BatchItemState[][] = []
     const results = await extractRecipesFromUrls(urls, (items) => {
@@ -940,12 +496,9 @@ describe('extractRecipesFromUrls', () => {
     expect(results[1].recipe?.name).toBe('Soup')
   })
 
-  it('calls onProgress with initial pending state, then loading, then done/error', async () => {
+  it('calls onProgress with initial pending state, then loading, then done', async () => {
     const urls = ['https://example.com/recipe/pasta']
-
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }) })
+    mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
 
     const statuses: string[] = []
     await extractRecipesFromUrls(urls, (items) => {
@@ -959,10 +512,8 @@ describe('extractRecipesFromUrls', () => {
 
   it('marks a URL as error when extraction fails', async () => {
     const urls = ['https://example.com/bad-url']
-
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
-      .mockResolvedValueOnce({ ok: false, status: 500, json: vi.fn().mockResolvedValue({}) })
+    mockFetch.mockResolvedValueOnce(makePageResponse('<html></html>'))
+    mockFunctionsInvoke.mockImplementation(makeExtractError('No recipe found'))
 
     const results = await extractRecipesFromUrls(urls, () => {})
 
@@ -980,24 +531,24 @@ describe('extractRecipesFromUrls', () => {
     mockFetch
       .mockImplementationOnce(() => {
         callOrder.push(1)
-        return Promise.resolve({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
-      })
-      .mockImplementationOnce(() => {
-        callOrder.push(2)
-        return Promise.resolve({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }) })
+        return Promise.resolve(makePageResponse('<html></html>'))
       })
       .mockImplementationOnce(() => {
         callOrder.push(3)
-        return Promise.resolve({ ok: true, text: vi.fn().mockResolvedValue('<html></html>') })
+        return Promise.resolve(makePageResponse('<html></html>'))
       })
-      .mockImplementationOnce(() => {
-        callOrder.push(4)
-        return Promise.resolve({ ok: true, json: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify(validRecipePayload) }] }) })
-      })
+
+    let extractCount = 0
+    mockFunctionsInvoke.mockImplementation((fn: string) => {
+      if (fn === 'scrape-url') return Promise.resolve({ data: { text: null }, error: null })
+      extractCount++
+      callOrder.push(extractCount === 1 ? 2 : 4)
+      return Promise.resolve({ data: { ok: true, recipe: validRecipePayload }, error: null })
+    })
 
     await extractRecipesFromUrls(urls, () => {})
 
-    // First URL's fetches (1, 2) must complete before second URL's fetches (3, 4)
+    // First URL's fetches (1, 2) must complete before second URL's (3, 4)
     expect(callOrder).toEqual([1, 2, 3, 4])
   })
 })
@@ -1277,8 +828,3 @@ describe('extractLinkedUrls', () => {
     expect(result).toEqual([])
   })
 })
-
-// ─── localStorage helpers ─────────────────────────────────────────────────────
-// jsdom 29 + fake-indexeddb/auto can leave localStorage in a broken state.
-// Stub it with a real Map-backed implementation for these tests.
-

@@ -2,11 +2,8 @@ import type { Recipe, Ingredient, HowToStep } from '../types'
 import {
   validateImportUrl,
   URL_VALIDATION_MESSAGES,
-  checkImportRateLimit,
-  formatRetryAfter,
   sanitizeRecipeData,
 } from './validation'
-import { APP_SETTING_KEYS, getAppSettingString, getAppSettingNumber } from './appSettingsService'
 import { supabase } from './supabase'
 
 export interface ExtractedRecipe {
@@ -116,81 +113,11 @@ Rules:
 Example output:
 ${EXAMPLE_OUTPUT}`
 
-const DEFAULT_MODEL = 'claude-haiku-4-5-20251001'
-const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
-const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
-
-// Cache admin scraping config for 60 s to avoid a Supabase round-trip on every URL in a batch.
-let _adminConfig: {
-  apiKey: string | null
-  model: string | null
-  provider: string | null
-  rateLimit: number | null
-} | null = null
-let _adminConfigAt = 0
-const ADMIN_CONFIG_TTL_MS = 60_000
-
-export async function loadAdminScrapingConfig(): Promise<{
-  apiKey: string | null
-  model: string | null
-  provider: string | null
-  rateLimit: number | null
-}> {
-  const now = Date.now()
-  if (_adminConfig && now - _adminConfigAt < ADMIN_CONFIG_TTL_MS) return _adminConfig
-
-  // Try secure RPC first (works for all authenticated users, not just admins)
-  const { data: rpcData } = await supabase.rpc('get_scraping_config')
-  if (rpcData && typeof rpcData === 'object' && !('error' in rpcData)) {
-    const cfg = rpcData as { api_key: string; provider: string; model: string | null }
-    // Still need rate limit from non-sensitive setting
-    const rateLimit = await getAppSettingNumber(APP_SETTING_KEYS.SCRAPING_RATE_LIMIT)
-    _adminConfig = { apiKey: cfg.api_key, model: cfg.model, provider: cfg.provider, rateLimit }
-    _adminConfigAt = now
-    return _adminConfig
-  }
-
-  // Fallback: direct reads (works for admins only due to RLS on sensitive keys)
-  const [apiKey, model, provider, rateLimit] = await Promise.all([
-    getAppSettingString(APP_SETTING_KEYS.SCRAPING_API_KEY),
-    getAppSettingString(APP_SETTING_KEYS.SCRAPING_MODEL),
-    getAppSettingString(APP_SETTING_KEYS.SCRAPING_PROVIDER),
-    getAppSettingNumber(APP_SETTING_KEYS.SCRAPING_RATE_LIMIT),
-  ])
-  _adminConfig = { apiKey, model, provider, rateLimit }
-  _adminConfigAt = now
-  return _adminConfig
-}
-
-/** Exported for test cache invalidation only — do not call in production code. */
-export function _resetScraperCache(): void {
-  _adminConfig = null
-  _adminConfigAt = 0
-}
+/** No-op — kept for test compatibility. Cache was removed when AI calls moved to extract-recipe edge function. */
+export function _resetScraperCache(): void {}
 
 /** Exported for testing only. */
 export { isSocialMediaUrl, extractLinkedUrls }
-
-/**
- * Server-side rate limit check via Supabase RPC.
- * Falls back to client-side check if RPC is unavailable.
- */
-async function checkServerRateLimit(clientMax?: number): Promise<{ allowed: boolean; retryAfterMs?: number }> {
-  try {
-    const { data, error } = await supabase.rpc('check_scrape_rate_limit')
-    if (!error && data && typeof data === 'object') {
-      const result = data as { allowed: boolean; remaining: number; retry_after_sec: number }
-      if (!result.allowed) {
-        return { allowed: false, retryAfterMs: result.retry_after_sec * 1000 }
-      }
-      return { allowed: true }
-    }
-  } catch {
-    // RPC unavailable — fall through to client-side
-  }
-  // Fallback to client-side rate limiting
-  return checkImportRateLimit(clientMax)
-}
 
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
@@ -280,248 +207,40 @@ async function fetchPageText(
   }
 }
 
-function extractJsonFromResponse(raw: string): string {
-  // Strategy 1: Try the raw string directly (model returned pure JSON)
-  const trimmed = raw.trim()
-  if (trimmed.startsWith('{')) return trimmed
-
-  // Strategy 2: Extract from markdown code fences (```json ... ``` or ``` ... ```)
-  const fenceMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)```/)
-  if (fenceMatch) return fenceMatch[1].trim()
-
-  // Strategy 3: Find the first { and last } to extract embedded JSON
-  const firstBrace = trimmed.indexOf('{')
-  const lastBrace = trimmed.lastIndexOf('}')
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1)
-  }
-
-  return trimmed
-}
-
-function parseAiResponseText(raw: string): ScrapeResult {
-  let parsed: Record<string, unknown>
-  try {
-    const cleaned = extractJsonFromResponse(raw)
-    parsed = JSON.parse(cleaned) as Record<string, unknown>
-  } catch {
-    const preview = raw.length > 200 ? raw.slice(0, 200) + '…' : raw
-    console.error('[scraper] Failed to parse AI response:', preview)
-    return {
-      ok: false,
-      error: `Could not parse AI response as JSON. Response preview: ${preview}`,
-    }
-  }
-
-  if (parsed.error) return { ok: false, error: parsed.error as string }
-
-  const recipe: ExtractedRecipe = {
-    name: String(parsed.name ?? '').trim(),
-    description: String(parsed.description ?? '').trim(),
-    recipeYield: String(parsed.recipeYield ?? '2').trim(),
-    prepTime: String(parsed.prepTime ?? 'PT0M').trim(),
-    cookTime: String(parsed.cookTime ?? 'PT0M').trim(),
-    recipeIngredient: normaliseIngredients(parsed.recipeIngredient),
-    recipeInstructions: normaliseInstructions(parsed.recipeInstructions),
-    keywords: normaliseKeywords(parsed.keywords),
-    image: parsed.image ? String(parsed.image) : undefined,
-    author: parsed.author ? String(parsed.author) : undefined,
-    url: parsed.url ? String(parsed.url) : undefined,
-    recipeCategory: parsed.recipeCategory ? String(parsed.recipeCategory) : undefined,
-    recipeCuisine: parsed.recipeCuisine ? String(parsed.recipeCuisine) : undefined,
-  }
-
-  if (!recipe.name) return { ok: false, error: 'No recipe found.' }
-  return { ok: true, recipe: sanitizeRecipeData(recipe) }
-}
-
-async function callClaude(
+/**
+ * Call the extract-recipe edge function.
+ * AI calls and rate limiting are handled server-side so the API key never reaches the browser.
+ */
+async function callExtractRecipeEdge(
   systemPrompt: string,
   userMessage: string,
-  apiKey: string,
-  model = DEFAULT_MODEL
 ): Promise<ScrapeResult> {
-  let raw: string
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: AbortSignal.timeout(30_000),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
-    })
+  const { data, error } = await supabase.functions.invoke<{
+    ok: boolean
+    error?: string
+    recipe?: ExtractedRecipe
+  }>('extract-recipe', {
+    body: { systemPrompt, userMessage },
+  })
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
-      if (res.status === 401) return { ok: false, error: `Invalid AI API key — check the key in Admin settings. (${msg})` }
-      if (res.status === 429) return { ok: false, error: `AI provider rate limit exceeded — try again in a few minutes. (${msg})` }
-      return { ok: false, error: `AI API error: ${msg}` }
-    }
-
-    const data = (await res.json()) as { content: Array<{ type: string; text: string }> }
-    raw = data.content.find((b) => b.type === 'text')?.text ?? ''
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'TimeoutError') {
-      return { ok: false, error: 'AI request timed out after 30 seconds. Please try again.' }
-    }
-    return {
-      ok: false,
-      error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
-    }
+  if (error) {
+    return { ok: false, error: 'AI extraction service unavailable. Please try again later.' }
   }
-
-  return parseAiResponseText(raw)
-}
-
-async function callOpenAI(
-  systemPrompt: string,
-  userMessage: string,
-  apiKey: string,
-  model = DEFAULT_OPENAI_MODEL
-): Promise<ScrapeResult> {
-  let raw: string
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      signal: AbortSignal.timeout(30_000),
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2048,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-      }),
-    })
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
-      if (res.status === 401) return { ok: false, error: `Invalid AI API key — check the key in Admin settings. (${msg})` }
-      if (res.status === 429) return { ok: false, error: `AI provider rate limit exceeded — try again in a few minutes. (${msg})` }
-      return { ok: false, error: `AI API error: ${msg}` }
-    }
-
-    const data = (await res.json()) as {
-      choices: Array<{ message: { content: string } }>
-    }
-    raw = data.choices[0]?.message?.content ?? ''
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'TimeoutError') {
-      return { ok: false, error: 'AI request timed out after 30 seconds. Please try again.' }
-    }
-    return {
-      ok: false,
-      error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
-    }
+  if (!data) {
+    return { ok: false, error: 'No response from AI extraction service.' }
   }
-
-  return parseAiResponseText(raw)
-}
-
-async function callGemini(
-  systemPrompt: string,
-  userMessage: string,
-  apiKey: string,
-  model = DEFAULT_GEMINI_MODEL
-): Promise<ScrapeResult> {
-  let raw: string
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-    const res = await fetch(url, {
-      method: 'POST',
-      signal: AbortSignal.timeout(30_000),
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' },
-      }),
-    })
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      const msg = (body as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`
-      if (res.status === 401 || res.status === 403) return { ok: false, error: `Invalid AI API key — check the key in Admin settings. (${msg})` }
-      if (res.status === 429) return { ok: false, error: `AI provider rate limit exceeded — try again in a few minutes. (${msg})` }
-      return { ok: false, error: `AI API error: ${msg}` }
-    }
-
-    const data = (await res.json()) as {
-      candidates: Array<{ content: { parts: Array<{ text: string }> } }>
-    }
-    raw = data.candidates[0]?.content?.parts[0]?.text ?? ''
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'TimeoutError') {
-      return { ok: false, error: 'AI request timed out after 30 seconds. Please try again.' }
-    }
-    return {
-      ok: false,
-      error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
-    }
+  if (!data.ok) {
+    return { ok: false, error: data.error ?? 'AI extraction failed.' }
   }
-
-  return parseAiResponseText(raw)
-}
-
-async function callAI(
-  systemPrompt: string,
-  userMessage: string,
-  apiKey: string,
-  model: string,
-  provider: string
-): Promise<ScrapeResult> {
-  if (provider === 'openai') return callOpenAI(systemPrompt, userMessage, apiKey, model)
-  if (provider === 'gemini') return callGemini(systemPrompt, userMessage, apiKey, model)
-  return callClaude(systemPrompt, userMessage, apiKey, model)
+  if (!data.recipe) {
+    return { ok: false, error: 'No recipe returned from AI.' }
+  }
+  return { ok: true, recipe: sanitizeRecipeData(data.recipe) }
 }
 
 export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
   const urlError = validateImportUrl(url)
   if (urlError) return { ok: false, error: URL_VALIDATION_MESSAGES[urlError] }
-
-  // Load admin config first (cached) so we can use the configured rate limit.
-  const admin = await loadAdminScrapingConfig()
-
-  const rateCheck = await checkServerRateLimit(admin.rateLimit ?? undefined)
-  if (!rateCheck.allowed) {
-    const wait = rateCheck.retryAfterMs ? formatRetryAfter(rateCheck.retryAfterMs) : 'an hour'
-    return {
-      ok: false,
-      error: `Too many import requests. Please wait ${wait} before trying again.`,
-    }
-  }
-
-  if (!admin.apiKey) {
-    return {
-      ok: false,
-      error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
-    }
-  }
-
-  const provider = admin.provider ?? 'anthropic'
-  const defaultModel =
-    provider === 'openai'
-      ? DEFAULT_OPENAI_MODEL
-      : provider === 'gemini'
-        ? DEFAULT_GEMINI_MODEL
-        : DEFAULT_MODEL
-  const model = admin.model ?? defaultModel
 
   const { text: pageText, sourceType } = await fetchPageText(url)
   const isSocialVideo = sourceType === 'social_video'
@@ -554,7 +273,7 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
   }
 
   const systemPrompt = isSocialVideo ? SOCIAL_VIDEO_SYSTEM_PROMPT : SYSTEM_PROMPT
-  const result = await callAI(systemPrompt, userMessage, admin.apiKey, model, provider)
+  const result = await callExtractRecipeEdge(systemPrompt, userMessage)
 
   if (!result.ok) return result
 
@@ -575,40 +294,10 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
 }
 
 export async function extractRecipeFromText(text: string): Promise<ScrapeResult> {
-  const admin = await loadAdminScrapingConfig()
-
-  const rateCheck = await checkServerRateLimit(admin.rateLimit ?? undefined)
-  if (!rateCheck.allowed) {
-    const wait = rateCheck.retryAfterMs ? formatRetryAfter(rateCheck.retryAfterMs) : 'an hour'
-    return {
-      ok: false,
-      error: `Too many import requests. Please wait ${wait} before trying again.`,
-    }
-  }
-
-  if (!admin.apiKey) {
-    return {
-      ok: false,
-      error: 'AI API key not configured. An admin must set the scraping API key in the Admin panel.',
-    }
-  }
-
-  const provider = admin.provider ?? 'anthropic'
-  const defaultModel =
-    provider === 'openai'
-      ? DEFAULT_OPENAI_MODEL
-      : provider === 'gemini'
-        ? DEFAULT_GEMINI_MODEL
-        : DEFAULT_MODEL
-  const model = admin.model ?? defaultModel
-
   const MAX_TEXT_CHARS = 12_000
-  return callAI(
+  return callExtractRecipeEdge(
     TEXT_SYSTEM_PROMPT,
     `Recipe text:\n\n${truncate(text, MAX_TEXT_CHARS)}`,
-    admin.apiKey,
-    model,
-    provider
   )
 }
 
@@ -1101,36 +790,6 @@ export async function importFromFile(file: File): Promise<ScrapeResult[]> {
   }
 
   return [{ ok: false, error: 'Unsupported file type. Use .paprikarecipe or .json.' }]
-}
-
-// ─── Normalization helpers ─────────────────────────────────────────────────────
-
-function normaliseIngredients(raw: unknown): Ingredient[] {
-  if (!Array.isArray(raw)) return []
-  return raw
-    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
-    .map((item) => ({
-      name: String(item.name ?? '').trim(),
-      amount: Number(item.amount ?? 0),
-      unit: String(item.unit ?? '').trim(),
-    }))
-    .filter((ing) => ing.name.length > 0)
-}
-
-function normaliseInstructions(raw: unknown): HowToStep[] {
-  if (!Array.isArray(raw)) return []
-  return raw
-    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
-    .map((item) => ({
-      '@type': 'HowToStep' as const,
-      text: String(item.text ?? '').trim(),
-    }))
-    .filter((step) => step.text.length > 0)
-}
-
-function normaliseKeywords(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return []
-  return raw.map((k) => String(k).trim().toLowerCase()).filter((k) => k.length > 0)
 }
 
 // Re-export Recipe type for convenience

@@ -17,7 +17,7 @@ export function Card({ className = '', onClick, children }: CardProps) {
   const interactive = onClick !== undefined
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${interactive ? 'hover:shadow-sm transition-shadow cursor-pointer' : ''} ${className}`}
+      className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${interactive ? 'hover:shadow-sm transition-shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1' : ''} ${className}`}
       onClick={onClick}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}

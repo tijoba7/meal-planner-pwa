@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   Bell,
@@ -99,6 +99,43 @@ export default function Layout() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadDmCount, setUnreadDmCount] = useState(0)
 
+  // Swipe gesture tracking for mobile tab switching
+  const swipeStartX = useRef<number | null>(null)
+  const SWIPE_THRESHOLD = 60
+
+  function haptic() {
+    navigator.vibrate?.(8)
+  }
+
+  function handleSwipeStart(e: React.TouchEvent) {
+    swipeStartX.current = e.touches[0].clientX
+  }
+
+  function handleSwipeEnd(e: React.TouchEvent) {
+    if (swipeStartX.current === null) return
+    const delta = e.changedTouches[0].clientX - swipeStartX.current
+    swipeStartX.current = null
+    if (Math.abs(delta) < SWIPE_THRESHOLD) return
+
+    const currentIndex = visibleNavItems.findIndex(
+      (item) =>
+        item.end
+          ? location.pathname === item.to
+          : location.pathname === item.to || location.pathname.startsWith(item.to + '/'),
+    )
+    if (currentIndex === -1) return
+
+    if (delta < 0 && currentIndex < visibleNavItems.length - 1) {
+      // swipe left → next tab
+      haptic()
+      navigate(visibleNavItems[currentIndex + 1].to)
+    } else if (delta > 0 && currentIndex > 0) {
+      // swipe right → previous tab
+      haptic()
+      navigate(visibleNavItems[currentIndex - 1].to)
+    }
+  }
+
   useEffect(() => {
     if (!user) return
     getUnreadCount(user.id).then(setUnreadCount)
@@ -139,8 +176,9 @@ export default function Layout() {
     },
   })
 
+  // 48px min touch target: py-3 (24px) + icon (20px) + gap + label ≈ 56px
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-colors ${
+    `flex flex-col items-center gap-0.5 px-3 py-3 min-h-12 text-xs font-medium transition-colors ${
       isActive
         ? 'text-green-700 dark:text-green-400'
         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -358,7 +396,9 @@ export default function Layout() {
       {/* Mobile bottom tab bar — pb handles iOS home indicator safe area */}
       <nav
         aria-label="Mobile navigation"
-        className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-10 pb-[env(safe-area-inset-bottom)]"
+        className="print:hidden md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-around z-nav pb-[env(safe-area-inset-bottom)]"
+        onTouchStart={handleSwipeStart}
+        onTouchEnd={handleSwipeEnd}
       >
         {visibleNavItems.map((item) => (
           <NavLink
@@ -366,6 +406,7 @@ export default function Layout() {
             to={item.to}
             end={item.end}
             className={linkClass}
+            onClick={haptic}
             onMouseEnter={() => prefetch(item.to)}
             onFocus={() => prefetch(item.to)}
           >

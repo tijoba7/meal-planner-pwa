@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
 
@@ -29,6 +29,15 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null)
   useFocusTrap(panelRef)
 
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
   const backdropAlign =
@@ -41,7 +50,7 @@ export function Modal({
 
   return (
     <div
-      className={`fixed inset-0 bg-black/50 z-50 flex justify-center ${backdropAlign} animate-fade-in`}
+      className={`fixed inset-0 bg-black/50 z-modal flex justify-center ${backdropAlign} animate-fade-in`}
       onClick={onClose}
     >
       <div
@@ -108,11 +117,20 @@ export function ConfirmModal({
   const panelRef = useRef<HTMLDivElement>(null)
   useFocusTrap(panelRef)
 
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/50 z-modal flex items-center justify-center p-4 animate-fade-in"
       onClick={onClose}
     >
       <div

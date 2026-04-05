@@ -66,11 +66,47 @@ All colors are Tailwind utility classes. Design tokens are declared in `src/inde
 
 ---
 
+## 1a. Semantic Color Tokens
+
+Semantic tokens live in `src/index.css` in the `@theme` block (light) and `.dark` overrides. They generate Tailwind utilities (`bg-surface`, `text-on-surface`, etc.) and update automatically in dark mode.
+
+| Token | Light value | Dark value | Usage |
+|---|---|---|---|
+| `--color-surface` | `#ffffff` | `#111827` | Card / modal / sidebar background |
+| `--color-surface-raised` | `#f9fafb` | `#1f2937` | Page background |
+| `--color-surface-overlay` | `#f3f4f6` | `#374151` | Hover surfaces, card headers |
+| `--color-on-surface` | `#1f2937` | `#f9fafb` | Primary text |
+| `--color-on-surface-secondary` | `#6b7280` | `#9ca3af` | Secondary / metadata text |
+| `--color-on-surface-muted` | `#9ca3af` | `#6b7280` | Captions, placeholders |
+| `--color-border` | `#e5e7eb` | `#374151` | Card borders, dividers |
+| `--color-border-subtle` | `#f3f4f6` | `#1f2937` | Internal row dividers |
+| `--color-interactive` | `#16a34a` | `#4ade80` | Interactive/brand color |
+| `--color-interactive-hover` | `#15803d` | `#22c55e` | Hover state |
+| `--color-interactive-light` | `#f0fdf4` | `#052e16` | Active sidebar bg, tag bg |
+
+---
+
 ## 2. Typography
 
 System font stack. No custom fonts.
 
-### Scale
+### Type Scale with Line-heights
+
+The canonical type scale is defined as CSS custom properties in `src/index.css` (`--type-*-size` / `--type-*-leading`). Use Tailwind utilities in components — the CSS variables are the source of truth for the values.
+
+| Step | Size | Line-height | Tailwind classes | Use |
+|---|---|---|---|---|
+| 2xs | 10px | 16px | `text-[10px] leading-4` | Timestamps, badge counts |
+| xs | 12px | 20px | `text-xs` | Captions, hints, nav labels |
+| sm | 14px | 20px | `text-sm` | Body text, labels, descriptions |
+| base | 16px | 24px | `text-base` | Form inputs, read-heavy content |
+| lg | 18px | 28px | `text-lg` | Section headings |
+| xl | 20px | 28px | `text-xl` | Sub-page headings |
+| 2xl | 24px | 32px | `text-2xl` | Page headings |
+| 3xl | 30px | 36px | `text-3xl` | Hero numbers, large stats |
+| 4xl | 36px | 40px | `text-4xl` | Display / marketing |
+
+### Semantic Text Roles
 
 | Role | Classes | Where used |
 |---|---|---|
@@ -160,6 +196,48 @@ Add `pb-8` or `pb-10` on detail/form pages to avoid content hiding behind the mo
 | Compact card row | `px-4 py-3` |
 | Modal content area | `p-4` |
 | Confirmation dialog | `p-6` |
+
+---
+
+## 4a. Z-Index Stacking Scale
+
+Named z-index tokens live in `src/index.css` (`@theme`), which generates Tailwind utilities (`z-nav`, `z-modal`, etc.). Always use a named token — never bare `z-10` or `z-50`.
+
+| Token | Value | Usage |
+|---|---|---|
+| `z-nav` | 10 | Mobile bottom tab bar |
+| `z-dropdown` | 20 | Dropdowns, tooltips-on-demand |
+| `z-sticky` | 30 | Sticky headers within pages |
+| `z-overlay` | 40 | Non-modal overlays, drawers |
+| `z-modal` | 50 | Modals, dialogs, bottom sheets |
+| `z-toast` | 60 | Toast notifications |
+| `z-tooltip` | 70 | Floating tooltips (always on top) |
+
+---
+
+## 4b. Radius & Shadow Scale
+
+Defined as CSS custom properties in `src/index.css` (`@layer base :root`). Reference via `var()` or use the corresponding Tailwind `rounded-*` / `shadow-*` equivalents.
+
+### Radius
+
+| Token | Value | Tailwind equiv | Usage |
+|---|---|---|---|
+| `--radius-sm` | 6px | `rounded` | Tags, small pills |
+| `--radius-md` | 8px | `rounded-lg` | Buttons, inputs, nav items |
+| `--radius-lg` | 12px | `rounded-xl` | Modal close buttons |
+| `--radius-xl` | 14px | `rounded-xl` | Cards |
+| `--radius-2xl` | 16px | `rounded-2xl` | Bottom sheets |
+| `--radius-full` | 9999px | `rounded-full` | Pill badges, avatars |
+
+### Shadow
+
+| Token | Usage |
+|---|---|
+| `--shadow-xs` | Hover lift on interactive rows |
+| `--shadow-sm` | Card hover state (`hover:shadow-sm`) |
+| `--shadow-md` | Dropdowns, elevated surfaces |
+| `--shadow-modal` | Modals and dialogs |
 
 ---
 
@@ -368,19 +446,27 @@ flex items-center justify-center text-xs font-bold
 
 **Mobile bottom tab bar:**
 ```
-fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex justify-around z-10
+fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex justify-around z-nav pb-[env(safe-area-inset-bottom)]
 ```
 
-Active tab: `text-green-600`
-Inactive tab: `text-gray-500 hover:text-gray-700`
+Each tab item uses `flex flex-col items-center gap-0.5 px-3 py-3 min-h-12` — this ensures the 48px minimum touch target (WCAG 2.5.5).
+
+- Active tab: `text-green-700`
+- Inactive tab: `text-gray-500 hover:text-gray-700`
+- Haptic feedback: `navigator.vibrate?.(8)` on every tap (progressive enhancement)
+- Swipe gesture: swipe left/right across the nav area switches to the next/previous tab (≥60px threshold)
 
 **Desktop sidebar:**
 ```
-hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-200 min-h-screen
+hidden md:flex flex-col w-14 lg:w-56 shrink-0 bg-white border-r border-gray-200 min-h-screen
 ```
+
+Icon-only on `md:` (tablet), full labels on `lg:` (desktop).
 
 Active sidebar link: `bg-green-50 text-green-700`
 Inactive sidebar link: `text-gray-600 hover:bg-gray-100 hover:text-gray-800`
+
+Keyboard shortcuts hint (`?`) is shown at the bottom of the desktop sidebar.
 
 ### Empty States
 

@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, SlidersHorizontal, X } from 'lucide-react'
+import { AlertTriangle, Heart, Refrigerator, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useRecipes, useToggleFavorite } from '../hooks/useRecipes'
+import { usePantryItems } from '../hooks/usePantryItems'
 import { durationToMinutes } from '../lib/db'
+import {
+  matchRecipesToPantry,
+  getExpiringPantryItems,
+  getAiPantrySuggestions,
+  formatExpiryDate,
+  type AiRecipeSuggestion,
+} from '../lib/pantryMatchService'
 import { useToast } from '../contexts/ToastContext'
-import type { Recipe } from '../types'
+import type { Recipe, PantryItem } from '../types'
+import type { PantryMatchResult } from '../lib/pantryMatchService'
 import { DIETARY_PREFERENCES, getDietaryPrefs } from '../lib/dietary'
 import EmptyState from '../components/EmptyState'
 import {
@@ -13,6 +22,7 @@ import {
   SearchNoResultsIllustration,
   HeartIllustration,
 } from '../components/EmptyStateIllustrations'
+import PantryMatchCard from '../components/PantryMatchCard'
 import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
 
@@ -81,10 +91,169 @@ function RecipeCardSkeleton() {
   )
 }
 
+interface PantryTabProps {
+  pantryItems: PantryItem[]
+  pantryMatches: PantryMatchResult[]
+  expiringItems: PantryItem[]
+  aiState: { loading: boolean; suggestions: AiRecipeSuggestion[]; error: string | null }
+  onAiSuggest: () => void
+}
+
+function PantryTab({
+  pantryItems,
+  pantryMatches,
+  expiringItems,
+  aiState,
+  onAiSuggest,
+}: PantryTabProps) {
+  if (pantryItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Refrigerator
+          size={48}
+          strokeWidth={1}
+          className="text-gray-300 dark:text-gray-600 mb-4"
+          aria-hidden="true"
+        />
+        <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          Your pantry is empty
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
+          Add items to your pantry first to see which recipes you can make.
+        </p>
+        <Link
+          to="/pantry"
+          className="mt-4 bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-800 transition-colors"
+        >
+          Go to Pantry
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Expiring items banner */}
+      {expiringItems.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle
+              size={15}
+              className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-0.5">
+                Use these before they expire
+              </p>
+              <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
+                {expiringItems.map((item) => (
+                  <li key={item.id} className="text-xs text-amber-700 dark:text-amber-400">
+                    <span className="font-medium">{item.name}</span> — by{' '}
+                    {formatExpiryDate(item.expiryDate!)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI suggestions section */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Get AI recipe ideas
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              New recipes you could make with what you have
+            </p>
+          </div>
+          <button
+            onClick={onAiSuggest}
+            disabled={aiState.loading}
+            className="flex items-center gap-1.5 shrink-0 bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            <Sparkles size={14} aria-hidden="true" />
+            {aiState.loading ? 'Thinking…' : 'Suggest'}
+          </button>
+        </div>
+
+        {aiState.error && (
+          <p className="mt-2 text-xs text-red-600 dark:text-red-400">{aiState.error}</p>
+        )}
+
+        {aiState.suggestions.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {aiState.suggestions.map((s) => (
+              <li
+                key={s.name}
+                className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2.5"
+              >
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{s.name}</p>
+                {s.description && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {s.description}
+                  </p>
+                )}
+                {s.keyIngredients?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {s.keyIngredients.map((ing) => (
+                      <span
+                        key={ing}
+                        className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs px-2 py-0.5 rounded-full"
+                      >
+                        {ing}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Matched saved recipes */}
+      {pantryMatches.length === 0 ? (
+        <div className="text-center py-10">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            None of your saved recipes match your current pantry.
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Try the AI suggestions above, or add more recipes.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Your saved recipes you can make ({pantryMatches.length})
+            </p>
+          </div>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {pantryMatches.map((match) => (
+              <PantryMatchCard key={match.recipe.id} match={match} />
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function RecipesPage() {
   const { data: recipes = [], isLoading: loading } = useRecipes()
+  const { data: pantryItems = [] } = usePantryItems()
   const toggleFavoriteMutation = useToggleFavorite()
   const toast = useToast()
+  const [activeTab, setActiveTab] = useState<'all' | 'pantry'>('all')
+  const [aiState, setAiState] = useState<{
+    loading: boolean
+    suggestions: AiRecipeSuggestion[]
+    error: string | null
+  }>({ loading: false, suggestions: [], error: null })
   const [query, setQuery] = useState('')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>(getSavedSort)
@@ -129,6 +298,29 @@ export default function RecipesPage() {
     }
     return [...set].sort()
   }, [recipes])
+
+  const pantryMatches = useMemo(
+    () => matchRecipesToPantry(recipes, pantryItems),
+    [recipes, pantryItems]
+  )
+
+  const expiringItems = useMemo(
+    () => getExpiringPantryItems(pantryItems),
+    [pantryItems]
+  )
+
+  async function handleAiSuggestions() {
+    setAiState({ loading: true, suggestions: [], error: null })
+    const result = await getAiPantrySuggestions(
+      pantryItems,
+      recipes.map((r) => r.name)
+    )
+    if (result.ok) {
+      setAiState({ loading: false, suggestions: result.suggestions, error: null })
+    } else {
+      setAiState({ loading: false, suggestions: [], error: result.error })
+    }
+  }
 
   function handleSortChange(newSort: SortKey) {
     setSort(newSort)
@@ -237,6 +429,48 @@ export default function RecipesPage() {
         </div>
       </div>
 
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'all'
+              ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          All Recipes
+        </button>
+        <button
+          onClick={() => setActiveTab('pantry')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'pantry'
+              ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          <Refrigerator size={14} aria-hidden="true" />
+          Cook with what you have
+          {pantryMatches.length > 0 && (
+            <span className="ml-1 min-w-[18px] h-[18px] flex items-center justify-center bg-green-700 text-white text-[10px] font-bold rounded-full px-1">
+              {pantryMatches.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'pantry' ? (
+        <PantryTab
+          pantryItems={pantryItems}
+          pantryMatches={pantryMatches}
+          expiringItems={expiringItems}
+          aiState={aiState}
+          onAiSuggest={handleAiSuggestions}
+        />
+      ) : null}
+
+      {activeTab === 'all' ? (
+        <>
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <input
@@ -632,6 +866,8 @@ export default function RecipesPage() {
           )}
         </>
       )}
+      </>
+    ) : null}
     </div>
   )
 }

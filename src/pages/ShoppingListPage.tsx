@@ -1,27 +1,18 @@
-import { useState, useRef, useMemo, useId, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   X,
-  ChevronDown,
-  ChevronRight,
-  ChevronLeft,
   Share2,
   Copy,
   Download,
-  Plus,
-  Trash2,
   Users,
 } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
-import {
-  ShoppingCartIllustration,
-  ClipboardIllustration,
-} from '../components/EmptyStateIllustrations'
+import { ShoppingCartIllustration } from '../components/EmptyStateIllustrations'
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useAuth } from '../contexts/AuthContext'
-import { convertUnit, type UnitSystem } from '../lib/units'
 import type {
   ShoppingList,
   ShoppingItem,
@@ -45,188 +36,15 @@ import {
 import { useMealPlans } from '../hooks/useMealPlans'
 import { useRecipes } from '../hooks/useRecipes'
 import { usePantryItems } from '../hooks/usePantryItems'
-import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
+import { categorizeIngredient } from '../lib/ingredientCategories'
 import { mergeIngredients } from '../lib/ingredientMerger'
 import {
   getMyHouseholds,
   subscribeToHouseholdShoppingLists,
   type Household,
 } from '../lib/householdService'
-
-// ── Autocomplete suggestion types ─────────────────────────────────────────────
-
-type SuggestionEntry = { name: string; unit: string }
-
-/** Parse "2 cups flour" or "1/2 lb chicken" → { name, amount, unit }. Returns null if no match. */
-function parseQuickAdd(raw: string): { name: string; amount: number; unit: string } | null {
-  const UNITS =
-    /^(cups?|tbsps?|tsps?|lbs?|oz|g|kg|ml|l|liters?|pounds?|ounces?|grams?|kilograms?|cans?|bunches?|cloves?|slices?|pieces?|heads?|stalks?|sprigs?)$/i
-  const m = raw.trim().match(/^(\d+(?:[./]\d+)?)\s+(\S+)\s+(.+)$/)
-  if (!m) return null
-  const [, qty, possibleUnit, rest] = m
-  if (!UNITS.test(possibleUnit)) return null
-  const amount = qty.includes('/')
-    ? (() => {
-        const [n, d] = qty.split('/')
-        return +n / +d
-      })()
-    : parseFloat(qty)
-  return { name: rest.trim(), amount, unit: possibleUnit.trim() }
-}
-
-/** Collect unique ingredient suggestions from loaded shopping lists and recipes, ranked by use frequency. */
-function buildSuggestions(lists: ShoppingList[], recipes: Recipe[]): SuggestionEntry[] {
-  const counts = new Map<string, { unit: string; count: number }>()
-  for (const list of lists) {
-    for (const item of list.items) {
-      const key = item.name.toLowerCase()
-      const existing = counts.get(key)
-      if (existing) {
-        existing.count++
-      } else {
-        counts.set(key, { unit: item.unit || '', count: 1 })
-      }
-    }
-  }
-  for (const recipe of recipes) {
-    for (const ing of recipe.recipeIngredient) {
-      const key = ing.name.toLowerCase()
-      if (!counts.has(key)) {
-        counts.set(key, { unit: ing.unit || '', count: 0 })
-      }
-    }
-  }
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
-    .map(([name, { unit }]) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      unit,
-    }))
-}
-
-// ── Item name autocomplete input ───────────────────────────────────────────────
-
-function ItemNameInput({
-  value,
-  onChange,
-  onSelectSuggestion,
-  suggestions,
-}: {
-  value: string
-  onChange: (v: string) => void
-  onSelectSuggestion: (name: string, unit: string) => void
-  suggestions: SuggestionEntry[]
-}) {
-  const [open, setOpen] = useState(false)
-  const [activeIdx, setActiveIdx] = useState(-1)
-  const listId = useId()
-
-  const parsed = useMemo(() => parseQuickAdd(value), [value])
-
-  const filtered = useMemo(() => {
-    if (!value.trim()) return []
-    const q = (parsed?.name ?? value).toLowerCase()
-    return suggestions.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 8)
-  }, [value, suggestions, parsed])
-
-  const showDropdown = open && filtered.length > 0
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      if (!showDropdown) {
-        setOpen(true)
-        return
-      }
-      setActiveIdx((i) => Math.min(i + 1, filtered.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveIdx((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter' && showDropdown && activeIdx >= 0) {
-      e.preventDefault()
-      const s = filtered[activeIdx]
-      onSelectSuggestion(s.name, s.unit)
-      setOpen(false)
-      setActiveIdx(-1)
-    } else if (e.key === 'Escape') {
-      setOpen(false)
-      setActiveIdx(-1)
-    }
-  }
-
-  return (
-    <div className="relative">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value)
-          setOpen(true)
-          setActiveIdx(-1)
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          setOpen(false)
-          setActiveIdx(-1)
-        }}
-        onKeyDown={handleKeyDown}
-        placeholder='Name or "2 cups flour"'
-        aria-label="Item name"
-        autoComplete="off"
-        autoFocus
-        role="combobox"
-        aria-expanded={showDropdown}
-        aria-autocomplete="list"
-        aria-haspopup="listbox"
-        aria-controls={showDropdown ? listId : undefined}
-        className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-      />
-      {parsed && (
-        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-          <span className="text-xs text-green-600 dark:text-green-400 font-medium bg-white dark:bg-gray-700 pl-1">
-            {parsed.amount} {parsed.unit}
-          </span>
-        </div>
-      )}
-      {showDropdown && (
-        <ul
-          id={listId}
-          role="listbox"
-          onMouseDown={(e) => e.preventDefault()}
-          className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-md max-h-48 overflow-y-auto"
-        >
-          {filtered.map((s, idx) => (
-            <li
-              key={s.name}
-              role="option"
-              aria-selected={idx === activeIdx}
-              onClick={() => {
-                onSelectSuggestion(s.name, s.unit)
-                setOpen(false)
-                setActiveIdx(-1)
-              }}
-              onMouseEnter={() => setActiveIdx(idx)}
-              className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
-                idx === activeIdx
-                  ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              <span>{s.name}</span>
-              {s.unit && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 ml-2 shrink-0">
-                  {s.unit}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
+import ShoppingListDetail from '../components/shopping/ShoppingListDetail'
+import { buildSuggestions } from '../components/shopping/utils'
 
 function toISODate(date: Date): string {
   return date.toISOString().slice(0, 10)
@@ -243,23 +61,16 @@ function getMonday(date: Date): Date {
 
 function formatDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+    weekday: 'short', month: 'short', day: 'numeric',
   })
 }
 
-/** Aggregate ingredients from meal plans for the given date range, excluding pantry items. */
 function aggregateIngredients(
-  startDate: string,
-  endDate: string,
-  mealPlans: MealPlan[],
-  recipesById: Map<string, Recipe>,
-  pantryItems: PantryItem[] = []
+  startDate: string, endDate: string, mealPlans: MealPlan[],
+  recipesById: Map<string, Recipe>, pantryItems: PantryItem[] = []
 ): { items: Omit<ShoppingItem, 'id'>[]; excludedCount: number } {
   const pantryNames = new Set(pantryItems.map((p) => p.name.toLowerCase()))
   const raw: { name: string; amount: number; unit: string }[] = []
-
   for (const plan of mealPlans) {
     for (const [dateKey, dayPlan] of Object.entries(plan.days)) {
       if (dateKey < startDate || dateKey > endDate) continue
@@ -278,310 +89,34 @@ function aggregateIngredients(
       }
     }
   }
-
   const merged = mergeIngredients(raw)
   let excludedCount = 0
   const items: Omit<ShoppingItem, 'id'>[] = []
   for (const item of merged) {
-    if (pantryNames.has(item.name.toLowerCase())) {
-      excludedCount++
-      continue
-    }
-    items.push({
-      ...item,
-      amount: Math.round(item.amount * 100) / 100,
-      checked: false,
-      category: categorizeIngredient(item.name),
-    })
+    if (pantryNames.has(item.name.toLowerCase())) { excludedCount++; continue }
+    items.push({ ...item, amount: Math.round(item.amount * 100) / 100, checked: false, category: categorizeIngredient(item.name) })
   }
   return { items, excludedCount }
 }
 
-/** Group items by category, preserving display order. */
-function groupByCategory(items: ShoppingItem[]): Array<[IngredientCategory, ShoppingItem[]]> {
+function formatListText(list: ShoppingList): string {
+  const items = list.items.filter((i) => !i.checked)
+  const lines: string[] = [`Shopping List: ${list.name}`, '']
   const map = new Map<IngredientCategory, ShoppingItem[]>()
-  for (const cat of ALL_CATEGORIES) map.set(cat, [])
   for (const item of items) {
     const cat = item.category ?? 'Other'
+    if (!map.has(cat)) map.set(cat, [])
     map.get(cat)!.push(item)
   }
-  return Array.from(map.entries()).filter(([, list]) => list.length > 0)
-}
-
-const CATEGORY_COLORS: Record<IngredientCategory, string> = {
-  Produce: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  'Meat & Seafood': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  'Dairy & Eggs': 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
-  Bakery: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  Frozen: 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300',
-  Pantry: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  Other: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
-}
-
-const SWIPE_REVEAL = 80 // px width of delete zone revealed on full swipe
-
-function ItemRow({
-  item,
-  onToggle,
-  onRemove,
-  onCategoryChange,
-  isJustChecked = false,
-  unitSystem,
-}: {
-  item: ShoppingItem
-  onToggle: () => void
-  onRemove: () => void
-  onCategoryChange: (cat: IngredientCategory) => void
-  isJustChecked?: boolean
-  unitSystem: UnitSystem
-}) {
-  const [editingCat, setEditingCat] = useState(false)
-  const [swipeOffset, setSwipeOffset] = useState(0)
-  const [swipeOpen, setSwipeOpen] = useState(false)
-  const touchStartX = useRef(0)
-  const touchStartY = useRef(0)
-  const swipeAxisLocked = useRef<'h' | 'v' | null>(null)
-  const cat = item.category ?? 'Other'
-  const { amount: rawDisplayAmount, unit: displayUnit } = convertUnit(
-    item.amount,
-    item.unit,
-    unitSystem
-  )
-  const displayAmount = Math.round(rawDisplayAmount * 10) / 10
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX
-    touchStartY.current = e.touches[0].clientY
-    swipeAxisLocked.current = null
-  }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    const dx = e.touches[0].clientX - touchStartX.current
-    const dy = e.touches[0].clientY - touchStartY.current
-    if (!swipeAxisLocked.current) {
-      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
-      swipeAxisLocked.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+  for (const [cat, catItems] of map) {
+    lines.push(cat)
+    for (const item of catItems) {
+      const qty = item.amount ? ` (${item.amount}${item.unit ? ' ' + item.unit : ''})` : ''
+      lines.push(`- ${item.name}${qty}`)
     }
-    if (swipeAxisLocked.current === 'v') return
-    e.preventDefault()
-    const base = swipeOpen ? -SWIPE_REVEAL : 0
-    setSwipeOffset(Math.max(-SWIPE_REVEAL, Math.min(0, base + dx)))
+    lines.push('')
   }
-
-  function handleTouchEnd() {
-    if (swipeAxisLocked.current !== 'h') return
-    if (swipeOffset < -SWIPE_REVEAL / 2) {
-      setSwipeOffset(-SWIPE_REVEAL)
-      setSwipeOpen(true)
-    } else {
-      setSwipeOffset(0)
-      setSwipeOpen(false)
-    }
-  }
-
-  function closeSwipe() {
-    setSwipeOffset(0)
-    setSwipeOpen(false)
-  }
-
-  // Checked items — simple row, no swipe
-  if (item.checked) {
-    return (
-      <div className="flex items-center px-2 min-h-[44px] gap-1">
-        <button
-          onClick={onToggle}
-          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
-          aria-label={`Uncheck ${item.name}`}
-        >
-          <span
-            className="w-5 h-5 rounded border-2 border-green-500 bg-green-500 text-white text-xs flex items-center justify-center"
-            aria-hidden="true"
-          >
-            &#10003;
-          </span>
-        </button>
-        <span className="flex-1 text-sm text-gray-400 dark:text-gray-500 line-through">
-          {item.name}
-        </span>
-        <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">
-          {displayAmount} {displayUnit}
-        </span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      {/* Red delete zone — revealed when row is swiped left */}
-      <div
-        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-1 bg-red-500 text-white"
-        style={{ width: SWIPE_REVEAL }}
-        aria-hidden="true"
-      >
-        <button
-          tabIndex={swipeOpen ? 0 : -1}
-          onClick={() => {
-            closeSwipe()
-            onRemove()
-          }}
-          className="w-full h-full flex flex-col items-center justify-center gap-1"
-          aria-label={`Delete ${item.name}`}
-        >
-          <Trash2 size={18} strokeWidth={2} aria-hidden="true" />
-          <span className="text-xs font-medium">Delete</span>
-        </button>
-      </div>
-
-      {/* Swipeable row */}
-      <div
-        className="relative bg-white dark:bg-gray-800 flex items-center px-2 min-h-[44px] gap-1"
-        style={{
-          transform: `translateX(${swipeOffset}px)`,
-          // eslint-disable-next-line react-hooks/refs
-          transition: swipeAxisLocked.current === 'h' ? 'none' : 'transform 0.22s ease',
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Checkbox — 44px touch target */}
-        <button
-          onClick={() => {
-            if (swipeOpen) {
-              closeSwipe()
-              return
-            }
-            onToggle()
-          }}
-          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
-          aria-label={`Check ${item.name}`}
-        >
-          <span
-            className={`w-5 h-5 rounded border-2 flex items-center justify-center border-gray-300 dark:border-gray-600 ${isJustChecked ? 'animate-check-pop' : ''}`}
-            aria-hidden="true"
-          />
-        </button>
-
-        <div className="flex-1 min-w-0">
-          <span className="text-sm text-gray-800 dark:text-gray-100">{item.name}</span>
-          <div className="mt-0.5">
-            {editingCat ? (
-              <select
-                value={cat}
-                autoFocus
-                onChange={(e) => {
-                  onCategoryChange(e.target.value as IngredientCategory)
-                  setEditingCat(false)
-                }}
-                onBlur={() => setEditingCat(false)}
-                className="text-xs border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500"
-              >
-                {ALL_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <button
-                onClick={() => {
-                  if (swipeOpen) {
-                    closeSwipe()
-                    return
-                  }
-                  setEditingCat(true)
-                }}
-                className={`text-xs px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[cat]} hover:opacity-80 transition-opacity`}
-                aria-label={`Change category for ${item.name}: currently ${cat}`}
-              >
-                {cat}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-          {displayAmount} {displayUnit}
-        </span>
-
-        {/* X button — 44px touch target, always accessible */}
-        <button
-          onClick={onRemove}
-          className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
-          aria-label={`Remove ${item.name}`}
-        >
-          <X size={14} strokeWidth={2} aria-hidden="true" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function CategorySection({
-  category,
-  items,
-  onToggle,
-  onRemove,
-  onCategoryChange,
-  justChecked,
-  unitSystem,
-}: {
-  category: IngredientCategory
-  items: ShoppingItem[]
-  onToggle: (id: string) => void
-  onRemove: (id: string) => void
-  onCategoryChange: (id: string, cat: IngredientCategory) => void
-  justChecked: Set<string>
-  unitSystem: UnitSystem
-}) {
-  const [collapsed, setCollapsed] = useState(false)
-  const allChecked = items.every((i) => i.checked)
-  const uncheckedCount = items.filter((i) => !i.checked).length
-
-  return (
-    <div className="mb-4">
-      <button
-        onClick={() => setCollapsed((c) => !c)}
-        aria-expanded={!collapsed}
-        aria-label={`${category}: ${uncheckedCount} of ${items.length} items remaining`}
-        className="w-full flex items-center gap-1.5 mb-1.5 min-h-[44px]"
-      >
-        {collapsed ? (
-          <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
-        ) : (
-          <ChevronDown size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
-        )}
-        <span
-          className={`text-xs font-semibold uppercase tracking-wider ${allChecked ? 'text-gray-300 dark:text-gray-600 line-through' : 'text-gray-500 dark:text-gray-400'}`}
-        >
-          {category}
-        </span>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          ({items.filter((i) => !i.checked).length}/{items.length})
-        </span>
-      </button>
-
-      {!collapsed && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          {items.map((item, i) => (
-            <div
-              key={item.id}
-              className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}
-            >
-              <ItemRow
-                item={item}
-                onToggle={() => onToggle(item.id)}
-                isJustChecked={justChecked.has(item.id)}
-                onRemove={() => onRemove(item.id)}
-                onCategoryChange={(cat) => onCategoryChange(item.id, cat)}
-                unitSystem={unitSystem}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  return lines.join('\n').trim()
 }
 
 export default function ShoppingListPage() {
@@ -591,7 +126,6 @@ export default function ShoppingListPage() {
   const [unitSystem] = useUnitPreference()
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
-
   const [startDate, setStartDate] = useState(() => toISODate(getMonday(new Date())))
   const [endDate, setEndDate] = useState(() => {
     const sun = getMonday(new Date())
@@ -602,10 +136,6 @@ export default function ShoppingListPage() {
   const [excludePantry, setExcludePantry] = useState(true)
   const [justChecked, setJustChecked] = useState<Set<string>>(new Set())
   const [showExport, setShowExport] = useState(false)
-  const [showAddItem, setShowAddItem] = useState(false)
-  const [newItemName, setNewItemName] = useState('')
-  const [newItemAmount, setNewItemAmount] = useState('')
-  const [newItemUnit, setNewItemUnit] = useState('')
   const [showHouseholdShare, setShowHouseholdShare] = useState(false)
   const [households, setHouseholds] = useState<Household[]>([])
   const [householdsLoading, setHouseholdsLoading] = useState(false)
@@ -625,7 +155,6 @@ export default function ShoppingListPage() {
   const unshareShoppingListMutation = useUnshareShoppingList()
   const creating = createShoppingListMutation.isPending
 
-  // ── Realtime: subscribe to household shopping list changes ─────────────────
   useEffect(() => {
     const householdId = activeList?.householdId
     const listId = activeList?.id
@@ -645,7 +174,6 @@ export default function ShoppingListPage() {
     return unsub
   }, [activeList?.id, activeList?.householdId, user, qc])
 
-  // ── Load households when share dialog opens ────────────────────────────────
   useEffect(() => {
     if (!showHouseholdShare || !user) return
     setHouseholdsLoading(true)
@@ -657,51 +185,29 @@ export default function ShoppingListPage() {
   }, [showHouseholdShare, user, activeList?.householdId])
 
   const recipesById = new Map(recipes.map((r) => [r.id, r]))
-
   const suggestions = useMemo(() => buildSuggestions(lists, recipes), [lists, recipes])
 
   const handleCreate = async () => {
     if (!listName.trim()) return
     const { items: aggregated, excludedCount } = aggregateIngredients(
-      startDate,
-      endDate,
-      mealPlans,
-      recipesById,
-      excludePantry ? pantryItems : []
+      startDate, endDate, mealPlans, recipesById, excludePantry ? pantryItems : []
     )
-    const itemsWithIds: ShoppingItem[] = aggregated.map((item) => ({
-      ...item,
-      id: crypto.randomUUID(),
-    }))
-    const list = await createShoppingListMutation.mutateAsync({
-      name: listName.trim(),
-      items: itemsWithIds,
-    })
+    const itemsWithIds: ShoppingItem[] = aggregated.map((item) => ({ ...item, id: crypto.randomUUID() }))
+    const list = await createShoppingListMutation.mutateAsync({ name: listName.trim(), items: itemsWithIds })
     setShowCreate(false)
     setListName('')
     setActiveListId(list.id)
-
-    // Auto-share with household if any overlapping meal plan is shared
     const sharedPlan = mealPlans.find((plan) => {
       if (!plan.householdId) return false
-      const planEnd = (() => {
-        const d = new Date(plan.weekStartDate + 'T00:00:00')
-        d.setDate(d.getDate() + 6)
-        return d.toISOString().slice(0, 10)
-      })()
+      const planEnd = (() => { const d = new Date(plan.weekStartDate + 'T00:00:00'); d.setDate(d.getDate() + 6); return d.toISOString().slice(0, 10) })()
       return planEnd >= startDate && plan.weekStartDate <= endDate
     })
     if (sharedPlan?.householdId) {
-      await shareShoppingListMutation.mutateAsync({
-        listId: list.id,
-        householdId: sharedPlan.householdId,
-      })
+      await shareShoppingListMutation.mutateAsync({ listId: list.id, householdId: sharedPlan.householdId })
     }
-
-    const base =
-      excludedCount > 0
-        ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
-        : 'Shopping list created.'
+    const base = excludedCount > 0
+      ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
+      : 'Shopping list created.'
     toast.success(sharedPlan?.householdId ? `${base} Shared with your household.` : base)
   }
 
@@ -715,15 +221,7 @@ export default function ShoppingListPage() {
     const isChecking = activeList?.items.find((i) => i.id === itemId)?.checked === false
     if (isChecking) {
       setJustChecked((prev) => new Set([...prev, itemId]))
-      setTimeout(
-        () =>
-          setJustChecked((prev) => {
-            const next = new Set(prev)
-            next.delete(itemId)
-            return next
-          }),
-        300
-      )
+      setTimeout(() => setJustChecked((prev) => { const next = new Set(prev); next.delete(itemId); return next }), 300)
     }
     await toggleShoppingItemMutation.mutateAsync({ listId: activeListId, itemId })
   }
@@ -733,10 +231,8 @@ export default function ShoppingListPage() {
     const listId = activeList.id
     const removedItem = activeList.items.find((i) => i.id === itemId)
     if (!removedItem) return
-
     const items = activeList.items.filter((i) => i.id !== itemId)
     await updateShoppingListMutation.mutateAsync({ listId, data: { items } })
-
     toast.success(`"${removedItem.name}" removed.`, {
       duration: 5000,
       action: {
@@ -744,10 +240,7 @@ export default function ShoppingListPage() {
         onClick: async () => {
           const current = qc.getQueryData<ShoppingList | null>(shoppingListKeys.detail(listId))
           if (!current) return
-          await updateShoppingListMutation.mutateAsync({
-            listId,
-            data: { items: [...current.items, removedItem] },
-          })
+          await updateShoppingListMutation.mutateAsync({ listId, data: { items: [...current.items, removedItem] } })
         },
       },
     })
@@ -759,302 +252,81 @@ export default function ShoppingListPage() {
     await updateShoppingListMutation.mutateAsync({ listId: activeList.id, data: { items } })
   }
 
-  const handleAddItem = async () => {
-    if (!activeList || !newItemName.trim()) return
-    // Support quick-add: "2 cups flour" in the name field fills amount/unit
-    const quickParsed = parseQuickAdd(newItemName.trim())
-    const name = quickParsed?.name ?? newItemName.trim()
-    const amount = parseFloat(newItemAmount) || quickParsed?.amount || 0
-    const unit = newItemUnit.trim() || quickParsed?.unit || ''
+  const handleAmountChange = async (itemId: string, amount: number) => {
+    if (!activeList) return
+    const items = activeList.items.map((i) => (i.id === itemId ? { ...i, amount } : i))
+    await updateShoppingListMutation.mutateAsync({ listId: activeList.id, data: { items } })
+  }
+
+  const handleAddItem = async (name: string, amount: number, unit: string) => {
+    if (!activeList) return
     const newItem: ShoppingItem = {
-      id: crypto.randomUUID(),
-      name,
-      amount,
-      unit,
-      checked: false,
-      category: categorizeIngredient(name),
+      id: crypto.randomUUID(), name, amount, unit, checked: false, category: categorizeIngredient(name),
     }
     await updateShoppingListMutation.mutateAsync({
-      listId: activeList.id,
-      data: { items: [...activeList.items, newItem] },
+      listId: activeList.id, data: { items: [...activeList.items, newItem] },
     })
-    setNewItemName('')
-    setNewItemAmount('')
-    setNewItemUnit('')
-    setShowAddItem(false)
     toast.success(`"${newItem.name}" added.`)
   }
 
-  // --- Detail view ---
+  const handleCopyToClipboard = async () => {
+    if (!activeList) return
+    await navigator.clipboard.writeText(formatListText(activeList))
+    setShowExport(false)
+    toast.success('Copied to clipboard.')
+  }
+
+  const handleShare = async () => {
+    if (!activeList) return
+    await navigator.share({ title: activeList.name, text: formatListText(activeList) })
+    setShowExport(false)
+  }
+
+  const handleDownload = () => {
+    if (!activeList) return
+    const blob = new Blob([formatListText(activeList)], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${activeList.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    setShowExport(false)
+  }
+
   if (activeList) {
-    const unchecked = activeList.items.filter((i) => !i.checked)
-    const checked = activeList.items.filter((i) => i.checked)
-    const total = activeList.items.length
-    const doneCount = checked.length
-    const uncheckedGroups = groupByCategory(unchecked)
-
-    function formatListText(list: ShoppingList): string {
-      const items = list.items.filter((i) => !i.checked)
-      const grouped = groupByCategory(items)
-      const lines: string[] = [`Shopping List: ${list.name}`, '']
-      for (const [cat, catItems] of grouped) {
-        lines.push(cat)
-        for (const item of catItems) {
-          const qty = item.amount ? ` (${item.amount}${item.unit ? ' ' + item.unit : ''})` : ''
-          lines.push(`- ${item.name}${qty}`)
-        }
-        lines.push('')
-      }
-      return lines.join('\n').trim()
-    }
-
-    const handleCopyToClipboard = async () => {
-      const text = formatListText(activeList)
-      await navigator.clipboard.writeText(text)
-      setShowExport(false)
-      toast.success('Copied to clipboard.')
-    }
-
-    const handleShare = async () => {
-      const text = formatListText(activeList)
-      await navigator.share({ title: activeList.name, text })
-      setShowExport(false)
-    }
-
-    const handleDownload = () => {
-      const text = formatListText(activeList)
-      const blob = new Blob([text], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${activeList.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`
-      a.click()
-      URL.revokeObjectURL(url)
-      setShowExport(false)
-    }
-
     return (
-      <div className="p-4 max-w-2xl mx-auto">
-        <button
-          onClick={() => setActiveListId(null)}
-          className="text-sm text-green-600 dark:text-green-400 font-medium mb-4 flex items-center gap-1 hover:text-green-700 dark:hover:text-green-300 transition-colors"
-        >
-          <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" /> All lists
-        </button>
-
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              {activeList.name}
-            </h2>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {doneCount} of {total} items checked
-              </p>
-              {activeList.householdId && (
-                <span className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
-                  <Users size={12} aria-hidden="true" />
-                  Shared
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3 mt-1">
-            <button
-              onClick={() => setShowHouseholdShare(true)}
-              className={`flex items-center gap-1 text-sm transition-colors ${
-                activeList.householdId
-                  ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400'
-              }`}
-              aria-label={activeList.householdId ? 'Manage household sharing' : 'Share with household'}
-            >
-              <Users size={16} strokeWidth={2} aria-hidden="true" />
-            </button>
-            {total > 0 && (
-              <button
-                onClick={() => setShowExport(true)}
-                className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                aria-label="Share or export list"
-              >
-                <Share2 size={16} strokeWidth={2} aria-hidden="true" />
-                Share
-              </button>
-            )}
-          </div>
-        </div>
-
-        {total > 0 && (
-          <div
-            className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-6"
-            role="progressbar"
-            aria-valuenow={doneCount}
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-label={`${doneCount} of ${total} items checked`}
-          >
-            <div
-              className="bg-green-500 h-2 rounded-full transition-all"
-              style={{ width: `${(doneCount / total) * 100}%` }}
-            />
-          </div>
-        )}
-
-        {total === 0 && (
-          <EmptyState
-            illustration={<ClipboardIllustration />}
-            title="No items in this list"
-            description="Lists are generated from your meal plan — make sure you have meals planned for the selected dates."
-          />
-        )}
-
-        {uncheckedGroups.map(([cat, items]) => (
-          <CategorySection
-            key={cat}
-            category={cat}
-            items={items}
-            onToggle={handleToggle}
-            onRemove={handleRemoveItem}
-            onCategoryChange={handleCategoryChange}
-            justChecked={justChecked}
-            unitSystem={unitSystem}
-          />
-        ))}
-
-        {showAddItem ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
-              Add item
-            </p>
-            <div className="space-y-3">
-              <ItemNameInput
-                value={newItemName}
-                onChange={setNewItemName}
-                onSelectSuggestion={(name, unit) => {
-                  setNewItemName(name)
-                  if (!newItemUnit.trim()) setNewItemUnit(unit)
-                }}
-                suggestions={suggestions}
-              />
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={newItemAmount}
-                  onChange={(e) => setNewItemAmount(e.target.value)}
-                  placeholder="Qty"
-                  aria-label="Quantity"
-                  min="0"
-                  step="any"
-                  className="w-20 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <input
-                  type="text"
-                  value={newItemUnit}
-                  onChange={(e) => setNewItemUnit(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddItem()
-                  }}
-                  placeholder="Unit (e.g. oz)"
-                  aria-label="Unit"
-                  className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={handleAddItem}
-                  disabled={!newItemName.trim()}
-                  className="flex-1 bg-green-700 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddItem(false)
-                    setNewItemName('')
-                    setNewItemAmount('')
-                    setNewItemUnit('')
-                  }}
-                  className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowAddItem(true)}
-            className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium mb-4 hover:text-green-700 dark:hover:text-green-300 transition-colors"
-          >
-            <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
-            Add item
-          </button>
-        )}
-
-        {checked.length > 0 && (
-          <>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">
-              Checked off
-            </p>
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {checked.map((item, i) => (
-                <div
-                  key={item.id}
-                  className={i > 0 ? 'border-t border-gray-100 dark:border-gray-700' : ''}
-                >
-                  <ItemRow
-                    item={item}
-                    onToggle={() => handleToggle(item.id)}
-                    onRemove={() => handleRemoveItem(item.id)}
-                    onCategoryChange={(cat) => handleCategoryChange(item.id, cat)}
-                    unitSystem={unitSystem}
-                  />
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+      <>
+        <ShoppingListDetail
+          activeList={activeList}
+          justChecked={justChecked}
+          unitSystem={unitSystem}
+          suggestions={suggestions}
+          onBack={() => setActiveListId(null)}
+          onToggle={handleToggle}
+          onRemoveItem={handleRemoveItem}
+          onCategoryChange={handleCategoryChange}
+          onAmountChange={handleAmountChange}
+          onAddItem={handleAddItem}
+          onOpenShare={() => setShowExport(true)}
+          onOpenHouseholdShare={() => setShowHouseholdShare(true)}
+        />
 
         {showHouseholdShare && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
-            onClick={() => setShowHouseholdShare(false)}
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="household-share-dialog-title"
-              className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in" onClick={() => setShowHouseholdShare(false)}>
+            <div role="dialog" aria-modal="true" aria-labelledby="household-share-dialog-title" className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3
-                  id="household-share-dialog-title"
-                  className="font-bold text-gray-800 dark:text-gray-100"
-                >
-                  Share with Household
-                </h3>
-                <button
-                  onClick={() => setShowHouseholdShare(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                  aria-label="Close household sharing dialog"
-                >
+                <h3 id="household-share-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">Share with Household</h3>
+                <button onClick={() => setShowHouseholdShare(false)} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" aria-label="Close household sharing dialog">
                   <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
               <div className="p-4">
                 {activeList.householdId ? (
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                      This list is shared with your household. All members can see and check off
-                      items in real time.
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">This list is shared with your household. All members can see and check off items in real time.</p>
                     <button
-                      onClick={async () => {
-                        await unshareShoppingListMutation.mutateAsync(activeList.id)
-                        setShowHouseholdShare(false)
-                        toast.success('Shopping list is now private.')
-                      }}
+                      onClick={async () => { await unshareShoppingListMutation.mutateAsync(activeList.id); setShowHouseholdShare(false); toast.success('Shopping list is now private.') }}
                       disabled={unshareShoppingListMutation.isPending}
                       className="w-full border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium py-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
                     >
@@ -1062,53 +334,22 @@ export default function ShoppingListPage() {
                     </button>
                   </div>
                 ) : householdsLoading ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                    Loading…
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">Loading…</p>
                 ) : households.length === 0 ? (
-                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">
-                    You're not in any household yet. Create or join one from your profile to share
-                    shopping lists.
-                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">You're not in any household yet. Create or join one from your profile to share shopping lists.</p>
                 ) : (
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                      Choose a household to share this list with:
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Choose a household to share this list with:</p>
                     <div className="space-y-2 mb-4">
                       {households.map((h) => (
-                        <label
-                          key={h.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
-                            selectedHouseholdId === h.id
-                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600'
-                              : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="household"
-                            value={h.id}
-                            checked={selectedHouseholdId === h.id}
-                            onChange={() => setSelectedHouseholdId(h.id)}
-                            className="accent-green-600"
-                          />
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                            {h.name}
-                          </span>
+                        <label key={h.id} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${selectedHouseholdId === h.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600' : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                          <input type="radio" name="household" value={h.id} checked={selectedHouseholdId === h.id} onChange={() => setSelectedHouseholdId(h.id)} className="accent-green-600" />
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{h.name}</span>
                         </label>
                       ))}
                     </div>
                     <button
-                      onClick={async () => {
-                        if (!selectedHouseholdId) return
-                        await shareShoppingListMutation.mutateAsync({
-                          listId: activeList.id,
-                          householdId: selectedHouseholdId,
-                        })
-                        setShowHouseholdShare(false)
-                        toast.success('Shopping list shared with your household.')
-                      }}
+                      onClick={async () => { if (!selectedHouseholdId) return; await shareShoppingListMutation.mutateAsync({ listId: activeList.id, householdId: selectedHouseholdId }); setShowHouseholdShare(false); toast.success('Shopping list shared with your household.') }}
                       disabled={!selectedHouseholdId || shareShoppingListMutation.isPending}
                       className="w-full bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -1122,73 +363,34 @@ export default function ShoppingListPage() {
         )}
 
         {showExport && (
-          <div
-            className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
-            onClick={() => setShowExport(false)}
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="export-dialog-title"
-              className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in" onClick={() => setShowExport(false)}>
+            <div role="dialog" aria-modal="true" aria-labelledby="export-dialog-title" className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3 id="export-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">
-                  Share or Export
-                </h3>
-                <button
-                  onClick={() => setShowExport(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                  aria-label="Close share or export dialog"
-                >
+                <h3 id="export-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">Share or Export</h3>
+                <button onClick={() => setShowExport(false)} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" aria-label="Close share or export dialog">
                   <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
               <div className="p-4 space-y-2">
                 {typeof navigator.share === 'function' && (
-                  <button
-                    onClick={handleShare}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <Share2
-                      size={18}
-                      strokeWidth={2}
-                      className="text-green-600 dark:text-green-400 shrink-0"
-                      aria-hidden="true"
-                    />
+                  <button onClick={handleShare} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <Share2 size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
                     Share via…
                   </button>
                 )}
-                <button
-                  onClick={handleCopyToClipboard}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <Copy
-                    size={18}
-                    strokeWidth={2}
-                    className="text-green-600 dark:text-green-400 shrink-0"
-                    aria-hidden="true"
-                  />
+                <button onClick={handleCopyToClipboard} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <Copy size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
                   Copy to clipboard
                 </button>
-                <button
-                  onClick={handleDownload}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <Download
-                    size={18}
-                    strokeWidth={2}
-                    className="text-green-600 dark:text-green-400 shrink-0"
-                    aria-hidden="true"
-                  />
+                <button onClick={handleDownload} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <Download size={18} strokeWidth={2} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden="true" />
                   Download as text file
                 </button>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </>
     )
   }
 
@@ -1197,11 +399,7 @@ export default function ShoppingListPage() {
     <div className="p-4 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Shopping Lists</h2>
-        <button
-          onClick={() => setShowCreate(true)}
-          aria-label="New shopping list"
-          className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors"
-        >
+        <button onClick={() => setShowCreate(true)} aria-label="New shopping list" className="bg-green-700 text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-green-800 transition-colors">
           + New List
         </button>
       </div>
@@ -1209,10 +407,7 @@ export default function ShoppingListPage() {
       {loading ? (
         <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading shopping lists">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4"
-            >
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-center justify-between mb-2">
                 <Skeleton className="h-5 w-2/5" />
                 <Skeleton className="h-4 w-16" />
@@ -1235,10 +430,7 @@ export default function ShoppingListPage() {
           const total = list.items.length
           const done = list.items.filter((i) => i.checked).length
           return (
-            <div
-              key={list.id}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
-            >
+            <div key={list.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <button
                 onClick={() => setActiveListId(list.id)}
                 aria-label={`Open ${list.name}: ${total} item${total !== 1 ? 's' : ''}, ${done} checked`}
@@ -1247,47 +439,23 @@ export default function ShoppingListPage() {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-                        {list.name}
-                      </p>
-                      {list.householdId && (
-                        <Users
-                          size={13}
-                          strokeWidth={2}
-                          className="shrink-0 text-blue-500 dark:text-blue-400"
-                          aria-label="Shared with household"
-                        />
-                      )}
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{list.name}</p>
+                      {list.householdId && <Users size={13} strokeWidth={2} className="shrink-0 text-blue-500 dark:text-blue-400" aria-label="Shared with household" />}
                     </div>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{' '}
-                      {formatDate(list.createdAt.slice(0, 10))}
+                      {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot; {formatDate(list.createdAt.slice(0, 10))}
                     </p>
                   </div>
                   <span className="text-gray-400 dark:text-gray-500 text-lg ml-2">&rsaquo;</span>
                 </div>
                 {total > 0 && (
-                  <div
-                    className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2"
-                    role="progressbar"
-                    aria-valuenow={done}
-                    aria-valuemin={0}
-                    aria-valuemax={total}
-                    aria-label={`${done} of ${total} items checked`}
-                  >
-                    <div
-                      className="bg-green-500 h-1.5 rounded-full transition-all"
-                      style={{ width: `${(done / total) * 100}%` }}
-                    />
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={total} aria-label={`${done} of ${total} items checked`}>
+                    <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${(done / total) * 100}%` }} />
                   </div>
                 )}
               </button>
               <div className="px-4 pb-3 flex justify-end">
-                <button
-                  onClick={() => handleDelete(list.id)}
-                  aria-label={`Delete ${list.name}`}
-                  className="text-xs text-red-400 hover:text-red-600 transition-colors"
-                >
+                <button onClick={() => handleDelete(list.id)} aria-label={`Delete ${list.name}`} className="text-xs text-red-400 hover:text-red-600 transition-colors">
                   Delete
                 </button>
               </div>
@@ -1297,111 +465,42 @@ export default function ShoppingListPage() {
       </div>
 
       {showCreate && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
-          onClick={() => setShowCreate(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-list-dialog-title"
-            className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in" onClick={() => setShowCreate(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="create-list-dialog-title" className="bg-white dark:bg-gray-800 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3
-                  id="create-list-dialog-title"
-                  className="font-bold text-gray-800 dark:text-gray-100"
-                >
-                  New Shopping List
-                </h3>
-                <button
-                  onClick={() => setShowCreate(false)}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  aria-label="Close new shopping list dialog"
-                >
+                <h3 id="create-list-dialog-title" className="font-bold text-gray-800 dark:text-gray-100">New Shopping List</h3>
+                <button onClick={() => setShowCreate(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" aria-label="Close new shopping list dialog">
                   <X size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label
-                  htmlFor="new-list-name"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                >
-                  List name
-                </label>
-                <input
-                  id="new-list-name"
-                  type="text"
-                  value={listName}
-                  onChange={(e) => setListName(e.target.value)}
-                  placeholder="e.g. This week's groceries"
-                  className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  autoFocus
-                />
+                <label htmlFor="new-list-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">List name</label>
+                <input id="new-list-name" type="text" value={listName} onChange={(e) => setListName(e.target.value)} placeholder="e.g. This week's groceries" className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500" autoFocus />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Generate from meal plan
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Select date range to pull ingredients from planned meals.
-                </p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Generate from meal plan</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select date range to pull ingredients from planned meals.</p>
                 {pantryItems.length > 0 && (
                   <label className="flex items-center gap-2 cursor-pointer mb-2">
-                    <input
-                      type="checkbox"
-                      checked={excludePantry}
-                      onChange={(e) => setExcludePantry(e.target.checked)}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                    <span className="text-xs text-gray-600 dark:text-gray-300">
-                      Exclude {pantryItems.length} pantry item{pantryItems.length !== 1 ? 's' : ''}{' '}
-                      already at home
-                    </span>
+                    <input type="checkbox" checked={excludePantry} onChange={(e) => setExcludePantry(e.target.checked)} className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                    <span className="text-xs text-gray-600 dark:text-gray-300">Exclude {pantryItems.length} pantry item{pantryItems.length !== 1 ? 's' : ''} already at home</span>
                   </label>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label
-                      htmlFor="new-list-start-date"
-                      className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
-                    >
-                      Start date
-                    </label>
-                    <input
-                      id="new-list-start-date"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
+                    <label htmlFor="new-list-start-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>
+                    <input id="new-list-start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                   <div>
-                    <label
-                      htmlFor="new-list-end-date"
-                      className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
-                    >
-                      End date
-                    </label>
-                    <input
-                      id="new-list-end-date"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
+                    <label htmlFor="new-list-end-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End date</label>
+                    <input id="new-list-end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 </div>
               </div>
-              <button
-                onClick={handleCreate}
-                disabled={!listName.trim() || creating}
-                className="w-full bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <button onClick={handleCreate} disabled={!listName.trim() || creating} className="w-full bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {creating ? 'Creating…' : 'Create List'}
               </button>
             </div>

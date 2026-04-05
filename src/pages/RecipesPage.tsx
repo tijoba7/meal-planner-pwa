@@ -23,6 +23,7 @@ import {
   HeartIllustration,
 } from '../components/EmptyStateIllustrations'
 import PantryMatchCard from '../components/PantryMatchCard'
+import PullToRefresh from '../components/PullToRefresh'
 import RecipeImage from '../components/RecipeImage'
 import Skeleton from '../components/Skeleton'
 
@@ -244,7 +245,7 @@ function PantryTab({
 }
 
 export default function RecipesPage() {
-  const { data: recipes = [], isLoading: loading } = useRecipes()
+  const { data: recipes = [], isLoading: loading, refetch } = useRecipes()
   const { data: pantryItems = [] } = usePantryItems()
   const toggleFavoriteMutation = useToggleFavorite()
   const toast = useToast()
@@ -410,6 +411,7 @@ export default function RecipesPage() {
   const hasMore = displayCount < filtered.length
 
   return (
+    <PullToRefresh onRefresh={refetch}>
     <div className="p-4 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Recipes</h2>
@@ -869,5 +871,6 @@ export default function RecipesPage() {
       </>
     ) : null}
     </div>
+    </PullToRefresh>
   )
 }

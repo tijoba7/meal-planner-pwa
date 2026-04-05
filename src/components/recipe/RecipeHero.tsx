@@ -1,4 +1,5 @@
 import RecipeImage from '../RecipeImage'
+import { usePinchZoom } from '../../hooks/usePinchZoom'
 import { DIETARY_PREFERENCES } from '../../lib/dietary'
 import type { Recipe } from '../../types'
 
@@ -21,6 +22,8 @@ export default function RecipeHero({
   cookMins,
   totalTime,
 }: RecipeHeroProps) {
+  const imgRef = usePinchZoom<HTMLDivElement>({ maxScale: 4 })
+
   return (
     <>
       {/* Meta */}
@@ -81,13 +84,15 @@ export default function RecipeHero({
         </div>
       )}
 
-      {/* Hero image */}
+      {/* Hero image — touch-pinch to zoom */}
       {recipe.image && (
-        <RecipeImage
-          src={recipe.image}
-          alt={recipe.name}
-          className="w-full h-48 md:h-64 rounded-xl mb-4"
-        />
+        <div ref={imgRef} className="overflow-hidden rounded-xl mb-4 touch-none">
+          <RecipeImage
+            src={recipe.image}
+            alt={recipe.name}
+            className="w-full h-48 md:h-64"
+          />
+        </div>
       )}
 
       {/* Description */}

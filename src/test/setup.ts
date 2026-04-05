@@ -30,6 +30,35 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
 })
 
+// Vaul's drag logic reads computed `transform` and expects a string.
+// jsdom can return undefined for transform-related properties, so normalize
+// them to `none` to keep drawer interactions stable in tests.
+const _getComputedStyle = window.getComputedStyle.bind(window)
+window.getComputedStyle = ((elt: Element, pseudoElt?: string | null) => {
+  const styles = _getComputedStyle(elt, pseudoElt)
+  return new Proxy(styles, {
+    get(target, prop, receiver) {
+      if (prop === 'transform' || prop === 'webkitTransform' || prop === 'mozTransform') {
+        const value = Reflect.get(target, prop, receiver)
+        return typeof value === 'string' && value.length > 0 ? value : 'none'
+      }
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as CSSStyleDeclaration
+}) as typeof window.getComputedStyle
+
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {}
+}
+
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => {}
+}
+
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false
+}
+
 // Clear the import rate-limit timestamps before each test so tests don't
 // exhaust the per-hour quota and interfere with each other.
 beforeEach(() => {

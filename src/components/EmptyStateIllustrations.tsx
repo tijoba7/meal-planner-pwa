@@ -1,4 +1,13 @@
-/** SVG illustrations for empty states. All use the brand green palette. */
+/**
+ * SVG illustrations for empty states.
+ * All fills/strokes use brand palette hex values from the design system:
+ *   #f0fdf4 = green-50   (light fill background)
+ *   #dcfce7 = green-100  (soft fill)
+ *   #86efac = green-300  (mid stroke)
+ *   #22c55e = green-500  (accent fill)
+ *   #16a34a = green-600  (primary stroke / brand color)
+ * Hard-coded hex is intentional here — SVG fill/stroke props do not accept CSS classes.
+ */
 
 export function RecipeBookIllustration() {
   return (

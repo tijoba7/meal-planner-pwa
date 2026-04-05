@@ -43,7 +43,7 @@ interface CardHeaderProps {
 export function CardHeader({ className = '', children }: CardHeaderProps) {
   return (
     <div
-      className={`px-4 py-2 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700 rounded-t-xl ${className}`}
+      className={`px-4 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700 rounded-t-xl ${className}`}
     >
       {children}
     </div>

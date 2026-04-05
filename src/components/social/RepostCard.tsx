@@ -175,7 +175,7 @@ export default function RepostCard({
           <Heart
             size={20}
             strokeWidth={localLiked ? 0 : 1.75}
-            fill={localLiked ? '#ef4444' : 'none'}
+            fill={localLiked ? 'currentColor' : 'none'}
             className={localLiked ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}
             aria-hidden="true"
           />

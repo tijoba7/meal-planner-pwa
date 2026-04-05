@@ -7,21 +7,16 @@ Scope: frontend redesign QA pass for `MEA-219`.
 ### Axe (Playwright)
 
 - `pnpm playwright test e2e/accessibility.spec.ts --project=chromium`
-  - Result: **5 passed, 1 failed**
+  - Result: **6 passed**
 - `pnpm playwright test e2e/accessibility.spec.ts --project=mobile-chrome`
-  - Result: **5 passed, 1 failed**
+  - Result: **6 passed**
 
-Common failing check:
+Resolved regression:
 
 - Route: `/recipes`
-- Test: `Accessibility — Recipes page › empty state has no violations`
-- Violation: `color-contrast` (serious)
-- Element: inactive tab button in recipe tab bar using
-  `text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200`
-
-Tracked bug:
-
-- `MEA-225` — Fix Recipes tab inactive-state contrast (axe color-contrast violation)
+- Previous violation: `color-contrast` on inactive tab buttons
+- Fix applied: updated inactive tab token set to
+  `text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100`
 
 ### Critical mobile flow validation
 
@@ -33,11 +28,17 @@ Tracked bug:
 ### Unit/component suite validation
 
 - `pnpm test`
-  - Result: **466 passed**
+  - Result: **457 passed**
 - `pnpm test:coverage`
   - Result: **completed** (coverage artifacts in `coverage/`)
 - `pnpm typecheck`
   - Result: **passed**
+
+Additional coverage added:
+
+- `src/hooks/useVoiceControl.test.ts` (5 tests)
+- `BottomSheet` accessibility semantics hardened (`Drawer.Title` + `Drawer.Description`)
+- Vitest setup stabilized for Vaul drawer interactions in jsdom
 
 ## Manual audit checklist
 
@@ -51,6 +52,5 @@ The following checks require manual assistive-tech execution and are pending tar
 
 ## Next QA actions
 
-1. Re-run `e2e/accessibility.spec.ts` after `MEA-225` lands.
-2. Complete manual assistive-tech verification and append findings.
-3. File follow-up bugs for any remaining manual accessibility gaps.
+1. Complete manual assistive-tech verification and append findings.
+2. File follow-up bugs for any remaining manual accessibility gaps.

@@ -6,6 +6,7 @@ interface BottomSheetProps {
   open: boolean
   onClose: () => void
   title?: string
+  description?: string
   /** Extra classes applied to the sheet panel */
   className?: string
   children: React.ReactNode
@@ -21,7 +22,17 @@ interface BottomSheetProps {
  *     {children}
  *   </BottomSheet>
  */
-export function BottomSheet({ open, onClose, title, className = '', children }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onClose,
+  title,
+  description,
+  className = '',
+  children,
+}: BottomSheetProps) {
+  const dialogTitle = title ?? 'Dialog'
+  const dialogDescription = description ?? `${dialogTitle} panel`
+
   return (
     <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Portal>
@@ -45,6 +56,9 @@ export function BottomSheet({ open, onClose, title, className = '', children }: 
             className,
           ].join(' ')}
         >
+          <Drawer.Title className="sr-only">{dialogTitle}</Drawer.Title>
+          <Drawer.Description className="sr-only">{dialogDescription}</Drawer.Description>
+
           {/* Drag handle — hidden on desktop */}
           <div className="flex justify-center pt-3 pb-1 sm:hidden" aria-hidden="true">
             <div className="w-9 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
@@ -53,7 +67,7 @@ export function BottomSheet({ open, onClose, title, className = '', children }: 
           {/* Optional header */}
           {title && (
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">{title}</h2>
+              <p className="text-base font-semibold text-gray-800 dark:text-gray-100">{title}</p>
               <button
                 onClick={onClose}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

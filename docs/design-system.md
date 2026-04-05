@@ -241,6 +241,54 @@ Defined as CSS custom properties in `src/index.css` (`@layer base :root`). Refer
 
 ---
 
+## 4c. Animation & Transition Conventions
+
+### Transition Durations
+
+Use these durations consistently across the codebase:
+
+| Duration | Class | When to use |
+|---|---|---|
+| 150ms | `duration-150` | Subtle micro-interactions (hover scale, minor opacity) |
+| 200ms | `duration-200` | Standard interactive feedback (hover/active color, scale) |
+| 300ms | `duration-300` | Asset loading (image fade-in after load) |
+
+Default to `duration-200` for interactive states. Do not mix durations arbitrarily.
+
+### Named Animations (defined in `src/index.css`)
+
+| Class | Duration | Use case |
+|---|---|---|
+| `animate-fade-in` | 200ms, ease-out | Backdrop overlays |
+| `animate-fade-in-up` | 220ms, ease-out | Page entry, toast messages, feed items |
+| `animate-slide-up` | 260ms, cubic-bezier | Bottom sheet / modal (mobile) |
+| `animate-scale-in` | 200ms, ease-out | Modal / bottom sheet (desktop) |
+| `animate-check-pop` | 250ms, ease-out | Checkbox / completion feedback |
+
+### Responsive Animation Pattern for Modals
+
+```
+animate-slide-up sm:animate-scale-in
+```
+
+Apply this pair to modal panels so mobile users get a slide-up sheet and desktop users get a centered scale-in.
+
+### Transition Property Shorthand Usage
+
+| Class | Use case |
+|---|---|
+| `transition-colors` | Hover/active color changes (most common) |
+| `transition-shadow` | Card hover lift |
+| `transition-transform` | Scale/translate interactions |
+| `transition-opacity` | Fade in/out |
+| `transition-all` | Multi-property (use sparingly) |
+
+### Reduced Motion
+
+All custom animations in `src/index.css` are wrapped in `@media (prefers-reduced-motion: no-preference)`. No additional work needed in components.
+
+---
+
 ## 5. Component Patterns
 
 ### Cards

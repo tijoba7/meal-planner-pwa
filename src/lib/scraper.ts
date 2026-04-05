@@ -23,6 +23,9 @@ export interface ExtractedRecipe {
   url?: string
   recipeCategory?: string
   recipeCuisine?: string
+  /** How the recipe was extracted. 'social_metadata' = from social video captions/meta;
+   *  'structured_data' = from JSON-LD/schema.org; 'ai_inferred' = AI used URL context only. */
+  extractionSource?: 'social_metadata' | 'structured_data' | 'ai_inferred'
 }
 
 export type ScrapeResult = { ok: true; recipe: ExtractedRecipe } | { ok: false; error: string }
@@ -75,6 +78,28 @@ Rules:
 Example output:
 ${EXAMPLE_OUTPUT}`
 
+const SOCIAL_VIDEO_SYSTEM_PROMPT = `You are a recipe extraction assistant specializing in social media video content (Instagram Reels, TikTok, YouTube Shorts). Extract recipe information from video metadata and return it as a single JSON object.
+
+Output schema (TypeScript):
+${EXTRACT_JSON_SCHEMA}
+
+Rules:
+- Output ONLY the raw JSON object — no markdown fences, no explanation, no trailing text.
+- The very first character of your response must be "{" and the last must be "}".
+- Times use ISO 8601 duration format: "PT15M" = 15 minutes, "PT1H30M" = 1 hour 30 minutes.
+- For ingredient amounts, use 0 if not specified. For units, use "" if not specified.
+- Social media videos often show recipes without full written text. Use ALL available signals:
+  - og:title, og:description, twitter:description — often contain the caption with ingredient lists
+  - Hashtags are strong keyword signals: #pasta, #vegan, #airfryer, etc.
+  - Video titles frequently name the dish — use to fill in the recipe name
+  - If a caption lists ingredients informally (e.g. "1 cup flour, 2 eggs, dash of salt"), extract them precisely
+  - If steps are implied by the caption or description, list them as HowToStep entries
+- When page content is minimal, use your knowledge of the named dish to fill in reasonable details, but prefer what the caption says
+- If no recipe information can be inferred at all, return: {"error": "No recipe found — the video caption does not describe a recipe"}
+
+Example output:
+${EXAMPLE_OUTPUT}`
+
 const TEXT_SYSTEM_PROMPT = `You are a recipe extraction assistant. Given raw recipe text, extract all recipe information and return it as a single JSON object.
 
 Output schema (TypeScript):
@@ -105,7 +130,7 @@ let _adminConfig: {
 let _adminConfigAt = 0
 const ADMIN_CONFIG_TTL_MS = 60_000
 
-async function loadAdminScrapingConfig(): Promise<{
+export async function loadAdminScrapingConfig(): Promise<{
   apiKey: string | null
   model: string | null
   provider: string | null
@@ -211,15 +236,20 @@ function extractLinkedUrls(text: string, excludeHost: string): string[] {
 }
 
 /** Call the scrape-url edge function to fetch page content server-side (bypasses CORS). */
-async function fetchPageTextViaProxy(url: string): Promise<string | null> {
+async function fetchPageTextViaProxy(
+  url: string
+): Promise<{ text: string | null; sourceType: string | null }> {
   try {
-    const { data, error } = await supabase.functions.invoke<{ text: string | null }>('scrape-url', {
+    const { data, error } = await supabase.functions.invoke<{
+      text: string | null
+      sourceType: string | null
+    }>('scrape-url', {
       body: { url },
     })
-    if (error || data === null || data === undefined) return null
-    return data.text ?? null
+    if (error || data === null || data === undefined) return { text: null, sourceType: null }
+    return { text: data.text ?? null, sourceType: data.sourceType ?? null }
   } catch {
-    return null
+    return { text: null, sourceType: null }
   }
 }
 
@@ -232,19 +262,21 @@ function stripHtml(html: string): string {
     .trim()
 }
 
-async function fetchPageText(url: string): Promise<string | null> {
+async function fetchPageText(
+  url: string
+): Promise<{ text: string | null; sourceType: string | null }> {
   // Try edge function proxy first — runs server-side, bypasses browser CORS
-  const proxyText = await fetchPageTextViaProxy(url)
-  if (proxyText !== null) return proxyText
+  const proxyResult = await fetchPageTextViaProxy(url)
+  if (proxyResult.text !== null) return proxyResult
 
   // Fallback: direct browser fetch (works for CORS-permissive sites)
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
-    if (!res.ok) return null
+    if (!res.ok) return { text: null, sourceType: null }
     const html = await res.text()
-    return stripHtml(html)
+    return { text: stripHtml(html), sourceType: 'html' }
   } catch {
-    return null
+    return { text: null, sourceType: null }
   }
 }
 
@@ -491,18 +523,19 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
         : DEFAULT_MODEL
   const model = admin.model ?? defaultModel
 
-  const pageText = await fetchPageText(url)
+  const { text: pageText, sourceType } = await fetchPageText(url)
+  const isSocialVideo = sourceType === 'social_video'
   const MAX_PAGE_CHARS = 12_000
 
   let userMessage: string
   if (pageText) {
     let extra = ''
-    // For social media URLs, look for linked recipe pages in the page text and follow them.
-    if (isSocialMediaUrl(url)) {
+    // For non-social-video social media URLs, look for linked recipe pages and follow them.
+    if (isSocialMediaUrl(url) && !isSocialVideo) {
       const linkedUrls = extractLinkedUrls(pageText, new URL(url).hostname.replace(/^www\./, ''))
       if (linkedUrls.length > 0) {
         const linkedUrl = linkedUrls[0]
-        const linkedText = await fetchPageText(linkedUrl)
+        const { text: linkedText } = await fetchPageText(linkedUrl)
         if (linkedText) {
           extra =
             `\n\nLinked recipe page: ${linkedUrl}\n\n` +
@@ -514,14 +547,31 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
       `URL: ${url}\n\nPage content:\n${truncate(pageText, extra ? MAX_PAGE_CHARS / 2 : MAX_PAGE_CHARS)}` +
       extra
   } else {
-    userMessage = `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
+    const hint = isSocialVideo
+      ? '(Video metadata could not be fetched — infer the recipe from the URL and your knowledge of this content.)'
+      : '(Page content could not be fetched — extract from URL context and your knowledge.)'
+    userMessage = `URL: ${url}\n\n${hint}`
   }
 
-  const result = await callAI(SYSTEM_PROMPT, userMessage, admin.apiKey, model, provider)
-  if (result.ok && !result.recipe.url) {
-    return { ok: true, recipe: { ...result.recipe, url } }
+  const systemPrompt = isSocialVideo ? SOCIAL_VIDEO_SYSTEM_PROMPT : SYSTEM_PROMPT
+  const result = await callAI(systemPrompt, userMessage, admin.apiKey, model, provider)
+
+  if (!result.ok) return result
+
+  const extractionSource: ExtractedRecipe['extractionSource'] = isSocialVideo
+    ? 'social_metadata'
+    : pageText
+      ? 'structured_data'
+      : 'ai_inferred'
+
+  return {
+    ok: true,
+    recipe: {
+      ...result.recipe,
+      url: result.recipe.url ?? url,
+      extractionSource,
+    },
   }
-  return result
 }
 
 export async function extractRecipeFromText(text: string): Promise<ScrapeResult> {

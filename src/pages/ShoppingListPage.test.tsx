@@ -4,19 +4,30 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createTestQueryClient } from '../test/supabaseMocks'
-import ShoppingListPage from './ShoppingListPage'
 import { ToastProvider } from '../contexts/ToastContext'
 import type { ShoppingList, MealPlan, Recipe } from '../types'
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 
-const { mockCreateMutateAsync, mockDeleteMutateAsync, mockToggleMutateAsync, mockUpdateMutateAsync } =
-  vi.hoisted(() => ({
-    mockCreateMutateAsync: vi.fn(),
-    mockDeleteMutateAsync: vi.fn().mockResolvedValue(undefined),
-    mockToggleMutateAsync: vi.fn().mockResolvedValue(undefined),
-    mockUpdateMutateAsync: vi.fn().mockResolvedValue(undefined),
-  }))
+const {
+  mockCreateMutateAsync,
+  mockDeleteMutateAsync,
+  mockToggleMutateAsync,
+  mockUpdateMutateAsync,
+  mockShareMutateAsync,
+  mockUnshareMutateAsync,
+  mockGetMyHouseholds,
+  mockSubscribeToHouseholdShoppingLists,
+} = vi.hoisted(() => ({
+  mockCreateMutateAsync: vi.fn(),
+  mockDeleteMutateAsync: vi.fn().mockResolvedValue(undefined),
+  mockToggleMutateAsync: vi.fn().mockResolvedValue(undefined),
+  mockUpdateMutateAsync: vi.fn().mockResolvedValue(undefined),
+  mockShareMutateAsync: vi.fn().mockResolvedValue(undefined),
+  mockUnshareMutateAsync: vi.fn().mockResolvedValue(undefined),
+  mockGetMyHouseholds: vi.fn().mockResolvedValue([]),
+  mockSubscribeToHouseholdShoppingLists: vi.fn(() => vi.fn()),
+}))
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
@@ -39,7 +50,31 @@ vi.mock('../hooks/useShoppingLists', () => ({
     mutateAsync: mockToggleMutateAsync,
     isPending: false,
   })),
+  useShareShoppingList: vi.fn(() => ({
+    mutateAsync: mockShareMutateAsync,
+    isPending: false,
+  })),
+  useUnshareShoppingList: vi.fn(() => ({
+    mutateAsync: mockUnshareMutateAsync,
+    isPending: false,
+  })),
   shoppingListKeys: { detail: (id: string) => ['shopping-list', id] },
+}))
+
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'test-user-shopping-page',
+      email: 'test@mise.local',
+    },
+    session: null,
+    loading: false,
+  }),
+}))
+
+vi.mock('../lib/householdService', () => ({
+  getMyHouseholds: mockGetMyHouseholds,
+  subscribeToHouseholdShoppingLists: mockSubscribeToHouseholdShoppingLists,
 }))
 
 vi.mock('../hooks/useMealPlans', () => ({
@@ -56,6 +91,7 @@ vi.mock('../hooks/usePantryItems', () => ({
 
 // ─── Imports for vi.mocked calls ─────────────────────────────────────────────
 
+import ShoppingListPage from './ShoppingListPage'
 import { useShoppingLists, useShoppingList } from '../hooks/useShoppingLists'
 import { useRecipes } from '../hooks/useRecipes'
 import { useMealPlans } from '../hooks/useMealPlans'
@@ -103,6 +139,8 @@ function renderPage() {
 
 describe('ShoppingListPage', () => {
   beforeEach(() => {
+    vi.mocked(useRecipes).mockReturnValue({ data: [] } as unknown as ReturnType<typeof useRecipes>)
+    vi.mocked(useMealPlans).mockReturnValue({ data: [] } as unknown as ReturnType<typeof useMealPlans>)
     mockUseShoppingLists.mockReturnValue({
       data: [],
       isLoading: false,
@@ -118,6 +156,14 @@ describe('ShoppingListPage', () => {
     mockDeleteMutateAsync.mockResolvedValue(undefined)
     mockToggleMutateAsync.mockResolvedValue(undefined)
     mockUpdateMutateAsync.mockResolvedValue(undefined)
+    mockShareMutateAsync.mockReset()
+    mockUnshareMutateAsync.mockReset()
+    mockGetMyHouseholds.mockReset()
+    mockSubscribeToHouseholdShoppingLists.mockReset()
+    mockShareMutateAsync.mockResolvedValue(undefined)
+    mockUnshareMutateAsync.mockResolvedValue(undefined)
+    mockGetMyHouseholds.mockResolvedValue([])
+    mockSubscribeToHouseholdShoppingLists.mockReturnValue(vi.fn())
   })
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -327,6 +373,41 @@ describe('ShoppingListPage', () => {
         )
       })
     })
+
+    it('auto-shares a generated list when the source meal plan is shared', async () => {
+      const mondayStr = currentWeekMondayStr()
+      const sharedPlan: MealPlan = {
+        id: 'mp-shared',
+        weekStartDate: mondayStr,
+        days: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        householdId: 'house-auto-share',
+      }
+
+      vi.mocked(useMealPlans).mockReturnValue({
+        data: [sharedPlan],
+      } as ReturnType<typeof useMealPlans>)
+      mockCreateMutateAsync.mockResolvedValue({
+        ...sampleList,
+        id: 'list-auto-shared',
+        name: 'Auto Shared List',
+      })
+
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByRole('heading', { name: 'Shopping Lists' })
+      await user.click(screen.getByRole('button', { name: /new shopping list/i }))
+      await user.type(screen.getByPlaceholderText("e.g. This week's groceries"), 'Auto Shared List')
+      await user.click(screen.getByRole('button', { name: 'Create List' }))
+
+      await waitFor(() => {
+        expect(mockShareMutateAsync).toHaveBeenCalledWith({
+          listId: 'list-auto-shared',
+          householdId: 'house-auto-share',
+        })
+      })
+    })
   })
 
   // ── List deletion ──────────────────────────────────────────────────────────
@@ -411,6 +492,43 @@ describe('ShoppingListPage', () => {
       await screen.findByRole('heading', { name: 'Week 1 Groceries' })
       await user.click(screen.getByRole('button', { name: /all lists/i }))
       expect(await screen.findByRole('heading', { name: 'Shopping Lists' })).toBeInTheDocument()
+    })
+  })
+
+  // ── Household sharing sync ────────────────────────────────────────────────
+
+  describe('household sharing sync', () => {
+    it('subscribes to household realtime updates for an active shared list', async () => {
+      const sharedList: ShoppingList = {
+        ...sampleList,
+        id: 'list-shared-sync',
+        householdId: 'house-sync',
+      }
+
+      mockUseShoppingLists.mockReturnValue({
+        data: [sharedList],
+        isLoading: false,
+      } as unknown as ReturnType<typeof useShoppingLists>)
+      mockUseShoppingList.mockImplementation(
+        (id) =>
+          ({
+            data: id ? sharedList : undefined,
+          }) as ReturnType<typeof useShoppingList>
+      )
+
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByText('Week 1 Groceries')
+      await user.click(screen.getByRole('button', { name: /open week 1 groceries/i }))
+      await screen.findByRole('heading', { name: 'Week 1 Groceries' })
+
+      await waitFor(() => {
+        expect(mockSubscribeToHouseholdShoppingLists).toHaveBeenCalledWith(
+          'house-sync',
+          expect.any(Function),
+          expect.any(Function)
+        )
+      })
     })
   })
 

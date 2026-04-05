@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Pencil,
   Printer,
+  Send,
   Share2,
   Trash2,
   Globe,
@@ -54,6 +55,7 @@ import {
   type GroupWithMeta,
 } from '../lib/groupService'
 import { calculateNutrition, nutritionResultToRecord } from '../lib/nutritionCalculator'
+import PostComposer from '../components/social/PostComposer'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
 
@@ -147,6 +149,7 @@ export default function RecipeDetailPage() {
 
   // Share panel state
   const [showSharePanel, setShowSharePanel] = useState(false)
+  const [showPostComposer, setShowPostComposer] = useState(false)
   const [cloudMeta, setCloudMeta] = useState<RecipeCloudMeta | null>(null)
   const [selectedVisibility, setSelectedVisibility] = useState<RecipeVisibility>('public')
   const [sharing, setSharing] = useState(false)
@@ -431,14 +434,24 @@ export default function RecipeDetailPage() {
             </button>
           )}
           {user && (
-            <button
-              onClick={() => setShowSharePanel(true)}
-              aria-label="Share recipe"
-              className="flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Share2 size={14} strokeWidth={2} aria-hidden="true" />
-              {cloudMeta && cloudMeta.visibility !== 'private' ? 'Shared' : 'Share'}
-            </button>
+            <>
+              <button
+                onClick={() => setShowPostComposer(true)}
+                aria-label="Post recipe to feed"
+                className="flex items-center gap-1.5 text-sm font-medium bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Send size={14} strokeWidth={2} aria-hidden="true" />
+                Post
+              </button>
+              <button
+                onClick={() => setShowSharePanel(true)}
+                aria-label="Share recipe"
+                className="flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Share2 size={14} strokeWidth={2} aria-hidden="true" />
+                {cloudMeta && cloudMeta.visibility !== 'private' ? 'Shared' : 'Share'}
+              </button>
+            </>
           )}
           <button
             onClick={() => setShowCollectionPanel(true)}
@@ -684,6 +697,19 @@ export default function RecipeDetailPage() {
             )}
           </div>
         </section>
+      )}
+
+      {/* Post to feed composer */}
+      {showPostComposer && user && recipe && (
+        <PostComposer
+          recipe={recipe}
+          cloudMeta={cloudMeta}
+          onClose={() => setShowPostComposer(false)}
+          onSuccess={(visibility) => {
+            setCloudMeta({ visibility, published: visibility !== 'private' })
+            setSelectedVisibility(visibility)
+          }}
+        />
       )}
 
       {/* Share panel */}
@@ -957,23 +983,40 @@ export default function RecipeDetailPage() {
                 Edit recipe
               </Link>
               {user && (
-                <button
-                  onClick={() => {
-                    setShowMoreSheet(false)
-                    setShowSharePanel(true)
-                  }}
-                  className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <Share2
-                    size={18}
-                    strokeWidth={2}
-                    className="text-gray-500 dark:text-gray-400 shrink-0"
-                    aria-hidden="true"
-                  />
-                  {cloudMeta && cloudMeta.visibility !== 'private'
-                    ? 'Sharing settings'
-                    : 'Share recipe'}
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setShowMoreSheet(false)
+                      setShowPostComposer(true)
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Send
+                      size={18}
+                      strokeWidth={2}
+                      className="text-green-600 dark:text-green-400 shrink-0"
+                      aria-hidden="true"
+                    />
+                    Post to feed
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMoreSheet(false)
+                      setShowSharePanel(true)
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-left text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Share2
+                      size={18}
+                      strokeWidth={2}
+                      className="text-gray-500 dark:text-gray-400 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {cloudMeta && cloudMeta.visibility !== 'private'
+                      ? 'Sharing settings'
+                      : 'Share recipe'}
+                  </button>
+                </>
               )}
               <button
                 onClick={() => {

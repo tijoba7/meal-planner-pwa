@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { X, ChevronLeft, ChevronRight, UtensilsCrossed, Timer, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { X, ChevronLeft, ChevronRight, UtensilsCrossed, Timer, Sparkles, Mic, MicOff } from 'lucide-react'
 import type { Recipe } from '../types'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useAuth } from '../contexts/AuthContext'
 import { upsertRating } from '../lib/engagementService'
 import StarRating from './ui/StarRating'
+import { useVoiceControl } from '../hooks/useVoiceControl'
 
 // Detect time phrases like "10 minutes", "1 hour 30 minutes", "45 seconds"
 const TIME_PATTERN =
@@ -24,29 +25,20 @@ function parseTimers(text: string): ParsedTimer[] {
 
   while ((match = re.exec(text)) !== null) {
     let totalSeconds = 0
-    let label = match[0]
+    const label = match[0]
 
     if (match[1] && match[3]) {
-      // "X hours Y minutes"
       totalSeconds = parseInt(match[1]) * 3600 + parseInt(match[3]) * 60
     } else if (match[1]) {
-      // "X hours"
       totalSeconds = parseInt(match[1]) * 3600
     } else if (match[5]) {
-      // "X minutes"
       totalSeconds = parseInt(match[5]) * 60
     } else if (match[7]) {
-      // "X seconds"
       totalSeconds = parseInt(match[7])
     }
 
     if (totalSeconds > 0 && totalSeconds <= 86400) {
-      timers.push({
-        label,
-        totalSeconds,
-        startIndex: match.index,
-        endIndex: match.index + match[0].length,
-      })
+      timers.push({ label, totalSeconds, startIndex: match.index, endIndex: match.index + match[0].length })
     }
   }
 
@@ -77,19 +69,26 @@ interface ActiveTimer {
   done: boolean
 }
 
+type TimerVoiceAction = 'start_first' | 'pause_all' | null
+
 interface StepTimersProps {
   text: string
+  voiceAction: TimerVoiceAction
+  onTimerDone: (label: string) => void
 }
 
-function StepTimers({ text }: StepTimersProps) {
+function StepTimers({ text, voiceAction, onTimerDone }: StepTimersProps) {
   const detectedTimers = parseTimers(text)
   const [timers, setTimers] = useState<ActiveTimer[]>([])
+  const onTimerDoneRef = useRef(onTimerDone)
+  useEffect(() => { onTimerDoneRef.current = onTimerDone }, [onTimerDone])
 
   // Reset when step changes
   useEffect(() => {
     setTimers([])
   }, [text])
 
+  // Countdown tick
   useEffect(() => {
     const hasRunning = timers.some((t) => t.running && !t.done)
     if (!hasRunning) return
@@ -98,12 +97,34 @@ function StepTimers({ text }: StepTimersProps) {
         prev.map((t) => {
           if (!t.running || t.done) return t
           const next = t.remaining - 1
-          return { ...t, remaining: Math.max(0, next), done: next <= 0, running: next > 0 }
+          const finished = next <= 0
+          if (finished) onTimerDoneRef.current(t.label)
+          return { ...t, remaining: Math.max(0, next), done: finished, running: !finished }
         })
       )
     }, 1000)
     return () => clearInterval(interval)
   }, [timers])
+
+  // Voice action handler
+  useEffect(() => {
+    if (!voiceAction) return
+    if (voiceAction === 'start_first') {
+      setTimers((prev) => {
+        const activeIds = new Set(prev.map((t) => t.id))
+        const firstUnstarted = detectedTimers.find((p) => !activeIds.has(`${p.startIndex}-${p.totalSeconds}`))
+        if (!firstUnstarted) return prev
+        const id = `${firstUnstarted.startIndex}-${firstUnstarted.totalSeconds}`
+        return [
+          ...prev,
+          { id, label: firstUnstarted.label, totalSeconds: firstUnstarted.totalSeconds, remaining: firstUnstarted.totalSeconds, running: true, done: false },
+        ]
+      })
+    } else if (voiceAction === 'pause_all') {
+      setTimers((prev) => prev.map((t) => (t.running ? { ...t, running: false } : t)))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceAction])
 
   if (detectedTimers.length === 0) return null
 
@@ -113,14 +134,7 @@ function StepTimers({ text }: StepTimersProps) {
       if (prev.some((t) => t.id === id)) return prev
       return [
         ...prev,
-        {
-          id,
-          label: parsed.label,
-          totalSeconds: parsed.totalSeconds,
-          remaining: parsed.totalSeconds,
-          running: true,
-          done: false,
-        },
+        { id, label: parsed.label, totalSeconds: parsed.totalSeconds, remaining: parsed.totalSeconds, running: true, done: false },
       ]
     })
   }
@@ -131,9 +145,7 @@ function StepTimers({ text }: StepTimersProps) {
 
   function resetTimer(id: string) {
     setTimers((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, remaining: t.totalSeconds, running: false, done: false } : t
-      )
+      prev.map((t) => (t.id === id ? { ...t, remaining: t.totalSeconds, running: false, done: false } : t))
     )
   }
 
@@ -185,6 +197,13 @@ function StepTimers({ text }: StepTimersProps) {
   )
 }
 
+// Fallback copy (MEA-220 spec)
+const VOICE_ERROR_MESSAGES: Record<string, string> = {
+  permission_denied: 'Voice control needs microphone access. Navigate using the buttons or arrow keys.',
+  error: 'Voice control encountered an error. Use the buttons or arrow keys to navigate.',
+  unsupported: 'Voice control is not supported in this browser. Use the buttons or arrow keys to navigate.',
+}
+
 interface CookingModeProps {
   recipe: Recipe
   onClose: () => void
@@ -194,13 +213,87 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   const { user } = useAuth()
   const steps = recipe.recipeInstructions
   const [stepIndex, setStepIndex] = useState(0)
+  const [repeatKey, setRepeatKey] = useState(0)
   const [showIngredients, setShowIngredients] = useState(false)
   const [showRatingPrompt, setShowRatingPrompt] = useState(false)
   const [ratingScore, setRatingScore] = useState<number | null>(null)
   const [ratingSubmitted, setRatingSubmitted] = useState(false)
+  const [timerVoiceAction, setTimerVoiceAction] = useState<TimerVoiceAction>(null)
+  const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null)
+  const voiceFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
+
+  // Show brief feedback label after a voice command fires
+  function showFeedback(text: string) {
+    if (voiceFeedbackTimer.current) clearTimeout(voiceFeedbackTimer.current)
+    setVoiceFeedback(text)
+    voiceFeedbackTimer.current = setTimeout(() => setVoiceFeedback(null), 2000)
+  }
+
+  // Voice command handler
+  const handleVoiceCommand = useCallback(
+    ({ type }: { type: string }) => {
+      switch (type) {
+        case 'next':
+          setStepIndex((i) => Math.min(i + 1, steps.length - 1))
+          showFeedback('Next step')
+          break
+        case 'prev':
+          setStepIndex((i) => Math.max(i - 1, 0))
+          showFeedback('Previous step')
+          break
+        case 'repeat':
+          setRepeatKey((k) => k + 1)
+          showFeedback('Repeating step')
+          break
+        case 'show_ingredients':
+          setShowIngredients(true)
+          showFeedback('Showing ingredients')
+          break
+        case 'hide_ingredients':
+          setShowIngredients(false)
+          showFeedback('Hiding ingredients')
+          break
+        case 'start_timer':
+          setTimerVoiceAction('start_first')
+          showFeedback('Starting timer')
+          // Reset so the same command can fire again next step
+          setTimeout(() => setTimerVoiceAction(null), 0)
+          break
+        case 'pause_timer':
+          setTimerVoiceAction('pause_all')
+          showFeedback('Pausing timer')
+          setTimeout(() => setTimerVoiceAction(null), 0)
+          break
+        case 'exit':
+          onClose()
+          break
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [steps.length, onClose]
+  )
+
+  const { status: voiceStatus, toggle: toggleVoice } = useVoiceControl({ onCommand: handleVoiceCommand })
+
+  // Request notification permission once (for timer done alerts)
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+  }, [])
+
+  function handleTimerDone(label: string) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(`Timer done — ${label}`, {
+        body: `Your ${label} timer is complete!`,
+        icon: '/pwa-192x192.png',
+        tag: `cooking-timer-${label}`,
+      })
+    }
+  }
 
   async function handleRate(score: number) {
     setRatingScore(score)
@@ -220,16 +313,10 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
     if ('wakeLock' in navigator) {
       navigator.wakeLock
         .request('screen')
-        .then((lock) => {
-          wakeLockRef.current = lock
-        })
-        .catch(() => {
-          // Wake Lock unavailable — ignore silently
-        })
+        .then((lock) => { wakeLockRef.current = lock })
+        .catch(() => {})
     }
-    return () => {
-      wakeLockRef.current?.release().catch(() => {})
-    }
+    return () => { wakeLockRef.current?.release().catch(() => {}) }
   }, [])
 
   // Keyboard navigation
@@ -248,6 +335,12 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   }, [steps.length, onClose])
 
   if (!step) return null
+
+  const voiceListening = voiceStatus === 'listening'
+  const voiceAvailable = voiceStatus !== 'unsupported'
+  const voiceErrorMsg = voiceStatus === 'permission_denied' || voiceStatus === 'error'
+    ? VOICE_ERROR_MESSAGES[voiceStatus]
+    : null
 
   return (
     <div
@@ -283,6 +376,40 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
             <UtensilsCrossed size={14} strokeWidth={2} aria-hidden="true" />
             <span className="hidden sm:inline">Ingredients</span>
           </button>
+
+          {/* Mic toggle — hidden when unsupported */}
+          {voiceAvailable && (
+            <button
+              onClick={toggleVoice}
+              aria-label={voiceListening ? 'Stop voice control' : 'Start voice control'}
+              aria-pressed={voiceListening}
+              title={
+                voiceStatus === 'permission_denied'
+                  ? VOICE_ERROR_MESSAGES.permission_denied
+                  : voiceListening
+                  ? 'Voice control active — say "Next", "Back", "Repeat", etc.'
+                  : 'Enable voice control'
+              }
+              className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                voiceStatus === 'permission_denied'
+                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  : voiceListening
+                  ? 'bg-green-700 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              {voiceStatus === 'permission_denied' ? (
+                <MicOff size={16} strokeWidth={2} aria-hidden="true" />
+              ) : (
+                <Mic size={16} strokeWidth={2} aria-hidden="true" />
+              )}
+              {/* Pulse ring when listening */}
+              {voiceListening && (
+                <span className="absolute inset-0 rounded-lg animate-pulse bg-green-500/30 pointer-events-none" />
+              )}
+            </button>
+          )}
+
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors p-1.5"
@@ -293,11 +420,18 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
         </div>
       </div>
 
+      {/* Voice error banner */}
+      {voiceErrorMsg && (
+        <div className="px-4 py-2 bg-amber-900/40 border-b border-amber-800/50 text-amber-300 text-xs text-center shrink-0">
+          {voiceErrorMsg}
+        </div>
+      )}
+
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Step content */}
         <div className="flex-1 flex flex-col justify-center px-6 py-8 overflow-y-auto">
-          <div key={stepIndex} className="max-w-2xl mx-auto w-full animate-fade-in-up">
+          <div key={`${stepIndex}-${repeatKey}`} className="max-w-2xl mx-auto w-full animate-fade-in-up">
             {/* Step badge */}
             <div className="mb-4">
               <span className="inline-flex items-center justify-center w-10 h-10 bg-green-700 text-white rounded-full text-lg font-bold">
@@ -311,12 +445,17 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
             </p>
 
             {/* Timers */}
-            <StepTimers text={step.text} />
+            <StepTimers
+              text={step.text}
+              voiceAction={timerVoiceAction}
+              onTimerDone={handleTimerDone}
+            />
 
             {/* Navigation hint — visible on first step only */}
             {isFirst && steps.length > 1 && (
-              <p className="mt-8 text-xs text-gray-600 dark:text-gray-600 select-none">
+              <p className="mt-8 text-xs text-gray-600 select-none">
                 Swipe or use arrow keys to move between steps
+                {voiceAvailable && ' · Say "Next" or "Back" for hands-free'}
               </p>
             )}
           </div>
@@ -351,6 +490,14 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
           style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
         />
       </div>
+
+      {/* Voice feedback toast */}
+      {voiceFeedback && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-800/90 text-white text-sm px-4 py-2 rounded-full shadow-lg pointer-events-none animate-fade-in-up z-20">
+          <Mic size={13} strokeWidth={2} aria-hidden="true" className="text-green-400 shrink-0" />
+          {voiceFeedback}
+        </div>
+      )}
 
       {/* Rating prompt overlay */}
       {showRatingPrompt && (

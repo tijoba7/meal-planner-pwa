@@ -1,0 +1,59 @@
+# DigitalOcean App Platform Specification
+# https://docs.digitalocean.com/products/app-platform/reference/app-spec/
+#
+# Deploy via:
+#   doctl apps create --spec .do/app.yaml
+#   doctl apps update <app-id> --spec .do/app.yaml
+#
+# Or connect this repo in the DO dashboard — it auto-detects this file.
+
+name: mise
+
+region: nyc
+
+services:
+  - name: app
+    dockerfile_path: Dockerfile
+    github:
+      repo: ${GITHUB_REPO}
+      branch: main
+      deploy_on_push: true
+    http_port: 80
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /
+      initial_delay_seconds: 10
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      # Required for social features (build-time — Vite inlines these)
+      - key: VITE_SUPABASE_URL
+        scope: BUILD_TIME
+        type: SECRET
+      - key: VITE_SUPABASE_ANON_KEY
+        scope: BUILD_TIME
+        type: SECRET
+      # Optional — error tracking
+      - key: VITE_SENTRY_DSN
+        scope: BUILD_TIME
+        type: SECRET
+      - key: VITE_APP_VERSION
+        scope: BUILD_TIME
+        value: "${_self.COMMIT_HASH}"
+      # Optional — push notifications
+      - key: VITE_VAPID_PUBLIC_KEY
+        scope: BUILD_TIME
+        type: SECRET
+      # Sentry source map upload (build-time only, not exposed to browser)
+      - key: SENTRY_AUTH_TOKEN
+        scope: BUILD_TIME
+        type: SECRET
+      - key: SENTRY_ORG
+        scope: BUILD_TIME
+        value: ""
+      - key: SENTRY_PROJECT
+        scope: BUILD_TIME
+        value: meal-planner-pwa

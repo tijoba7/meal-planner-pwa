@@ -203,6 +203,113 @@ docker compose up
 
 The app is served on port 80. nginx is configured via `nginx.conf` at the repo root (SPA fallback routing, gzip compression, cache headers).
 
+## Hosting: DigitalOcean App Platform
+
+App Platform builds from the Dockerfile and serves the app with automatic HTTPS, health checks, and zero-downtime deploys.
+
+### Quick Start (Dashboard)
+
+1. Go to [cloud.digitalocean.com/apps](https://cloud.digitalocean.com/apps) → **Create App**.
+2. Connect your GitHub repo and select the `main` branch.
+3. App Platform auto-detects `.do/app.yaml` — review the spec and confirm.
+4. Add environment variables in the **Settings** tab (see table below).
+5. Click **Deploy**. App Platform builds the Docker image and serves it on HTTPS.
+
+### Quick Start (CLI)
+
+```bash
+# Install doctl
+brew install doctl   # macOS
+# or: snap install doctl  # Linux
+
+# Authenticate
+doctl auth init
+
+# Create the app from spec
+doctl apps create --spec .do/app.yaml
+
+# Note the app ID from the output, then set env vars:
+doctl apps update <app-id> --spec .do/app.yaml
+```
+
+### Environment Variables
+
+Set these in the App Platform dashboard under **Settings → App-Level Environment Variables**, or via the app spec. All `VITE_*` variables are build-time only (Vite inlines them into the bundle).
+
+| Variable | Scope | Required | Notes |
+|----------|-------|----------|-------|
+| `VITE_SUPABASE_URL` | Build-time | Yes* | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Build-time | Yes* | Supabase anon/public key |
+| `VITE_SENTRY_DSN` | Build-time | No | Sentry DSN for error tracking |
+| `VITE_APP_VERSION` | Build-time | No | Auto-set to commit hash in app spec |
+| `VITE_VAPID_PUBLIC_KEY` | Build-time | No | VAPID key for push notifications |
+| `SENTRY_AUTH_TOKEN` | Build-time | No | Sentry source map upload token |
+| `SENTRY_ORG` | Build-time | No | Sentry organization slug |
+| `SENTRY_PROJECT` | Build-time | No | Defaults to `meal-planner-pwa` |
+
+*Required for social features. The app builds and runs offline without these.
+
+### Custom Domain
+
+1. In App Platform → **Settings → Domains**, add your domain (e.g., `mise.yourdomain.com`).
+2. App Platform provides a CNAME record — add it to your DNS provider.
+3. TLS certificates are provisioned automatically. No Caddy or manual cert management needed.
+4. Update Supabase auth settings: **Site URL** and **Redirect URLs** must match the new domain.
+
+### GitHub Actions (Automated Deploys)
+
+A deploy workflow is included at `.github/workflows/deploy-do.yml`. It triggers on push to `main` and updates the App Platform app via `doctl`.
+
+**Required GitHub Secrets:**
+
+| Secret | Value |
+|--------|-------|
+| `DIGITALOCEAN_ACCESS_TOKEN` | DO API token ([create here](https://cloud.digitalocean.com/account/api/tokens)) |
+| `DO_APP_ID` | App Platform app ID (from `doctl apps list`) |
+
+**Required GitHub Variable:**
+
+| Variable | Value |
+|----------|-------|
+| `DO_CONFIGURED` | `true` (enables the workflow) |
+
+### Scaling
+
+The default spec uses `basic-xxs` (512 MB RAM, 1 vCPU, $5/mo). To scale:
+
+```bash
+# Edit .do/app.yaml: change instance_size_slug and instance_count
+doctl apps update <app-id> --spec .do/app.yaml
+```
+
+Common sizes: `basic-xxs` ($5), `basic-xs` ($10), `basic-s` ($20). For most traffic levels, `basic-xxs` with 1 instance is sufficient — the app is a static SPA served by nginx.
+
+### Alternative: Droplet with Docker Compose
+
+For full control (custom nginx tuning, Caddy HTTPS, multiple services), deploy on a Droplet instead:
+
+```bash
+# On your Droplet
+git clone <your-repo> && cd meal-planner-pwa
+
+# HTTP only (use if behind a DO Load Balancer with TLS)
+docker compose up -d
+
+# HTTPS with auto Let's Encrypt
+DOMAIN=mise.yourdomain.com docker compose -f docker-compose.https.yml up -d
+```
+
+See the [Docker self-hosting section](#self-hosting-with-docker) below for full details.
+
+### Monitoring
+
+- **App Platform**: Built-in metrics (CPU, memory, bandwidth) in the DO dashboard.
+- **Health checks**: Configured in the app spec — `GET /` every 30s.
+- **Sentry**: Optional error tracking (set `VITE_SENTRY_DSN`).
+- **Alerts**: Set up DO Monitoring alerts for CPU/memory thresholds in the dashboard.
+
+---
+
 ## Hosting: Any static host
 
 ```bash

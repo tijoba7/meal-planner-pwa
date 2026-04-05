@@ -8,7 +8,7 @@
  */
 
 import { supabase } from './supabase'
-import type { MealPlan } from '../types'
+import type { MealPlan, ShoppingList } from '../types'
 import type { Json } from '../types/supabase'
 import { toJson } from './jsonUtils'
 
@@ -295,6 +295,96 @@ export function subscribeToHouseholdMealPlans(
         event: '*',
         schema: 'public',
         table: 'meal_plans_cloud',
+        filter: `household_id=eq.${householdId}`,
+      },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as { id?: string }).id
+          if (id) onDelete(id)
+          return
+        }
+        const row = payload.new as { id: string; data: unknown; updated_at: string }
+        onUpdate(row.id, row.data as Json, row.updated_at)
+      }
+    )
+    .subscribe()
+
+  return () => {
+    void supabase!.removeChannel(channel)
+  }
+}
+
+// ─── Shared shopping lists ────────────────────────────────────────────────────
+
+/**
+ * Share a shopping list with a household.
+ * The list owner sets household_id; all household members can then read/edit it.
+ */
+export async function shareShoppingListWithHousehold(
+  listId: string,
+  householdId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('shopping_lists_cloud')
+    .update({ household_id: householdId })
+    .eq('id', listId)
+  return !error
+}
+
+/** Remove household sharing from a shopping list (owner only). */
+export async function unshareShoppingList(listId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('shopping_lists_cloud')
+    .update({ household_id: null })
+    .eq('id', listId)
+  return !error
+}
+
+/**
+ * Fetch all shared shopping lists for a household.
+ * Used during initial sync and on-demand refresh.
+ */
+export async function fetchHouseholdShoppingLists(
+  householdId: string
+): Promise<Array<{ id: string; data: Json; updated_at: string }>> {
+  const { data, error } = await supabase
+    .from('shopping_lists_cloud')
+    .select('id, data, updated_at')
+    .eq('household_id', householdId)
+  if (error || !data) return []
+  return data
+}
+
+/**
+ * Push an updated shared shopping list to the cloud.
+ * Non-owners use UPDATE (data only); ownership is preserved.
+ */
+export async function pushSharedShoppingListData(list: ShoppingList): Promise<boolean> {
+  const { error } = await supabase
+    .from('shopping_lists_cloud')
+    .update({ data: toJson(list), updated_at: list.updatedAt })
+    .eq('id', list.id)
+  return !error
+}
+
+/**
+ * Subscribe to Realtime changes for shopping lists in a household.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToHouseholdShoppingLists(
+  householdId: string,
+  onUpdate: (listId: string, data: Json, updatedAt: string) => void,
+  onDelete: (listId: string) => void
+): () => void {
+
+  const channel = supabase
+    .channel(`household-lists:${householdId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'shopping_lists_cloud',
         filter: `household_id=eq.${householdId}`,
       },
       (payload) => {

@@ -409,6 +409,7 @@ export type Database = {
           id: string
           owner_id: string
           data: Json
+          household_id: string | null
           created_at: string
           updated_at: string
         }
@@ -416,11 +417,13 @@ export type Database = {
           id: string
           owner_id: string
           data: Json
+          household_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           data?: Json
+          household_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -429,6 +432,13 @@ export type Database = {
             columns: ['owner_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'shopping_lists_cloud_household_id_fkey'
+            columns: ['household_id']
+            isOneToOne: false
+            referencedRelation: 'households'
             referencedColumns: ['id']
           },
         ]

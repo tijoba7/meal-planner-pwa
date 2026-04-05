@@ -433,7 +433,7 @@ export default function Layout() {
         id="main-content"
         className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 print:pb-0 print:overflow-visible"
       >
-        <div key={location.pathname} className="animate-fade-in">
+        <div key={location.pathname} className="animate-fade-in-up">
           <Outlet />
         </div>
       </main>

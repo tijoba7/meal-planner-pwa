@@ -11,6 +11,7 @@ import {
   useEngagementStats,
 } from '../hooks/useFeed'
 import Skeleton from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 // ─── Category chips ────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ function RecipeListCard({
     <li>
       <Link
         to={`/shared/${item.id}`}
-        className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
+        className="flex gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:-translate-y-px transition-all duration-150 active:scale-[0.99]"
       >
         {recipe.image && (
           <img
@@ -163,7 +164,7 @@ function RecipeGridCard({ item }: { item: CloudRecipeWithAuthor }) {
     <li>
       <Link
         to={`/shared/${item.id}`}
-        className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
+        className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 active:scale-[0.98]"
       >
         <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">
           {recipe.image ? (
@@ -270,13 +271,13 @@ function TrendingSection() {
         </h3>
       </div>
       <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-label="Trending recipes">
-        {trendingItems.slice(0, 6).map((item) => {
+        {trendingItems.slice(0, 6).map((item, index) => {
           const eng = engagementMap[item.id]
           return (
-            <li key={item.id}>
+            <li key={item.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 60}ms` }}>
               <Link
                 to={`/shared/${item.id}`}
-                className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow"
+                className="block group rounded-xl overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 active:scale-[0.98]"
               >
                 <div className="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
                   {item.data.image ? (
@@ -526,7 +527,11 @@ export default function DiscoverPage() {
           </div>
 
           {exploreError ? (
-            <p className="text-sm text-red-500 text-center py-8">Failed to load public recipes.</p>
+            <EmptyState
+              icon={Compass}
+              title="Couldn't load recipes"
+              description="Something went wrong fetching public recipes. Try again later."
+            />
           ) : exploreLoading ? (
             gridView ? (
               <div role="status" aria-busy="true" aria-label="Loading public recipes">
@@ -546,14 +551,15 @@ export default function DiscoverPage() {
               </div>
             )
           ) : filteredExplore.length === 0 ? (
-            <div className="text-center py-16">
-              <Compass size={36} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {query || category
-                  ? 'No public recipes match your filters.'
-                  : 'No public recipes yet.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={Compass}
+              title={query || category ? 'No recipes match' : 'Nothing here yet'}
+              description={
+                query || category
+                  ? 'Try adjusting your search or filters.'
+                  : 'No public recipes have been shared yet.'
+              }
+            />
           ) : gridView ? (
             <>
               <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-live="polite">
@@ -606,7 +612,11 @@ export default function DiscoverPage() {
       {activeTab === 'feed' && user && (
         <div id="discover-tab-feed" role="tabpanel" aria-labelledby="discover-tab-btn-feed">
           {feedError ? (
-            <p className="text-sm text-red-500 text-center py-8">Failed to load friends feed.</p>
+            <EmptyState
+              icon={Rss}
+              title="Couldn't load friends feed"
+              description="Something went wrong. Try again later."
+            />
           ) : feedLoading ? (
             <div role="status" aria-busy="true" aria-label="Loading friends feed">
               <ul className="space-y-3">
@@ -616,12 +626,11 @@ export default function DiscoverPage() {
               </ul>
             </div>
           ) : feedItems.length === 0 ? (
-            <div className="text-center py-16">
-              <Rss size={36} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                No recipes from friends yet. Add friends to see their shared recipes here.
-              </p>
-            </div>
+            <EmptyState
+              icon={Rss}
+              title="No friend recipes yet"
+              description="Follow friends to see their shared recipes here."
+            />
           ) : (
             <>
               <ul className="space-y-3" aria-live="polite">

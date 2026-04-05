@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, CalendarDays, ShoppingCart, Search } from 'lucide-react'
+import { BookOpen, CalendarDays, ShoppingCart, Search, Clock, X } from 'lucide-react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { searchAll, type SearchResult, type SearchResults } from '../lib/search'
 import { SearchNoResultsIllustration } from './EmptyStateIllustrations'
@@ -9,11 +9,52 @@ interface Props {
   onClose: () => void
 }
 
+type FilterKey = 'all' | 'recipes' | 'mealPlans' | 'shoppingLists'
+
 const SECTION_META = {
   recipes: { label: 'Recipes', Icon: BookOpen },
   mealPlans: { label: 'Meal Plans', Icon: CalendarDays },
   shoppingLists: { label: 'Shopping Lists', Icon: ShoppingCart },
 } as const
+
+const FILTER_OPTIONS: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'recipes', label: 'Recipes' },
+  { key: 'mealPlans', label: 'Plans' },
+  { key: 'shoppingLists', label: 'Lists' },
+]
+
+const RECENT_KEY = 'mise_recent_searches'
+const MAX_RECENT = 5
+
+function loadRecentSearches(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveRecentSearch(query: string) {
+  const trimmed = query.trim()
+  if (!trimmed) return
+  const existing = loadRecentSearches().filter((q) => q !== trimmed)
+  localStorage.setItem(RECENT_KEY, JSON.stringify([trimmed, ...existing].slice(0, MAX_RECENT)))
+}
+
+function removeRecentSearch(query: string) {
+  const updated = loadRecentSearches().filter((q) => q !== query)
+  localStorage.setItem(RECENT_KEY, JSON.stringify(updated))
+}
+
+function applyFilter(results: SearchResults, filter: FilterKey): SearchResults {
+  if (filter === 'all') return results
+  return {
+    recipes: filter === 'recipes' ? results.recipes : [],
+    mealPlans: filter === 'mealPlans' ? results.mealPlans : [],
+    shoppingLists: filter === 'shoppingLists' ? results.shoppingLists : [],
+  }
+}
 
 function flattenResults(results: SearchResults): SearchResult[] {
   return [...results.recipes, ...results.mealPlans, ...results.shoppingLists]
@@ -26,14 +67,16 @@ export default function SearchDialog({ onClose }: Props) {
   useFocusTrap(dialogRef)
 
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResults | null>(null)
+  const [filter, setFilter] = useState<FilterKey>('all')
+  const [rawResults, setRawResults] = useState<SearchResults | null>(null)
   const [loading, setLoading] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
+  const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches)
 
   // Debounced search
   useEffect(() => {
     if (!query.trim()) {
-      setResults(null)
+      setRawResults(null)
       setActiveIdx(0)
       return
     }
@@ -41,7 +84,7 @@ export default function SearchDialog({ onClose }: Props) {
     const timer = setTimeout(async () => {
       try {
         const res = await searchAll(query)
-        setResults(res)
+        setRawResults(res)
         setActiveIdx(0)
       } finally {
         setLoading(false)
@@ -50,18 +93,38 @@ export default function SearchDialog({ onClose }: Props) {
     return () => clearTimeout(timer)
   }, [query])
 
+  // Reset active index when filter changes
+  useEffect(() => {
+    setActiveIdx(0)
+  }, [filter])
+
+  const results = rawResults ? applyFilter(rawResults, filter) : null
   const flat = results ? flattenResults(results) : []
   const totalResults = flat.length
   const hasResults = totalResults > 0
   const showEmpty = results !== null && !loading && !hasResults
+  const showRecent = !query.trim() && recentSearches.length > 0
 
   const handleSelect = useCallback(
-    (result: SearchResult) => {
+    (result: SearchResult, fromQuery?: string) => {
+      saveRecentSearch(fromQuery ?? query)
+      setRecentSearches(loadRecentSearches())
       navigate(result.href)
       onClose()
     },
-    [navigate, onClose]
+    [navigate, onClose, query]
   )
+
+  function handleRecentSelect(term: string) {
+    setQuery(term)
+    inputRef.current?.focus()
+  }
+
+  function handleRemoveRecent(e: React.MouseEvent, term: string) {
+    e.stopPropagation()
+    removeRecentSearch(term)
+    setRecentSearches(loadRecentSearches())
+  }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
@@ -126,6 +189,54 @@ export default function SearchDialog({ onClose }: Props) {
             esc
           </kbd>
         </div>
+
+        {/* Filter chips — only shown when there's a query */}
+        {query.trim() && (
+          <div className="flex gap-1.5 px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+            {FILTER_OPTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors border ${
+                  filter === key
+                    ? 'bg-green-700 border-green-700 text-white'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400'
+                }`}
+                aria-pressed={filter === key}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Recent searches — shown when query is empty */}
+        {showRecent && (
+          <div className="py-2">
+            <p className="px-4 pt-1 pb-1 text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Clock size={11} aria-hidden="true" />
+              Recent
+            </p>
+            {recentSearches.map((term) => (
+              <div key={term} className="flex items-center group">
+                <button
+                  className="flex-1 flex items-center gap-3 px-4 py-2.5 text-left text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => handleRecentSelect(term)}
+                >
+                  <Clock size={14} className="text-gray-400 dark:text-gray-500 shrink-0" aria-hidden="true" />
+                  <span className="text-sm truncate">{term}</span>
+                </button>
+                <button
+                  className="px-3 py-2.5 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors opacity-0 group-hover:opacity-100"
+                  onClick={(e) => handleRemoveRecent(e, term)}
+                  aria-label={`Remove "${term}" from recent searches`}
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Results */}
         {results && hasResults && (
@@ -216,7 +327,7 @@ export default function SearchDialog({ onClose }: Props) {
         )}
 
         {/* Initial state hint */}
-        {!results && !loading && (
+        {!results && !loading && !showRecent && (
           <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 flex items-center justify-between">
             <span>Search recipes, ingredients, meal plans, and lists</span>
             <span className="flex items-center gap-1">

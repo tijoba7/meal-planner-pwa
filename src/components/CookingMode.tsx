@@ -297,7 +297,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Step content */}
         <div className="flex-1 flex flex-col justify-center px-6 py-8 overflow-y-auto">
-          <div className="max-w-2xl mx-auto w-full">
+          <div key={stepIndex} className="max-w-2xl mx-auto w-full animate-fade-in-up">
             {/* Step badge */}
             <div className="mb-4">
               <span className="inline-flex items-center justify-center w-10 h-10 bg-green-700 text-white rounded-full text-lg font-bold">

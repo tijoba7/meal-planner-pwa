@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { db } from '../lib/db'
 import { fromJson, toJson } from '../lib/jsonUtils'
+import { shareShoppingListWithHousehold, unshareShoppingList } from '../lib/householdService'
 import type { ShoppingList, ShoppingItem } from '../types'
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
@@ -25,13 +26,19 @@ function id(): string {
 async function fetchShoppingLists(userId: string): Promise<ShoppingList[]> {
   const { data, error } = await supabase
     .from('shopping_lists_cloud')
-    .select('id, data')
+    .select('id, data, household_id')
     .eq('owner_id', userId)
     .order('created_at', { ascending: true })
 
   if (error) throw new Error(error.message)
 
-  const lists = data.map((row) => fromJson<ShoppingList>(row.data))
+  const lists = data.map((row) => {
+    const list = fromJson<ShoppingList>(row.data)
+    // Merge DB-level household_id into the list object (source of truth for sharing state)
+    if (row.household_id) list.householdId = row.household_id as string
+    else delete list.householdId
+    return list
+  })
   await db.shoppingLists.bulkPut(lists)
   return lists
 }
@@ -39,7 +46,7 @@ async function fetchShoppingLists(userId: string): Promise<ShoppingList[]> {
 async function fetchShoppingList(listId: string, userId: string): Promise<ShoppingList | null> {
   const { data, error } = await supabase
     .from('shopping_lists_cloud')
-    .select('id, data')
+    .select('id, data, household_id')
     .eq('id', listId)
     .eq('owner_id', userId)
     .single()
@@ -50,6 +57,8 @@ async function fetchShoppingList(listId: string, userId: string): Promise<Shoppi
   }
 
   const list = fromJson<ShoppingList>(data.data)
+  if (data.household_id) list.householdId = data.household_id as string
+  else delete list.householdId
   await db.shoppingLists.put(list)
   return list
 }
@@ -191,6 +200,51 @@ export function useToggleShoppingItem() {
     onSuccess: (list) => {
       qc.setQueryData(shoppingListKeys.detail(list.id), list)
       qc.invalidateQueries({ queryKey: shoppingListKeys.all(user!.id) })
+    },
+  })
+}
+
+export function useShareShoppingList() {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ listId, householdId }: { listId: string; householdId: string }) => {
+      const ok = await shareShoppingListWithHousehold(listId, householdId)
+      if (!ok) throw new Error('Failed to share shopping list')
+      return { listId, householdId }
+    },
+    onSuccess: ({ listId, householdId }) => {
+      // Optimistically update the cached list
+      const detail = qc.getQueryData<ShoppingList | null>(shoppingListKeys.detail(listId))
+      if (detail) {
+        qc.setQueryData(shoppingListKeys.detail(listId), { ...detail, householdId })
+      }
+      qc.invalidateQueries({ queryKey: shoppingListKeys.all(user!.id) })
+      qc.invalidateQueries({ queryKey: shoppingListKeys.detail(listId) })
+    },
+  })
+}
+
+export function useUnshareShoppingList() {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (listId: string) => {
+      const ok = await unshareShoppingList(listId)
+      if (!ok) throw new Error('Failed to unshare shopping list')
+      return listId
+    },
+    onSuccess: (listId) => {
+      const detail = qc.getQueryData<ShoppingList | null>(shoppingListKeys.detail(listId))
+      if (detail) {
+        const updated = { ...detail }
+        delete updated.householdId
+        qc.setQueryData(shoppingListKeys.detail(listId), updated)
+      }
+      qc.invalidateQueries({ queryKey: shoppingListKeys.all(user!.id) })
+      qc.invalidateQueries({ queryKey: shoppingListKeys.detail(listId) })
     },
   })
 }

@@ -92,6 +92,8 @@ export interface ShoppingList {
   id: string
   name: string
   mealPlanId?: string
+  /** Set when this list is shared with a household; absent for personal lists. */
+  householdId?: string
   items: ShoppingItem[]
   createdAt: string
   updatedAt: string

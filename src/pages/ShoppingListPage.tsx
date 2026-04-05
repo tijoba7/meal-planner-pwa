@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useId } from 'react'
+import { useState, useRef, useMemo, useId, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   X,
@@ -10,6 +10,7 @@ import {
   Download,
   Plus,
   Trash2,
+  Users,
 } from 'lucide-react'
 import EmptyState from '../components/EmptyState'
 import {
@@ -19,6 +20,7 @@ import {
 import Skeleton from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import { useUnitPreference } from '../hooks/useUnitPreference'
+import { useAuth } from '../contexts/AuthContext'
 import { convertUnit, type UnitSystem } from '../lib/units'
 import type {
   ShoppingList,
@@ -36,6 +38,8 @@ import {
   useUpdateShoppingList,
   useDeleteShoppingList,
   useToggleShoppingItem,
+  useShareShoppingList,
+  useUnshareShoppingList,
   shoppingListKeys,
 } from '../hooks/useShoppingLists'
 import { useMealPlans } from '../hooks/useMealPlans'
@@ -43,6 +47,11 @@ import { useRecipes } from '../hooks/useRecipes'
 import { usePantryItems } from '../hooks/usePantryItems'
 import { categorizeIngredient, ALL_CATEGORIES } from '../lib/ingredientCategories'
 import { mergeIngredients } from '../lib/ingredientMerger'
+import {
+  getMyHouseholds,
+  subscribeToHouseholdShoppingLists,
+  type Household,
+} from '../lib/householdService'
 
 // ── Autocomplete suggestion types ─────────────────────────────────────────────
 
@@ -578,6 +587,7 @@ function CategorySection({
 export default function ShoppingListPage() {
   const toast = useToast()
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [unitSystem] = useUnitPreference()
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -596,6 +606,10 @@ export default function ShoppingListPage() {
   const [newItemName, setNewItemName] = useState('')
   const [newItemAmount, setNewItemAmount] = useState('')
   const [newItemUnit, setNewItemUnit] = useState('')
+  const [showHouseholdShare, setShowHouseholdShare] = useState(false)
+  const [households, setHouseholds] = useState<Household[]>([])
+  const [householdsLoading, setHouseholdsLoading] = useState(false)
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null)
 
   const { data: lists = [], isLoading: loading } = useShoppingLists()
   const { data: activeList } = useShoppingList(activeListId ?? '')
@@ -607,7 +621,40 @@ export default function ShoppingListPage() {
   const updateShoppingListMutation = useUpdateShoppingList()
   const deleteShoppingListMutation = useDeleteShoppingList()
   const toggleShoppingItemMutation = useToggleShoppingItem()
+  const shareShoppingListMutation = useShareShoppingList()
+  const unshareShoppingListMutation = useUnshareShoppingList()
   const creating = createShoppingListMutation.isPending
+
+  // ── Realtime: subscribe to household shopping list changes ─────────────────
+  useEffect(() => {
+    const householdId = activeList?.householdId
+    const listId = activeList?.id
+    if (!householdId || !listId) return
+    const unsub = subscribeToHouseholdShoppingLists(
+      householdId,
+      (updatedId) => {
+        if (updatedId !== listId) return
+        void qc.invalidateQueries({ queryKey: shoppingListKeys.detail(listId) })
+        void qc.invalidateQueries({ queryKey: shoppingListKeys.all(user!.id) })
+      },
+      (deletedId) => {
+        if (deletedId !== listId) return
+        void qc.invalidateQueries({ queryKey: shoppingListKeys.detail(listId) })
+      }
+    )
+    return unsub
+  }, [activeList?.id, activeList?.householdId, user, qc])
+
+  // ── Load households when share dialog opens ────────────────────────────────
+  useEffect(() => {
+    if (!showHouseholdShare || !user) return
+    setHouseholdsLoading(true)
+    void getMyHouseholds(user.id).then((h) => {
+      setHouseholds(h)
+      setSelectedHouseholdId(activeList?.householdId ?? h[0]?.id ?? null)
+      setHouseholdsLoading(false)
+    })
+  }, [showHouseholdShare, user, activeList?.householdId])
 
   const recipesById = new Map(recipes.map((r) => [r.id, r]))
 
@@ -633,11 +680,29 @@ export default function ShoppingListPage() {
     setShowCreate(false)
     setListName('')
     setActiveListId(list.id)
-    const msg =
+
+    // Auto-share with household if any overlapping meal plan is shared
+    const sharedPlan = mealPlans.find((plan) => {
+      if (!plan.householdId) return false
+      const planEnd = (() => {
+        const d = new Date(plan.weekStartDate + 'T00:00:00')
+        d.setDate(d.getDate() + 6)
+        return d.toISOString().slice(0, 10)
+      })()
+      return planEnd >= startDate && plan.weekStartDate <= endDate
+    })
+    if (sharedPlan?.householdId) {
+      await shareShoppingListMutation.mutateAsync({
+        listId: list.id,
+        householdId: sharedPlan.householdId,
+      })
+    }
+
+    const base =
       excludedCount > 0
         ? `Shopping list created. ${excludedCount} pantry item${excludedCount !== 1 ? 's' : ''} excluded.`
         : 'Shopping list created.'
-    toast.success(msg)
+    toast.success(sharedPlan?.householdId ? `${base} Shared with your household.` : base)
   }
 
   const handleDelete = async (id: string) => {
@@ -782,20 +847,41 @@ export default function ShoppingListPage() {
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
               {activeList.name}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {doneCount} of {total} items checked
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {doneCount} of {total} items checked
+              </p>
+              {activeList.householdId && (
+                <span className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                  <Users size={12} aria-hidden="true" />
+                  Shared
+                </span>
+              )}
+            </div>
           </div>
-          {total > 0 && (
+          <div className="flex items-center gap-3 mt-1">
             <button
-              onClick={() => setShowExport(true)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors mt-1"
-              aria-label="Share or export list"
+              onClick={() => setShowHouseholdShare(true)}
+              className={`flex items-center gap-1 text-sm transition-colors ${
+                activeList.householdId
+                  ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400'
+              }`}
+              aria-label={activeList.householdId ? 'Manage household sharing' : 'Share with household'}
             >
-              <Share2 size={16} strokeWidth={2} aria-hidden="true" />
-              Share
+              <Users size={16} strokeWidth={2} aria-hidden="true" />
             </button>
-          )}
+            {total > 0 && (
+              <button
+                onClick={() => setShowExport(true)}
+                className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                aria-label="Share or export list"
+              >
+                <Share2 size={16} strokeWidth={2} aria-hidden="true" />
+                Share
+              </button>
+            )}
+          </div>
         </div>
 
         {total > 0 && (
@@ -929,6 +1015,112 @@ export default function ShoppingListPage() {
           </>
         )}
 
+        {showHouseholdShare && (
+          <div
+            className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
+            onClick={() => setShowHouseholdShare(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="household-share-dialog-title"
+              className="bg-white dark:bg-gray-800 w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl animate-slide-up sm:animate-scale-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <h3
+                  id="household-share-dialog-title"
+                  className="font-bold text-gray-800 dark:text-gray-100"
+                >
+                  Share with Household
+                </h3>
+                <button
+                  onClick={() => setShowHouseholdShare(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Close household sharing dialog"
+                >
+                  <X size={20} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </div>
+              <div className="p-4">
+                {activeList.householdId ? (
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                      This list is shared with your household. All members can see and check off
+                      items in real time.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        await unshareShoppingListMutation.mutateAsync(activeList.id)
+                        setShowHouseholdShare(false)
+                        toast.success('Shopping list is now private.')
+                      }}
+                      disabled={unshareShoppingListMutation.isPending}
+                      className="w-full border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium py-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                    >
+                      {unshareShoppingListMutation.isPending ? 'Removing…' : 'Stop sharing'}
+                    </button>
+                  </div>
+                ) : householdsLoading ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                    Loading…
+                  </p>
+                ) : households.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">
+                    You're not in any household yet. Create or join one from your profile to share
+                    shopping lists.
+                  </p>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                      Choose a household to share this list with:
+                    </p>
+                    <div className="space-y-2 mb-4">
+                      {households.map((h) => (
+                        <label
+                          key={h.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
+                            selectedHouseholdId === h.id
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600'
+                              : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="household"
+                            value={h.id}
+                            checked={selectedHouseholdId === h.id}
+                            onChange={() => setSelectedHouseholdId(h.id)}
+                            className="accent-green-600"
+                          />
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                            {h.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!selectedHouseholdId) return
+                        await shareShoppingListMutation.mutateAsync({
+                          listId: activeList.id,
+                          householdId: selectedHouseholdId,
+                        })
+                        setShowHouseholdShare(false)
+                        toast.success('Shopping list shared with your household.')
+                      }}
+                      disabled={!selectedHouseholdId || shareShoppingListMutation.isPending}
+                      className="w-full bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {shareShoppingListMutation.isPending ? 'Sharing…' : 'Share with household'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {showExport && (
           <div
             className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
@@ -1054,9 +1246,19 @@ export default function ShoppingListPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-                      {list.name}
-                    </p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                        {list.name}
+                      </p>
+                      {list.householdId && (
+                        <Users
+                          size={13}
+                          strokeWidth={2}
+                          className="shrink-0 text-blue-500 dark:text-blue-400"
+                          aria-label="Shared with household"
+                        />
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       {total} item{total !== 1 ? 's' : ''} &middot; {done} checked &middot;{' '}
                       {formatDate(list.createdAt.slice(0, 10))}

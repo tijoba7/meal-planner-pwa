@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { X, ChevronLeft, ChevronRight, UtensilsCrossed, Timer } from 'lucide-react'
 import type { Recipe } from '../types'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useAuth } from '../contexts/AuthContext'
+import { upsertRating } from '../lib/engagementService'
+import StarRating from './ui/StarRating'
 
 // Detect time phrases like "10 minutes", "1 hour 30 minutes", "45 seconds"
 const TIME_PATTERN =
@@ -188,12 +191,25 @@ interface CookingModeProps {
 }
 
 export default function CookingMode({ recipe, onClose }: CookingModeProps) {
+  const { user } = useAuth()
   const steps = recipe.recipeInstructions
   const [stepIndex, setStepIndex] = useState(0)
   const [showIngredients, setShowIngredients] = useState(false)
+  const [showRatingPrompt, setShowRatingPrompt] = useState(false)
+  const [ratingScore, setRatingScore] = useState<number | null>(null)
+  const [ratingSubmitted, setRatingSubmitted] = useState(false)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
+
+  async function handleRate(score: number) {
+    setRatingScore(score)
+    if (user) {
+      await upsertRating(recipe.id, user.id, score)
+    }
+    setRatingSubmitted(true)
+    setTimeout(onClose, 1200)
+  }
 
   const step = steps[stepIndex]
   const isFirst = stepIndex === 0
@@ -236,7 +252,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col animate-fade-in"
+      className="fixed inset-0 bg-gray-950 text-white z-50 flex flex-col animate-fade-in relative"
       role="dialog"
       aria-modal="true"
       aria-label="Cooking mode"
@@ -329,6 +345,36 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
         />
       </div>
 
+      {/* Rating prompt overlay */}
+      {showRatingPrompt && (
+        <div className="absolute inset-0 bg-gray-950/90 flex items-center justify-center z-10 animate-fade-in">
+          <div className="bg-gray-900 rounded-2xl p-8 mx-4 w-full max-w-sm text-center shadow-2xl">
+            {ratingSubmitted ? (
+              <div className="py-4">
+                <p className="text-3xl mb-2">🎉</p>
+                <p className="text-white font-semibold text-lg">Thanks for rating!</p>
+                <StarRating value={ratingScore} readOnly size="lg" />
+              </div>
+            ) : (
+              <>
+                <p className="text-2xl mb-1">🍽️</p>
+                <h3 className="text-white font-bold text-xl mb-1">How was it?</h3>
+                <p className="text-gray-400 text-sm mb-6">Rate {recipe.name}</p>
+                <div className="flex justify-center mb-6">
+                  <StarRating value={ratingScore} onChange={handleRate} size="lg" />
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Skip
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="flex items-center justify-between px-4 py-4 border-t border-gray-800 shrink-0">
         <button
@@ -347,7 +393,7 @@ export default function CookingMode({ recipe, onClose }: CookingModeProps) {
 
         {isLast ? (
           <button
-            onClick={onClose}
+            onClick={() => setShowRatingPrompt(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white transition-colors font-medium"
           >
             Finish

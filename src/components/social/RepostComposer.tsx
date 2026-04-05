@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import { Camera, Repeat2, X } from 'lucide-react'
 import { useCreateRepostMutation } from '../../hooks/useReposts'
+import { useAuth } from '../../contexts/AuthContext'
+import { upsertRating } from '../../lib/engagementService'
+import StarRating from '../ui/StarRating'
 
 interface RepostComposerProps {
   recipeId: string
@@ -19,7 +22,9 @@ export default function RepostComposer({
   recipeImage,
   onClose,
 }: RepostComposerProps) {
+  const { user } = useAuth()
   const [caption, setCaption] = useState('')
+  const [rating, setRating] = useState<number | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -42,7 +47,14 @@ export default function RepostComposer({
   async function handleSubmit() {
     mutation.mutate(
       { recipeId, caption: caption.trim() || undefined, imageFile: imageFile ?? undefined },
-      { onSuccess: onClose }
+      {
+        onSuccess: async () => {
+          if (rating !== null && user) {
+            await upsertRating(recipeId, user.id, rating)
+          }
+          onClose()
+        },
+      }
     )
   }
 
@@ -105,6 +117,21 @@ export default function RepostComposer({
           <p className="text-right text-[10px] text-gray-400 mt-0.5">
             {caption.length}/500
           </p>
+        </div>
+
+        {/* Rating */}
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">How was it?</p>
+          <StarRating value={rating} onChange={setRating} size="md" />
+          {rating !== null && (
+            <button
+              type="button"
+              onClick={() => setRating(null)}
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-1 transition-colors"
+            >
+              Clear rating
+            </button>
+          )}
         </div>
 
         {/* Image upload */}

@@ -56,6 +56,8 @@ import {
 } from '../lib/groupService'
 import { calculateNutrition, nutritionResultToRecord } from '../lib/nutritionCalculator'
 import PostComposer from '../components/social/PostComposer'
+import StarRating from '../components/ui/StarRating'
+import { getRating, upsertRating, type RecipeRating } from '../lib/engagementService'
 
 // ─── Nutrition helpers ────────────────────────────────────────────────────────
 
@@ -159,6 +161,28 @@ export default function RecipeDetailPage() {
   const [groupTogglingId, setGroupTogglingId] = useState<string | null>(null)
 
   const [unitSystem] = useUnitPreference()
+
+  // Rating state
+  const [recipeRating, setRecipeRating] = useState<RecipeRating>({ userScore: null, avgScore: null, ratingCount: 0 })
+
+  useEffect(() => {
+    if (!id) return
+    getRating(id, user?.id).then(setRecipeRating)
+  }, [id, user?.id])
+
+  async function handleRate(score: number) {
+    if (!id || !user) return
+    setRecipeRating((prev) => {
+      // Optimistic update
+      const wasRated = prev.userScore !== null
+      const newCount = wasRated ? prev.ratingCount : prev.ratingCount + 1
+      const prevTotal = (prev.avgScore ?? 0) * prev.ratingCount
+      const newTotal = wasRated ? prevTotal - (prev.userScore ?? 0) + score : prevTotal + score
+      const newAvg = Math.round((newTotal / newCount) * 10) / 10
+      return { userScore: score, avgScore: newAvg, ratingCount: newCount }
+    })
+    await upsertRating(id, user.id, score)
+  }
 
   // Sync scaledServings when recipe loads
   useEffect(() => {
@@ -492,6 +516,28 @@ export default function RecipeDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Rating */}
+      {(recipeRating.avgScore !== null || user) && (
+        <div className="flex items-center gap-3 mb-3">
+          <StarRating
+            value={recipeRating.userScore}
+            onChange={user ? handleRate : undefined}
+            readOnly={!user}
+            size="md"
+          />
+          {recipeRating.avgScore !== null ? (
+            <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+              {recipeRating.avgScore}
+              <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">
+                ({recipeRating.ratingCount} {recipeRating.ratingCount === 1 ? 'rating' : 'ratings'})
+              </span>
+            </span>
+          ) : user ? (
+            <span className="text-xs text-gray-400 dark:text-gray-500">Be the first to rate</span>
+          ) : null}
+        </div>
+      )}
 
       {/* Meta */}
       <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-3">

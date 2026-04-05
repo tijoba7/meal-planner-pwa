@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Rss, X } from 'lucide-react'
+import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../contexts/ProfileContext'
 import type { CloudRecipeWithAuthor } from '../lib/recipeShareService'
@@ -204,6 +205,94 @@ function CommentSheet({ recipeId, onClose }: CommentSheetProps) {
   )
 }
 
+// ─── Pull-to-refresh ──────────────────────────────────────────────────────────
+
+const PULL_THRESHOLD = 80
+
+interface PullToRefreshProps {
+  onRefresh: () => Promise<unknown>
+  children: React.ReactNode
+}
+
+function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
+  const [pullDelta, setPullDelta] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const touchStartY = useRef(0)
+  const pulling = useRef(false)
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (window.scrollY > 0) return
+    touchStartY.current = e.touches[0].clientY
+    pulling.current = true
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!pulling.current) return
+    const delta = e.touches[0].clientY - touchStartY.current
+    if (delta > 0) {
+      setPullDelta(Math.min(delta, PULL_THRESHOLD * 1.5))
+    }
+  }
+
+  async function handleTouchEnd() {
+    if (!pulling.current) return
+    pulling.current = false
+    if (pullDelta >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true)
+      setPullDelta(PULL_THRESHOLD)
+      await onRefresh()
+      setRefreshing(false)
+    }
+    setPullDelta(0)
+  }
+
+  const indicatorOffset = Math.min(pullDelta, PULL_THRESHOLD)
+  const progress = pullDelta / PULL_THRESHOLD
+  const radius = 10
+  const circumference = 2 * Math.PI * radius
+  const strokeDash = circumference * Math.min(progress, 1)
+
+  return (
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {(pullDelta > 0 || refreshing) && (
+        <div
+          className="flex justify-center overflow-hidden"
+          style={{ height: indicatorOffset }}
+        >
+          <div
+            className="flex items-center justify-center w-8 h-8 bg-white dark:bg-gray-800 rounded-full shadow-md"
+            style={{ marginTop: Math.max(0, indicatorOffset - 36) }}
+          >
+            {refreshing ? (
+              <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" className="text-green-600">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={radius}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - strokeDash}
+                  strokeLinecap="round"
+                  transform="rotate(-90 12 12)"
+                />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
@@ -217,6 +306,7 @@ export default function FeedPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
   } = useFriendsFeed()
 
   const { data: reposts = [] } = useFriendsReposts()
@@ -224,11 +314,9 @@ export default function FeedPage() {
   const recipeItems = data?.pages.flat() ?? []
   const feedItems = mergeFeedItems(recipeItems, reposts)
 
-  // Collect all recipe IDs for engagement stats (recipes + reposted recipes)
-  const allRecipeIds = feedItems.map((fi) =>
-    fi.kind === 'recipe' ? fi.data.id : fi.data.recipe_id
-  )
-  const uniqueIds = [...new Set(allRecipeIds)]
+  const uniqueIds = [...new Set(
+    feedItems.map((fi) => fi.kind === 'recipe' ? fi.data.id : fi.data.recipe_id)
+  )]
 
   const { data: engagementMap = {} } = useEngagementStats(uniqueIds)
   const likeMutation = useToggleLikeMutation()
@@ -243,9 +331,7 @@ export default function FeedPage() {
   const [viewerGroupIdx, setViewerGroupIdx] = useState<number | null>(null)
   const [showComposer, setShowComposer] = useState(false)
 
-  const sentinelRef = useRef<HTMLDivElement>(null)
-
-  // Stories from the dedicated stories service
+  // Stories
   const { data: storyGroups = [] } = useFriendsStories()
   const barItems = storyGroupsToBarItems(storyGroups)
   const markViewed = useMarkStoriesViewedMutation()
@@ -256,156 +342,162 @@ export default function FeedPage() {
     if (idx >= 0) setViewerGroupIdx(idx)
   }
 
-  // Infinite scroll sentinel
-  const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  // ── TanStack Virtual ───────────────────────────────────────────────────────
 
+  const virtualizer = useWindowVirtualizer({
+    count: feedItems.length,
+    estimateSize: () => 480,
+    overscan: 3,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+
+  // Trigger infinite scroll load when near end of list
   useEffect(() => {
-    if (!sentinelRef.current) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) loadMore()
-      },
-      { rootMargin: '300px' }
-    )
-    observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [loadMore])
+    const lastItem = virtualItems[virtualItems.length - 1]
+    if (!lastItem) return
+    if (lastItem.index >= feedItems.length - 3 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [virtualItems, feedItems.length, hasNextPage, isFetchingNextPage, fetchNextPage])
 
   // ── Feed ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-lg mx-auto">
-      {/* Stories bar */}
-      {isLoading ? (
-        <StoriesBarSkeleton />
-      ) : (
-        <StoriesBar
-          stories={barItems}
-          currentUserProfile={profile}
-          onAddStory={() => setShowComposer(true)}
-          onStoryClick={handleStoryClick}
-        />
-      )}
+    <PullToRefresh onRefresh={() => refetch()}>
+      <div className="max-w-lg mx-auto">
+        {/* Stories bar */}
+        {isLoading ? (
+          <StoriesBarSkeleton />
+        ) : (
+          <StoriesBar
+            stories={barItems}
+            currentUserProfile={profile}
+            onAddStory={() => setShowComposer(true)}
+            onStoryClick={handleStoryClick}
+          />
+        )}
 
-      {/* Feed */}
-      {isError ? (
-        <p className="text-sm text-red-500 dark:text-red-400 text-center py-12">
-          Failed to load feed.
-        </p>
-      ) : isLoading ? (
-        <div role="status" aria-busy="true" aria-label="Loading feed">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      ) : feedItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <Rss size={40} className="text-gray-300 dark:text-gray-600 mb-3" strokeWidth={1.5} />
-          <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Nothing in your feed yet
+        {/* Feed */}
+        {isError ? (
+          <p className="text-sm text-red-500 dark:text-red-400 text-center py-12">
+            Failed to load feed.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Follow people from the Discover tab to see their recipes here.
-          </p>
-        </div>
-      ) : (
-        <div aria-live="polite">
-          {feedItems.map((fi) => {
-            if (fi.kind === 'repost') {
-              const rp = fi.data
-              const eng = engagementMap[rp.recipe_id]
-              return (
-                <RepostCard
-                  key={`repost-${rp.id}`}
-                  repost={rp}
-                  likeCount={eng?.likeCount ?? 0}
-                  commentCount={eng?.commentCount ?? 0}
-                  hasLiked={eng?.userLiked ?? false}
-                  isOwn={rp.user_id === user?.id}
-                  onLike={() => likeMutation.mutate(rp.recipe_id)}
-                  onCommentClick={() => setCommentSheetId(rp.recipe_id)}
-                />
-              )
-            }
-
-            const item = fi.data
-            const eng = engagementMap[item.id]
-            return (
-              <InstaRecipeCard
-                key={item.id}
-                recipe={itemToInstaRecipe(item)}
-                author={{
-                  id: item.author_id,
-                  display_name: item.profiles?.display_name ?? 'Unknown',
-                  avatar_url: item.profiles?.avatar_url ?? null,
-                }}
-                likeCount={eng?.likeCount ?? 0}
-                commentCount={eng?.commentCount ?? 0}
-                hasLiked={eng?.userLiked ?? false}
-                isFollowing={true}
-                onLike={() => likeMutation.mutate(item.id)}
-                onUnlike={() => likeMutation.mutate(item.id)}
-                onBookmark={() => bookmarkMutation.mutate(item.id)}
-                onUnbookmark={() => bookmarkMutation.mutate(item.id)}
-                onCommentClick={() => setCommentSheetId(item.id)}
-                onShareClick={() =>
-                  setRepostTarget({
-                    id: item.id,
-                    name: item.data.name,
-                    image: item.data.image,
-                  })
-                }
-              />
-            )
-          })}
-
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef}>
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-6" aria-label="Loading more">
-                <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            {!hasNextPage && feedItems.length > 0 && (
-              <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-8">
-                You're all caught up
-              </p>
-            )}
+        ) : isLoading ? (
+          <div role="status" aria-busy="true" aria-label="Loading feed">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
-        </div>
-      )}
+        ) : feedItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <Rss size={40} className="text-gray-300 dark:text-gray-600 mb-3" strokeWidth={1.5} />
+            <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nothing in your feed yet
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Follow people from the Discover tab to see their recipes here.
+            </p>
+          </div>
+        ) : (
+          <div
+            aria-live="polite"
+            style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+          >
+            {virtualItems.map((virtualItem) => {
+              const fi = feedItems[virtualItem.index]
+              return (
+                <div
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  {fi.kind === 'repost' ? (
+                    <RepostCard
+                      repost={fi.data}
+                      likeCount={engagementMap[fi.data.recipe_id]?.likeCount ?? 0}
+                      commentCount={engagementMap[fi.data.recipe_id]?.commentCount ?? 0}
+                      hasLiked={engagementMap[fi.data.recipe_id]?.userLiked ?? false}
+                      isOwn={fi.data.user_id === user?.id}
+                      onLike={() => likeMutation.mutate(fi.data.recipe_id)}
+                      onCommentClick={() => setCommentSheetId(fi.data.recipe_id)}
+                    />
+                  ) : (
+                    <InstaRecipeCard
+                      recipe={itemToInstaRecipe(fi.data)}
+                      author={{
+                        id: fi.data.author_id,
+                        display_name: fi.data.profiles?.display_name ?? 'Unknown',
+                        avatar_url: fi.data.profiles?.avatar_url ?? null,
+                      }}
+                      likeCount={engagementMap[fi.data.id]?.likeCount ?? 0}
+                      commentCount={engagementMap[fi.data.id]?.commentCount ?? 0}
+                      hasLiked={engagementMap[fi.data.id]?.userLiked ?? false}
+                      isFollowing={true}
+                      onLike={() => likeMutation.mutate(fi.data.id)}
+                      onUnlike={() => likeMutation.mutate(fi.data.id)}
+                      onBookmark={() => bookmarkMutation.mutate(fi.data.id)}
+                      onUnbookmark={() => bookmarkMutation.mutate(fi.data.id)}
+                      onCommentClick={() => setCommentSheetId(fi.data.id)}
+                      onShareClick={() =>
+                        setRepostTarget({
+                          id: fi.data.id,
+                          name: fi.data.data.name,
+                          image: fi.data.data.image,
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
 
-      {/* Comment bottom sheet */}
-      {commentSheetId && (
-        <CommentSheet recipeId={commentSheetId} onClose={() => setCommentSheetId(null)} />
-      )}
+        {isFetchingNextPage && (
+          <div className="flex justify-center py-6" aria-label="Loading more">
+            <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        {!hasNextPage && feedItems.length > 0 && (
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-8">
+            You're all caught up
+          </p>
+        )}
 
-      {/* Repost composer */}
-      {repostTarget && (
-        <RepostComposer
-          recipeId={repostTarget.id}
-          recipeName={repostTarget.name}
-          recipeImage={repostTarget.image}
-          onClose={() => setRepostTarget(null)}
-        />
-      )}
+        {commentSheetId && (
+          <CommentSheet recipeId={commentSheetId} onClose={() => setCommentSheetId(null)} />
+        )}
 
-      {/* Story viewer */}
-      {viewerGroupIdx !== null && storyGroups.length > 0 && (
-        <StoryViewer
-          groups={storyGroups}
-          initialGroupIndex={viewerGroupIdx}
-          onClose={() => setViewerGroupIdx(null)}
-          onStoryViewed={handleStoryViewed}
-        />
-      )}
+        {repostTarget && (
+          <RepostComposer
+            recipeId={repostTarget.id}
+            recipeName={repostTarget.name}
+            recipeImage={repostTarget.image}
+            onClose={() => setRepostTarget(null)}
+          />
+        )}
 
-      {/* Story composer */}
-      {showComposer && (
-        <StoryComposer onClose={() => setShowComposer(false)} />
-      )}
-    </div>
+        {viewerGroupIdx !== null && storyGroups.length > 0 && (
+          <StoryViewer
+            groups={storyGroups}
+            initialGroupIndex={viewerGroupIdx}
+            onClose={() => setViewerGroupIdx(null)}
+            onStoryViewed={handleStoryViewed}
+          />
+        )}
+
+        {showComposer && (
+          <StoryComposer onClose={() => setShowComposer(false)} />
+        )}
+      </div>
+    </PullToRefresh>
   )
 }

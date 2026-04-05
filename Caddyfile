@@ -1,0 +1,5 @@
+# Replace with your domain. Caddy auto-provisions Let's Encrypt TLS.
+# For local dev, use `localhost` instead (self-signed cert).
+{$DOMAIN:localhost} {
+	reverse_proxy app:80
+}

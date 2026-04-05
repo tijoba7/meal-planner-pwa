@@ -382,13 +382,40 @@ docker build \
 docker run -d -p 80:80 --name mise mise:latest
 ```
 
-### Reverse Proxy (optional)
+### HTTPS with Caddy (recommended for self-hosting)
 
-To run behind nginx or Caddy with TLS on a custom domain, proxy to port 80 of the container. Example Caddy snippet:
+The app container intentionally serves on port 80 only. TLS termination belongs to a reverse proxy — this is standard practice for containerized apps.
+
+A production-ready `docker-compose.https.yml` is included with [Caddy](https://caddyserver.com/) for automatic HTTPS via Let's Encrypt:
+
+```bash
+# Set your domain and start with HTTPS
+DOMAIN=mise.yourdomain.com docker compose -f docker-compose.https.yml up -d
+```
+
+Caddy auto-provisions and renews TLS certificates. No manual cert management needed.
+
+For local testing with a self-signed cert:
+
+```bash
+docker compose -f docker-compose.https.yml up -d
+# Caddy defaults to localhost with a self-signed cert
+```
+
+#### Custom reverse proxy
+
+If you already run nginx, Traefik, or another reverse proxy, use the standard `docker-compose.yml` (port 80) and proxy to the container:
 
 ```
-mise.yourdomain.com {
-    reverse_proxy localhost:80
+# nginx example
+server {
+    listen 443 ssl;
+    server_name mise.yourdomain.com;
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    location / {
+        proxy_pass http://localhost:80;
+    }
 }
 ```
 

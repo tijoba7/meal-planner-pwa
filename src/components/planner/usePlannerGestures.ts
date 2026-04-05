@@ -10,7 +10,9 @@ export function usePullToRefresh(onRefresh: () => void) {
   const progressRef = useRef(0)
   const THRESHOLD = 72
 
-  const handleRefresh = useCallback(onRefresh, [onRefresh])
+  const handleRefresh = useCallback(() => {
+    onRefresh()
+  }, [onRefresh])
 
   useEffect(() => {
     const el = containerRef.current
@@ -60,7 +62,12 @@ export function useSwipeWeek(onSwipe: (delta: -1 | 1) => void) {
   const startY = useRef(0)
   const ref = useRef<HTMLDivElement>(null)
   const axisLocked = useRef<'h' | 'v' | null>(null)
-  const cb = useCallback(onSwipe, [onSwipe])
+  const cb = useCallback(
+    (delta: -1 | 1) => {
+      onSwipe(delta)
+    },
+    [onSwipe]
+  )
 
   useEffect(() => {
     const el = ref.current

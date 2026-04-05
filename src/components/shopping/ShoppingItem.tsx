@@ -34,6 +34,7 @@ export default function ShoppingItemRow({
   const [draftAmount, setDraftAmount] = useState('')
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [swipeOpen, setSwipeOpen] = useState(false)
+  const [isSwipeDragging, setIsSwipeDragging] = useState(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
   const swipeAxisLocked = useRef<'h' | 'v' | 'check' | null>(null)
@@ -45,6 +46,7 @@ export default function ShoppingItemRow({
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
     swipeAxisLocked.current = null
+    setIsSwipeDragging(false)
   }
 
   function handleTouchMove(e: React.TouchEvent) {
@@ -54,11 +56,16 @@ export default function ShoppingItemRow({
       if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
       swipeAxisLocked.current = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'check' : 'h') : 'v'
     }
-    if (swipeAxisLocked.current === 'v') return
-    if (swipeAxisLocked.current === 'check') {
-      // Swipe right = check off — show green hint but don't set offset
+    if (swipeAxisLocked.current === 'v') {
+      setIsSwipeDragging(false)
       return
     }
+    if (swipeAxisLocked.current === 'check') {
+      // Swipe right = check off — show green hint but don't set offset
+      setIsSwipeDragging(false)
+      return
+    }
+    setIsSwipeDragging(true)
     e.preventDefault()
     const base = swipeOpen ? -SWIPE_REVEAL : 0
     setSwipeOffset(Math.max(-SWIPE_REVEAL, Math.min(0, base + dx)))
@@ -68,9 +75,13 @@ export default function ShoppingItemRow({
     if (swipeAxisLocked.current === 'check') {
       const dx = e.changedTouches[0].clientX - touchStartX.current
       if (dx > 48) onToggle()
+      setIsSwipeDragging(false)
       return
     }
-    if (swipeAxisLocked.current !== 'h') return
+    if (swipeAxisLocked.current !== 'h') {
+      setIsSwipeDragging(false)
+      return
+    }
     if (swipeOffset < -SWIPE_REVEAL / 2) {
       setSwipeOffset(-SWIPE_REVEAL)
       setSwipeOpen(true)
@@ -78,11 +89,13 @@ export default function ShoppingItemRow({
       setSwipeOffset(0)
       setSwipeOpen(false)
     }
+    setIsSwipeDragging(false)
   }
 
   function closeSwipe() {
     setSwipeOffset(0)
     setSwipeOpen(false)
+    setIsSwipeDragging(false)
   }
 
   function commitAmount() {
@@ -131,7 +144,10 @@ export default function ShoppingItemRow({
       {/* Swipeable row */}
       <div
         className="relative bg-white dark:bg-gray-800 flex items-center px-2 min-h-[44px] gap-1"
-        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeAxisLocked.current === 'h' ? 'none' : 'transform 0.22s ease' }}
+        style={{
+          transform: `translateX(${swipeOffset}px)`,
+          transition: isSwipeDragging ? 'none' : 'transform 0.22s ease',
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

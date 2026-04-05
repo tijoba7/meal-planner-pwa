@@ -20,6 +20,37 @@ interface UseVoiceControlOptions {
   onCommand: (cmd: VoiceCommand) => void
 }
 
+interface SpeechRecognitionResultLike {
+  0: { transcript: string }
+}
+
+interface SpeechRecognitionEventLike {
+  results: SpeechRecognitionResultLike[]
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error: string
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onstart: (() => void) | null
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
 // Voice command vocabulary (MEA-220 spec). Longer phrases first within each
 // command so the includes() check prefers specific matches over substrings.
 const COMMANDS: { type: VoiceCommandType; phrases: string[] }[] = [
@@ -46,17 +77,13 @@ function matchCommand(transcript: string): VoiceCommandType | null {
 }
 
 export function useVoiceControl({ onCommand }: UseVoiceControlOptions) {
-  const SpeechRecognitionClass = useRef<any>(
-    typeof window !== 'undefined'
-      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      : null
-  )
+  const speechWindow = typeof window !== 'undefined' ? (window as SpeechRecognitionWindow) : null
+  const speechRecognitionClass =
+    speechWindow?.SpeechRecognition ?? speechWindow?.webkitSpeechRecognition ?? null
 
-  const [status, setStatus] = useState<VoiceStatus>(() =>
-    SpeechRecognitionClass.current ? 'idle' : 'unsupported'
-  )
+  const [status, setStatus] = useState<VoiceStatus>(speechRecognitionClass ? 'idle' : 'unsupported')
   const [lastTranscript, setLastTranscript] = useState<string | null>(null)
-  const recognitionRef = useRef<any>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const enabledRef = useRef(false)
   const onCommandRef = useRef(onCommand)
 
@@ -72,16 +99,16 @@ export function useVoiceControl({ onCommand }: UseVoiceControlOptions) {
   }, [])
 
   const start = useCallback(() => {
-    if (!SpeechRecognitionClass.current) return
+    if (!speechRecognitionClass) return
 
-    const recognition = new SpeechRecognitionClass.current()
+    const recognition = new speechRecognitionClass()
     recognition.continuous = true
     recognition.interimResults = false
     recognition.lang = 'en-US'
 
     recognition.onstart = () => setStatus('listening')
 
-    recognition.onresult = (e: any) => {
+    recognition.onresult = (e: SpeechRecognitionEventLike) => {
       const transcript = (e.results[e.results.length - 1][0].transcript as string).trim()
       setLastTranscript(transcript)
       const type = matchCommand(transcript)
@@ -90,7 +117,7 @@ export function useVoiceControl({ onCommand }: UseVoiceControlOptions) {
       }
     }
 
-    recognition.onerror = (e: any) => {
+    recognition.onerror = (e: SpeechRecognitionErrorEventLike) => {
       if (e.error === 'not-allowed') {
         enabledRef.current = false
         setStatus('permission_denied')
@@ -120,7 +147,7 @@ export function useVoiceControl({ onCommand }: UseVoiceControlOptions) {
     } catch {
       setStatus('error')
     }
-  }, [])
+  }, [speechRecognitionClass])
 
   const toggle = useCallback(() => {
     if (status === 'unsupported') return

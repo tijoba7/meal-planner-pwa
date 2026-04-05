@@ -17,6 +17,7 @@
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write src",
     "bundle:check": "node scripts/check-bundle-size.mjs",
+    "seed:recipes": "node scripts/seed-recipes.mjs",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:reset": "npx supabase db reset",
@@ -76,10 +77,12 @@
     "@sentry/react": "^10.43.0",
     "@supabase/supabase-js": "^2.99.2",
     "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-virtual": "^3.13.23",
     "dexie": "^4.3.0",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-hook-form": "^7.72.1",
     "react-router-dom": "^7.13.1",
     "web-vitals": "^5.1.0"
   }

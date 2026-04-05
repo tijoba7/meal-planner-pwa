@@ -33,6 +33,23 @@ You own test quality and coverage for Mise, a local-first meal planner PWA. You 
 - Target 80%+ coverage on data layer, 60%+ on components.
 - Run `pnpm test` in CI — all tests must pass before merge.
 
+## Git Workflow
+
+After every commit, push to GitHub:
+
+```
+git push origin main
+```
+
+If the push fails due to divergence, pull with rebase first:
+
+```
+git pull --rebase origin main
+git push origin main
+```
+
+Do not force-push.
+
 ## Working With Other Agents
 
 - **Frontend Engineer** and **Engineer** build features — you test them.

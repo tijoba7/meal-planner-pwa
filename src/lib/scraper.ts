@@ -143,6 +143,9 @@ export function _resetScraperCache(): void {
   _adminConfigAt = 0
 }
 
+/** Exported for testing only. */
+export { isSocialMediaUrl, extractLinkedUrls }
+
 /**
  * Server-side rate limit check via Supabase RPC.
  * Falls back to client-side check if RPC is unavailable.
@@ -169,18 +172,77 @@ function truncate(text: string, maxChars: number): string {
   return text.slice(0, maxChars) + '...[truncated]'
 }
 
+const SOCIAL_MEDIA_HOSTS = new Set([
+  'instagram.com',
+  'tiktok.com',
+  'pinterest.com',
+  'twitter.com',
+  'x.com',
+  'facebook.com',
+  'threads.net',
+  'youtube.com',
+  'youtu.be',
+])
+
+function isSocialMediaUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    return SOCIAL_MEDIA_HOSTS.has(host)
+  } catch {
+    return false
+  }
+}
+
+/** Extract the first few non-social HTTP(S) URLs found in page text. */
+function extractLinkedUrls(text: string, excludeHost: string): string[] {
+  const urlRegex = /https?:\/\/[^\s<>"'(){}|\\^`[\]]{10,}/g
+  const found = new Set<string>()
+  for (const match of text.matchAll(urlRegex)) {
+    const candidate = match[0].replace(/[.,;:!?)]+$/, '') // strip trailing punctuation
+    try {
+      const host = new URL(candidate).hostname.replace(/^www\./, '')
+      if (host !== excludeHost && !isSocialMediaUrl(candidate)) found.add(candidate)
+    } catch {
+      // skip invalid
+    }
+    if (found.size >= 3) break
+  }
+  return [...found]
+}
+
+/** Call the scrape-url edge function to fetch page content server-side (bypasses CORS). */
+async function fetchPageTextViaProxy(url: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke<{ text: string | null }>('scrape-url', {
+      body: { url },
+    })
+    if (error || data === null || data === undefined) return null
+    return data.text ?? null
+  } catch {
+    return null
+  }
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 async function fetchPageText(url: string): Promise<string | null> {
+  // Try edge function proxy first — runs server-side, bypasses browser CORS
+  const proxyText = await fetchPageTextViaProxy(url)
+  if (proxyText !== null) return proxyText
+
+  // Fallback: direct browser fetch (works for CORS-permissive sites)
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return null
     const html = await res.text()
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-    return text
+    return stripHtml(html)
   } catch {
     return null
   }
@@ -431,9 +493,29 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
 
   const pageText = await fetchPageText(url)
   const MAX_PAGE_CHARS = 12_000
-  const userMessage = pageText
-    ? `URL: ${url}\n\nPage content:\n${truncate(pageText, MAX_PAGE_CHARS)}`
-    : `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
+
+  let userMessage: string
+  if (pageText) {
+    let extra = ''
+    // For social media URLs, look for linked recipe pages in the page text and follow them.
+    if (isSocialMediaUrl(url)) {
+      const linkedUrls = extractLinkedUrls(pageText, new URL(url).hostname.replace(/^www\./, ''))
+      if (linkedUrls.length > 0) {
+        const linkedUrl = linkedUrls[0]
+        const linkedText = await fetchPageText(linkedUrl)
+        if (linkedText) {
+          extra =
+            `\n\nLinked recipe page: ${linkedUrl}\n\n` +
+            `Linked page content:\n${truncate(linkedText, MAX_PAGE_CHARS / 2)}`
+        }
+      }
+    }
+    userMessage =
+      `URL: ${url}\n\nPage content:\n${truncate(pageText, extra ? MAX_PAGE_CHARS / 2 : MAX_PAGE_CHARS)}` +
+      extra
+  } else {
+    userMessage = `URL: ${url}\n\n(Page content could not be fetched — extract from URL context and your knowledge.)`
+  }
 
   const result = await callAI(SYSTEM_PROMPT, userMessage, admin.apiKey, model, provider)
   if (result.ok && !result.recipe.url) {

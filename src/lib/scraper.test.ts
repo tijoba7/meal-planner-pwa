@@ -6,6 +6,8 @@ import {
   parsePaprikaRecipe,
   parseCroutonExport,
   _resetScraperCache,
+  isSocialMediaUrl,
+  extractLinkedUrls,
 } from './scraper'
 import type { ExtractedRecipe, BatchItemState } from './scraper'
 import { getAppSettingString, getAppSettingNumber } from './appSettingsService'
@@ -28,8 +30,16 @@ const mockRpc = vi.fn().mockImplementation((fn: string) => {
   }
   return Promise.resolve({ data: null, error: { message: 'Unknown function' } })
 })
+
+// By default the edge function proxy returns null (unavailable), so tests fall through
+// to the direct browser fetch mock and the existing fetch-ordering assumptions hold.
+export const mockFunctionsInvoke = vi.fn().mockResolvedValue({ data: { text: null }, error: null })
+
 vi.mock('./supabase', () => ({
-  supabase: { rpc: (...args: unknown[]) => mockRpc(...args) },
+  supabase: {
+    rpc: (...args: unknown[]) => mockRpc(...args),
+    functions: { invoke: (...args: unknown[]) => mockFunctionsInvoke(...args) },
+  },
 }))
 
 // Mock admin scraping config — return the fake API key so extractRecipeFromUrl works.
@@ -1189,6 +1199,82 @@ describe('parseCroutonExport', () => {
     expect(results[0].ok).toBe(true)
     if (!results[0].ok) return
     expect(results[0].recipe.recipeYield).toBe('4')
+  })
+})
+
+// ─── isSocialMediaUrl ─────────────────────────────────────────────────────────
+
+describe('isSocialMediaUrl', () => {
+  it.each([
+    'https://instagram.com/p/abc123',
+    'https://www.instagram.com/rhi.scran/reel/DWCJi_niLuv/',
+    'https://tiktok.com/@user/video/123',
+    'https://pinterest.com/pin/123',
+    'https://twitter.com/user/status/123',
+    'https://x.com/user/status/123',
+    'https://facebook.com/video/123',
+    'https://threads.net/@user',
+    'https://youtube.com/watch?v=abc',
+    'https://youtu.be/abc',
+  ])('returns true for %s', (url) => {
+    expect(isSocialMediaUrl(url)).toBe(true)
+  })
+
+  it.each([
+    'https://example.com/recipe/pasta',
+    'https://allrecipes.com/recipe/123',
+    'https://myrecipeblog.com/carbonara',
+  ])('returns false for %s', (url) => {
+    expect(isSocialMediaUrl(url)).toBe(false)
+  })
+})
+
+// ─── extractLinkedUrls ────────────────────────────────────────────────────────
+
+describe('extractLinkedUrls', () => {
+  it('extracts non-social HTTP(S) URLs from page text', () => {
+    const text =
+      'Check out my recipe at https://myrecipeblog.com/carbonara or visit https://allrecipes.com/recipe/123'
+    const result = extractLinkedUrls(text, 'instagram.com')
+    expect(result).toContain('https://myrecipeblog.com/carbonara')
+    expect(result).toContain('https://allrecipes.com/recipe/123')
+  })
+
+  it('excludes the source domain', () => {
+    const text = 'More at https://instagram.com/p/other and https://myrecipeblog.com/pasta'
+    const result = extractLinkedUrls(text, 'instagram.com')
+    expect(result).not.toContain('https://instagram.com/p/other')
+    expect(result).toContain('https://myrecipeblog.com/pasta')
+  })
+
+  it('excludes other social media domains', () => {
+    const text = 'See https://tiktok.com/@user/video/123 and https://myrecipeblog.com/pasta'
+    const result = extractLinkedUrls(text, 'instagram.com')
+    expect(result).not.toContain('https://tiktok.com/@user/video/123')
+    expect(result).toContain('https://myrecipeblog.com/pasta')
+  })
+
+  it('strips trailing punctuation from URLs', () => {
+    const text = 'Recipe at https://example.com/pasta.'
+    const result = extractLinkedUrls(text, 'instagram.com')
+    expect(result).toContain('https://example.com/pasta')
+    expect(result).not.toContain('https://example.com/pasta.')
+  })
+
+  it('returns at most 3 URLs', () => {
+    const text = [
+      'https://a.com/1',
+      'https://b.com/2',
+      'https://c.com/3',
+      'https://d.com/4',
+    ].join(' ')
+    const result = extractLinkedUrls(text, 'instagram.com')
+    expect(result.length).toBeLessThanOrEqual(3)
+  })
+
+  it('returns empty array when no matching URLs found', () => {
+    const result = extractLinkedUrls('No URLs here!', 'instagram.com')
+    expect(result).toEqual([])
   })
 })
 

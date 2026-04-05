@@ -85,6 +85,23 @@ In the Supabase dashboard → **Authentication → URL Configuration**, set:
 - **Site URL**: your production domain (e.g. `https://mise.yourdomain.com`)
 - **Redirect URLs**: add `https://mise.yourdomain.com/**`
 
+#### Deploy the scrape-url Edge Function
+
+The `scrape-url` edge function proxies URL fetches server-side to bypass browser CORS restrictions. It is required for reliable recipe scraping (especially non-CORS-permissive sites).
+
+**Deploy to production (Supabase CLI):**
+```bash
+npx supabase link --project-ref <your-project-ref>
+npx supabase functions deploy scrape-url
+```
+
+**Run locally:**
+```bash
+npx supabase functions serve scrape-url
+```
+
+The frontend falls back to a direct browser fetch when the edge function is unavailable, so the app still works without it — but scraping will be limited by CORS.
+
 #### Local development with Supabase CLI
 
 To run a full Supabase stack locally (requires Docker):

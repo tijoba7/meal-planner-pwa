@@ -102,7 +102,7 @@ export default defineConfig(({ mode }) => {
     }),
   ],
   build: {
-    sourcemap: true, // required for Sentry source maps
+    sourcemap: 'hidden', // upload to Sentry but don't expose source to browsers
     // Sentry bundle is ~440 kB; raise the limit so it doesn't warn.
     chunkSizeWarningLimit: 700,
     rolldownOptions: {

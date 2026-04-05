@@ -5,7 +5,7 @@
  * Called by the frontend scraper before falling back to a direct fetch.
  *
  * Request:  POST { url: string }
- * Response: { text: string | null }
+ * Response: { text: string | null, sourceType: 'social_video' | 'html' | null }
  *
  * Auth: Any valid Supabase JWT (anon key or user session).
  */
@@ -21,6 +21,117 @@ const BROWSER_HEADERS = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
   'Cache-Control': 'no-cache',
+}
+
+type SourceType = 'social_video' | 'html'
+
+// Social media video URL patterns per platform
+const SOCIAL_VIDEO_PATTERNS: { host: string; patterns: RegExp[] }[] = [
+  { host: 'instagram.com', patterns: [/\/reel\//i, /\/reels\//i] },
+  { host: 'tiktok.com', patterns: [/\/@[^/]+\/video\//i, /\/v\//i] },
+  { host: 'youtube.com', patterns: [/\/shorts\//i, /\/watch(\?|$)/i] },
+  { host: 'youtu.be', patterns: [/.*/] }, // all short links are videos
+]
+
+function detectSocialVideoType(url: string): SourceType | null {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.replace(/^www\./, '')
+    for (const entry of SOCIAL_VIDEO_PATTERNS) {
+      if (host === entry.host) {
+        const target = parsed.pathname + parsed.search
+        if (entry.patterns.some((p) => p.test(target))) return 'social_video'
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Extract rich metadata from social media HTML before full tag stripping.
+ * Returns a structured text block with og/twitter meta content and JSON-LD.
+ */
+function extractSocialMetadata(html: string): string {
+  const lines: string[] = []
+
+  // <title>
+  const titleMatch = html.match(/<title[^>]*>([^<]{1,300})<\/title>/i)
+  if (titleMatch) lines.push(`title: ${titleMatch[1].trim()}`)
+
+  // <meta> tag extraction — og:* properties and twitter:* / description names
+  const metaRegex = /<meta\s[^>]+>/gi
+  const seen = new Set<string>()
+  for (const metaTag of html.matchAll(metaRegex)) {
+    const tag = metaTag[0]
+    // property="og:*" or property="twitter:*"
+    const propMatch = tag.match(/property=["']([^"']+)["']/i)
+    // name="twitter:*" or name="description"
+    const nameMatch = tag.match(/name=["']([^"']+)["']/i)
+    const contentMatch = tag.match(/content=["']([^"']{1,500})["']/i)
+    const content = contentMatch?.[1]?.trim()
+    if (!content) continue
+
+    const key = propMatch?.[1] ?? nameMatch?.[1] ?? ''
+    const normalized = key.toLowerCase()
+    if (!normalized) continue
+
+    // Capture og:*, twitter:*, description
+    if (
+      normalized.startsWith('og:') ||
+      normalized.startsWith('twitter:') ||
+      normalized === 'description'
+    ) {
+      const entry = `${normalized}: ${content}`
+      if (!seen.has(entry)) {
+        seen.add(entry)
+        lines.push(entry)
+      }
+    }
+  }
+
+  // JSON-LD structured data blocks (YouTube has VideoObject schema, etc.)
+  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  for (const block of html.matchAll(jsonLdRegex)) {
+    try {
+      const data = JSON.parse(block[1]) as unknown
+      // Flatten to a compact readable form (skip large arrays)
+      const compact = flattenJsonLd(data)
+      if (compact) lines.push(`\nstructured_data:\n${compact}`)
+    } catch {
+      // skip invalid JSON-LD
+    }
+  }
+
+  return lines.join('\n')
+}
+
+/** Recursively flatten JSON-LD to key: value lines, capped at ~2000 chars. */
+function flattenJsonLd(data: unknown, depth = 0): string {
+  if (depth > 3) return ''
+  if (typeof data === 'string' || typeof data === 'number') return String(data).slice(0, 300)
+  if (Array.isArray(data)) {
+    return data
+      .slice(0, 5)
+      .map((item) => flattenJsonLd(item, depth + 1))
+      .filter(Boolean)
+      .join('\n')
+  }
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>
+    return Object.entries(obj)
+      .filter(([k]) => !k.startsWith('@') || k === '@type')
+      .slice(0, 20)
+      .map(([k, v]) => {
+        const val = flattenJsonLd(v, depth + 1)
+        return val ? `${k}: ${val}` : ''
+      })
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 2000)
+  }
+  return ''
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -53,24 +164,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!['http:', 'https:'].includes(parsed.protocol)) {
     return json({ error: 'Only HTTP/HTTPS URLs are supported' }, 400)
   }
-  // Block local/private addresses
+  // Block local/private addresses (SSRF prevention)
   const host = parsed.hostname
   if (
     host === 'localhost' ||
+    host === '0.0.0.0' ||
     host === '127.0.0.1' ||
     host === '::1' ||
+    host.startsWith('fc') || // IPv6 unique-local fc00::/7
+    host.startsWith('fd') || // IPv6 unique-local fd00::/8
+    host.startsWith('fe80') || // IPv6 link-local fe80::/10
+    host.startsWith('169.254.') || // link-local + cloud instance metadata (AWS/GCP/Azure)
     host.startsWith('192.168.') ||
     host.startsWith('10.') ||
-    host.startsWith('172.')
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) // RFC 1918: 172.16.0.0–172.31.255.255
   ) {
     return json({ error: 'Private network URLs are not allowed' }, 400)
   }
 
-  const text = await fetchUrlText(url)
-  return json({ text })
+  const result = await fetchUrlText(url)
+  return json({ text: result.text, sourceType: result.sourceType })
 })
 
-async function fetchUrlText(url: string): Promise<string | null> {
+async function fetchUrlText(url: string): Promise<{ text: string | null; sourceType: SourceType | null }> {
+  const socialType = detectSocialVideoType(url)
   try {
     const res = await fetch(url, {
       headers: BROWSER_HEADERS,
@@ -78,17 +195,32 @@ async function fetchUrlText(url: string): Promise<string | null> {
       signal: AbortSignal.timeout(10_000),
     })
 
-    if (!res.ok) return null
+    if (!res.ok) return { text: null, sourceType: null }
 
     const contentType = res.headers.get('content-type') ?? ''
     if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
-      return null
+      return { text: null, sourceType: null }
     }
 
     const html = await res.text()
-    return stripHtml(html)
+
+    if (socialType === 'social_video') {
+      // For social media videos, prepend rich metadata before the stripped page text
+      // so the AI has captions, descriptions, and structured data to work with.
+      const metadata = extractSocialMetadata(html)
+      const stripped = stripHtml(html)
+      const combined = [
+        metadata ? `[Social Media Metadata]\n${metadata}` : '',
+        stripped ? `\n[Page Text]\n${stripped}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+      return { text: combined || null, sourceType: 'social_video' }
+    }
+
+    return { text: stripHtml(html), sourceType: 'html' }
   } catch {
-    return null
+    return { text: null, sourceType: null }
   }
 }
 

@@ -67,7 +67,9 @@
   },
   "pnpm": {
     "overrides": {
-      "serialize-javascript": ">=7.0.3"
+      "serialize-javascript": ">=7.0.3",
+      "flatted": ">=3.4.2",
+      "lodash": ">=4.18.0"
     }
   },
   "dependencies": {

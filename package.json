@@ -75,7 +75,7 @@
   },
   "dependencies": {
     "@sentry/react": "^10.43.0",
-    "@supabase/supabase-js": "^2.99.3",
+    "@supabase/supabase-js": "^2.101.1",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-virtual": "^3.13.23",
     "dexie": "^4.3.0",

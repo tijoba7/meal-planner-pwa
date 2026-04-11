@@ -1,4 +1,4 @@
-# Mise
+# Braisely
 
 **Everything in its place.** A social recipe platform and meal planner PWA.
 
@@ -9,7 +9,7 @@
 
 ## Overview
 
-Mise is a progressive web app for collecting recipes, planning weekly meals, and generating shopping lists. It works fully offline with local-first storage (IndexedDB), with optional Supabase sync for social features — following, sharing recipes, stories, direct messages, and household coordination.
+Braisely is a progressive web app for collecting recipes, planning weekly meals, and generating shopping lists. It works fully offline with local-first storage (IndexedDB), with optional Supabase sync for social features — following, sharing recipes, stories, direct messages, and household coordination.
 
 **Key features:**
 - Recipe import from URL (AI-powered scraper) or manual entry
@@ -83,7 +83,7 @@ The app builds and works fully offline without any of these set.
 ### 1. Create a project
 
 1. Go to [supabase.com](https://supabase.com) → New project
-2. Choose a name (e.g. `mise`), region closest to your users, and a strong database password
+2. Choose a name (e.g. `braisely`), region closest to your users, and a strong database password
 3. Wait ~2 minutes for the project to initialize
 
 ### 2. Get your credentials
@@ -112,8 +112,8 @@ Dashboard → **Authentication → Providers → Email**:
 - Confirm email: **Off** (disable for frictionless signup)
 
 Dashboard → **Authentication → URL Configuration**:
-- **Site URL**: your production domain (e.g. `https://mise.yourdomain.com`)
-- **Redirect URLs**: `https://mise.yourdomain.com/**`
+- **Site URL**: your production domain (e.g. `https://braisely.yourdomain.com`)
+- **Redirect URLs**: `https://braisely.yourdomain.com/**`
 
 For local development, add `http://localhost:5173/**` to Redirect URLs.
 
@@ -169,9 +169,9 @@ For CI/CD via GitHub Actions, see [docs/deployment.md](docs/deployment.md).
 docker build \
   --build-arg VITE_SUPABASE_URL=https://your-ref.supabase.co \
   --build-arg VITE_SUPABASE_ANON_KEY=your-anon-key \
-  -t mise .
+  -t braisely .
 
-docker run -p 80:80 mise
+docker run -p 80:80 braisely
 ```
 
 Or with Docker Compose (env vars are read from `.env.local` or shell environment):

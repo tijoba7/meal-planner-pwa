@@ -149,6 +149,6 @@ test.describe('Settings — data export', () => {
       page.getByRole('button', { name: /export/i }).click(),
     ])
 
-    expect(download.suggestedFilename()).toMatch(/mise-backup-.*\.json/)
+    expect(download.suggestedFilename()).toMatch(/braisely-backup-.*\.json/)
   })
 })

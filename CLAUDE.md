@@ -1,4 +1,4 @@
-# Mise — Project-wide Agent Instructions
+# Braisely — Project-wide Agent Instructions
 
 ## Git Workflow
 

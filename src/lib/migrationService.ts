@@ -18,7 +18,7 @@ interface PersistedState {
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 
-const KEY_PREFIX = 'mise:migration:'
+const KEY_PREFIX = 'braisely:migration:'
 
 function storageKey(userId: string): string {
   return `${KEY_PREFIX}${userId}`

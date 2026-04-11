@@ -109,7 +109,7 @@ describe('Layout', () => {
     it('renders the app name in the sidebar', () => {
       renderLayout()
       // The sidebar h1 (desktop)
-      const headings = screen.getAllByRole('heading', { name: 'mise' })
+      const headings = screen.getAllByRole('heading', { name: 'Braisely' })
       expect(headings.length).toBeGreaterThanOrEqual(1)
     })
   })

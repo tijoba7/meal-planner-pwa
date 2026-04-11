@@ -103,7 +103,7 @@ function parseBackup(raw: unknown): ImportPreview {
   )
   if (hasV1Recipe) {
     throw new Error(
-      'This backup was created with an older version of mise and cannot be imported directly. Please export from the latest version first.'
+      'This backup was created with an older version of Braisely and cannot be imported directly. Please export from the latest version first.'
     )
   }
 
@@ -261,7 +261,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `mise-backup-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `braisely-backup-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
       URL.revokeObjectURL(url)
     } finally {
@@ -573,7 +573,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <RowLabel>Push notifications</RowLabel>
-                  <RowDescription>Allow mise to send you reminders</RowDescription>
+                  <RowDescription>Allow Braisely to send you reminders</RowDescription>
                 </div>
                 <Toggle
                   checked={notifPrefs.pushEnabled}
@@ -746,7 +746,7 @@ export default function SettingsPage() {
         <SettingsCard>
           <SettingsRow>
             <div className="flex items-center justify-between">
-              <RowLabel>mise</RowLabel>
+              <RowLabel>Braisely</RowLabel>
               <span className="text-sm text-gray-400 dark:text-gray-500">v0.1.0</span>
             </div>
             <RowDescription>

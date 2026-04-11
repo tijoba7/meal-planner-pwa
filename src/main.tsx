@@ -7,8 +7,10 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { queryClient } from './lib/queryClient'
 import { initSentry } from './lib/sentry'
 import { startVitalsReporting } from './lib/vitals'
+import { migrateBrandKeys } from './lib/brandMigration'
 import './index.css'
 
+migrateBrandKeys()
 initSentry()
 startVitalsReporting()
 

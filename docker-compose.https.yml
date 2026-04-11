@@ -12,7 +12,7 @@ services:
         SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
         SENTRY_ORG: ${SENTRY_ORG:-}
         SENTRY_PROJECT: ${SENTRY_PROJECT:-meal-planner-pwa}
-    image: mise:latest
+    image: braisely:latest
     expose:
       - "80"
     restart: unless-stopped

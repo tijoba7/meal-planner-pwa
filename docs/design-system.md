@@ -1,4 +1,4 @@
-# Mise Design System
+# Braisely Design System
 
 > "Everything in its place." — clean, warm, approachable. Not corporate. Not playful.
 
@@ -761,7 +761,7 @@ Bottom sheet (mobile) / centered modal (sm+) for sharing a recipe. Handles copy-
 ```tsx
 <ShareDialog
   recipeName="Pasta Carbonara"
-  shareUrl={`https://mise.app/recipes/${recipe.id}`}
+  shareUrl={`https://braisely.app/recipes/${recipe.id}`}
   currentVisibility={recipe.visibility}
   onVisibilityChange={(v) => updateVisibility(recipe.id, v)}
   onClose={() => setShowShare(false)}

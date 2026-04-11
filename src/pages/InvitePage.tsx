@@ -107,7 +107,7 @@ export default function InvitePage() {
           className="inline-flex items-center gap-1.5 text-sm text-green-700 dark:text-green-400 hover:underline"
         >
           <ChevronLeft size={14} />
-          Back to mise
+          Back to Braisely
         </Link>
       </div>
     )
@@ -170,7 +170,7 @@ export default function InvitePage() {
             ) : (
               <>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-                  {inviter.display_name} wants to connect with you on mise.
+                  {inviter.display_name} wants to connect with you on Braisely.
                 </p>
                 {status === 'error' && <p className="text-sm text-red-500 mb-3">{errorMsg}</p>}
                 <button

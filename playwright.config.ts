@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Playwright E2E test configuration for Mise.
+ * Playwright E2E test configuration for Braisely.
  *
  * Three web servers, all using fake Supabase credentials:
  *  - Port 5175: feature test server — tests inject sessions via localStorage

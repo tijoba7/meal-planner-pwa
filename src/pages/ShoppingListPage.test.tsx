@@ -65,7 +65,7 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: {
       id: 'test-user-shopping-page',
-      email: 'test@mise.local',
+      email: 'test@braisely.local',
     },
     session: null,
     loading: false,

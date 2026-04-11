@@ -147,7 +147,7 @@ test.describe('Cooking mode — step navigation', () => {
     await expect(dialog.getByRole('button', { name: 'Next step' })).not.toBeVisible()
   })
 
-  test('Finish button closes cooking mode', async ({ page }) => {
+  test('Finish opens rating prompt and Skip closes cooking mode', async ({ page }) => {
     const name = `Cook FinishClose ${RUN_ID}`
     await createRecipeWithSteps(page, { name, steps: ['Only one step.'] })
 
@@ -156,6 +156,8 @@ test.describe('Cooking mode — step navigation', () => {
     await expect(dialog).toBeVisible()
 
     await dialog.getByRole('button', { name: 'Finish' }).click()
+    await expect(dialog.getByRole('heading', { name: 'How was it?' })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Skip' }).click()
     await expect(page.getByRole('dialog', { name: 'Cooking mode' })).not.toBeVisible()
   })
 })

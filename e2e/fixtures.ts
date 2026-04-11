@@ -98,13 +98,13 @@ export const test = base.extend<{
     const userId = session.user.id
     await page.addInitScript(
       ({ key, sessionJson, userId }) => {
-        localStorage.setItem('mise_onboarding_done', '1')
+        localStorage.setItem('braisely_onboarding_done', '1')
         localStorage.setItem(key, sessionJson)
         // Skip the cloud-migration prompt — tests that create recipes would
         // otherwise see the MigrationPrompt modal (because saved recipes go
         // into Dexie and trigger the "you have local data" check).
         localStorage.setItem(
-          `mise:migration:${userId}`,
+          `braisely:migration:${userId}`,
           JSON.stringify({ skipped: true, skippedAt: new Date().toISOString() }),
         )
       },

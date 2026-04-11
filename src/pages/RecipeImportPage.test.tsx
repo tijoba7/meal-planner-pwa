@@ -336,6 +336,10 @@ describe('RecipeImportPage', () => {
       })
 
       resolveSave({ id: 'new-recipe-id' })
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/recipes/new-recipe-id')
+      })
     })
   })
 

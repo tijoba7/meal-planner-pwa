@@ -1,5 +1,5 @@
 /**
- * Push notification utilities for Mise.
+ * Push notification utilities for Braisely.
  *
  * Handles:
  *  - Requesting notification permission

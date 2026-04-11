@@ -3,12 +3,11 @@ import { test, expect, type Page } from '@playwright/test'
 /**
  * E2E tests for recipe import from URL.
  *
- * The import flow calls https://api.anthropic.com/v1/messages directly from
- * the browser. In E2E tests we:
+ * The import flow calls Supabase Edge Functions from the browser. In E2E tests we:
  *   1. Inject a fake Supabase session so ProtectedRoute renders the app.
  *   2. Mock the app_settings Supabase endpoint to return an admin API key.
- *   3. Intercept the Anthropic API with page.route() and return a fixed recipe.
- *   4. Optionally block the page-fetch (CORS preflight) to keep tests hermetic.
+ *   3. Intercept `extract-recipe` and `scrape-url` with page.route().
+ *   4. Optionally block direct page-fetch fallback to keep tests hermetic.
  *
  * Tests that don't need the mocked API (e.g. no-key gate, JSON-LD import)
  * skip the route intercept.
@@ -45,7 +44,7 @@ function buildFakeSession(email = 'e2e@test.local') {
 
 const MOCK_RECIPE = {
   name: `E2E Imported Recipe ${RUN_ID}`,
-  description: 'A test recipe extracted by the mock Claude API.',
+  description: 'A test recipe extracted by the mock edge function.',
   recipeYield: '4',
   prepTime: 'PT10M',
   cookTime: 'PT30M',
@@ -64,21 +63,24 @@ const MOCK_RECIPE = {
   recipeCuisine: 'French',
 }
 
-/** Mock the Anthropic messages API to return MOCK_RECIPE as the Claude response. */
-async function mockAnthropicApi(page: Page) {
-  await page.route('https://api.anthropic.com/v1/messages', (route) => {
+/** Mock extract-recipe edge function to return a successful extraction. */
+async function mockExtractRecipeEdge(page: Page) {
+  await page.route('**/functions/v1/extract-recipe', (route) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        id: 'msg_mock',
-        type: 'message',
-        role: 'assistant',
-        content: [{ type: 'text', text: JSON.stringify(MOCK_RECIPE) }],
-        model: 'claude-haiku-4-5-20251001',
-        stop_reason: 'end_turn',
-        usage: { input_tokens: 100, output_tokens: 200 },
-      }),
+      body: JSON.stringify({ ok: true, recipe: MOCK_RECIPE }),
+    })
+  })
+}
+
+/** Mock scrape-url edge function to return no fetched page text (forcing fallback path). */
+async function mockScrapeUrlEdge(page: Page) {
+  await page.route('**/functions/v1/scrape-url', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ text: null, sourceType: null }),
     })
   })
 }
@@ -88,7 +90,7 @@ async function setApiKey(page: Page) {
   const session = buildFakeSession()
   await page.addInitScript(
     ({ key, sessionJson }) => {
-      localStorage.setItem('mise_onboarding_done', '1')
+      localStorage.setItem('braisely_onboarding_done', '1')
       localStorage.setItem(key, sessionJson)
     },
     { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },
@@ -133,7 +135,7 @@ test.describe('Recipe Import — no admin key', () => {
     // Inject session but do NOT configure an admin API key — tests the no-key gate
     await page.addInitScript(
       ({ key, sessionJson }) => {
-        localStorage.setItem('mise_onboarding_done', '1')
+        localStorage.setItem('braisely_onboarding_done', '1')
         localStorage.setItem(key, sessionJson)
       },
       { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },
@@ -173,7 +175,7 @@ test.describe('Recipe Import — no admin key', () => {
   })
 })
 
-// ── Tests: URL import with mocked Claude ─────────────────────────────────────
+// ── Tests: URL import with mocked edge functions ─────────────────────────────
 
 test.describe('Recipe Import — URL import', () => {
   test.beforeEach(async ({ page }) => {
@@ -192,8 +194,9 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('shows loading state while extracting', async ({ page }) => {
+    await mockScrapeUrlEdge(page)
     // Use a never-resolving route to catch the loading UI
-    await page.route('https://api.anthropic.com/v1/messages', () => {
+    await page.route('**/functions/v1/extract-recipe', () => {
       // intentionally never fulfilled — test only checks loading state appears
     })
     // Block the page-fetch too so only the mock controls timing
@@ -207,7 +210,8 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('shows extracted recipe for review after successful extraction', async ({ page }) => {
-    await mockAnthropicApi(page)
+    await mockScrapeUrlEdge(page)
+    await mockExtractRecipeEdge(page)
     await page.route('https://example.com/recipe/test', (route) => route.abort())
 
     await page.goto('/recipes/import')
@@ -221,7 +225,8 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('shows author and metadata in the review panel', async ({ page }) => {
-    await mockAnthropicApi(page)
+    await mockScrapeUrlEdge(page)
+    await mockExtractRecipeEdge(page)
     await page.route('https://example.com/recipe/test', (route) => route.abort())
 
     await page.goto('/recipes/import')
@@ -233,7 +238,8 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('saving an imported recipe navigates to the detail page', async ({ page }) => {
-    await mockAnthropicApi(page)
+    await mockScrapeUrlEdge(page)
+    await mockExtractRecipeEdge(page)
     await page.route('https://example.com/recipe/test', (route) => route.abort())
 
     await page.goto('/recipes/import')
@@ -249,7 +255,8 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('saved imported recipe appears in the recipes list', async ({ page }) => {
-    await mockAnthropicApi(page)
+    await mockScrapeUrlEdge(page)
+    await mockExtractRecipeEdge(page)
     await page.route('https://example.com/recipe/test', (route) => route.abort())
 
     await page.goto('/recipes/import')
@@ -266,7 +273,8 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('"Try another" resets the form after extraction', async ({ page }) => {
-    await mockAnthropicApi(page)
+    await mockScrapeUrlEdge(page)
+    await mockExtractRecipeEdge(page)
     await page.route('https://example.com/recipe/test', (route) => route.abort())
 
     await page.goto('/recipes/import')
@@ -283,11 +291,12 @@ test.describe('Recipe Import — URL import', () => {
   })
 
   test('shows error message when API returns an error', async ({ page }) => {
-    await page.route('https://api.anthropic.com/v1/messages', (route) => {
+    await mockScrapeUrlEdge(page)
+    await page.route('**/functions/v1/extract-recipe', (route) => {
       route.fulfill({
-        status: 401,
+        status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ error: { type: 'authentication_error', message: 'Invalid API key' } }),
+        body: JSON.stringify({ ok: false, error: 'Invalid API key' }),
       })
     })
     await page.route('https://example.com/recipe/test', (route) => route.abort())

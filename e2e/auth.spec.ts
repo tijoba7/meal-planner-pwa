@@ -77,12 +77,12 @@ test.describe('Auth — unauthenticated', () => {
     await page.goto('/meal-plan')
     await expect(page).toHaveURL(/\/auth\/login/)
     // Login page should be visible
-    await expect(page.getByRole('heading', { name: 'Mise' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Braisely' })).toBeVisible()
   })
 
   test('login page renders form correctly', async ({ page }) => {
     await page.goto('/auth/login')
-    await expect(page.getByRole('heading', { name: 'Mise' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Braisely' })).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByLabel('Password')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
@@ -90,7 +90,7 @@ test.describe('Auth — unauthenticated', () => {
 
   test('signup page renders form correctly', async ({ page }) => {
     await page.goto('/auth/signup')
-    await expect(page.getByRole('heading', { name: 'Mise' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Braisely' })).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     // Use exact: true — 'Password' is a substring of 'Confirm password'
     await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
@@ -117,7 +117,7 @@ test.describe('Auth — login', () => {
     )
 
     await page.addInitScript(() => {
-      localStorage.setItem('mise_onboarding_done', '1')
+      localStorage.setItem('braisely_onboarding_done', '1')
     })
 
     await page.goto('/auth/login')
@@ -143,7 +143,7 @@ test.describe('Auth — login', () => {
     )
 
     await page.addInitScript(() => {
-      localStorage.setItem('mise_onboarding_done', '1')
+      localStorage.setItem('braisely_onboarding_done', '1')
     })
 
     // Navigate to protected route first — should redirect to login
@@ -255,7 +255,7 @@ test.describe('Auth — session persistence', () => {
     // Inject fake session and onboarding flag before app loads
     await page.addInitScript(
       ({ key, sessionJson }) => {
-        localStorage.setItem('mise_onboarding_done', '1')
+        localStorage.setItem('braisely_onboarding_done', '1')
         localStorage.setItem(key, sessionJson)
       },
       { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },
@@ -294,7 +294,7 @@ test.describe('Auth — logout', () => {
 
     await page.addInitScript(
       ({ key, sessionJson }) => {
-        localStorage.setItem('mise_onboarding_done', '1')
+        localStorage.setItem('braisely_onboarding_done', '1')
         localStorage.setItem(key, sessionJson)
       },
       { key: SUPABASE_STORAGE_KEY, sessionJson: JSON.stringify(session) },

@@ -184,7 +184,7 @@ export default function ProfilePage() {
           />
           <div>
             <p className="text-sm font-medium text-green-800 dark:text-green-300">
-              Welcome to mise!
+              Welcome to Braisely!
             </p>
             <p className="text-sm text-green-700 dark:text-green-400 mt-0.5">
               Add a photo, bio, and dietary preferences so others can find and connect with you.

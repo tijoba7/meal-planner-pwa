@@ -50,10 +50,10 @@ test.beforeEach(async ({ page }) => {
   const userId = session.user.id
   await page.addInitScript(
     ({ key, sessionJson, userId }) => {
-      localStorage.setItem('mise_onboarding_done', '1')
+      localStorage.setItem('braisely_onboarding_done', '1')
       localStorage.setItem(key, sessionJson)
       localStorage.setItem(
-        `mise:migration:${userId}`,
+        `braisely:migration:${userId}`,
         JSON.stringify({ skipped: true, skippedAt: new Date().toISOString() }),
       )
     },

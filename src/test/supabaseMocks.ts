@@ -27,7 +27,7 @@ export function fakeUser() {
   return {
     user: {
       id: TEST_USER_ID,
-      email: 'test@mise.local',
+      email: 'test@braisely.local',
       aud: 'authenticated',
       role: 'authenticated',
     },

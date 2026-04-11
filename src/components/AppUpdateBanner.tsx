@@ -18,7 +18,7 @@ export default function AppUpdateBanner() {
   return (
     <div className="fixed bottom-20 md:bottom-4 inset-x-0 flex justify-center z-30 px-4 pointer-events-none">
       <div className="bg-gray-900 dark:bg-gray-800 text-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 max-w-sm w-full pointer-events-auto">
-        <p className="flex-1 text-sm">A new version of mise is ready.</p>
+        <p className="flex-1 text-sm">A new version of Braisely is ready.</p>
         <button
           onClick={() => setDismissed(true)}
           className="text-xs text-gray-400 hover:text-gray-200 transition-colors shrink-0"

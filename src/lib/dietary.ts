@@ -305,7 +305,7 @@ export function detectAllergenIngredients(
 
 // ─── localStorage persistence ─────────────────────────────────────────────────
 
-const DIETARY_PREFS_KEY = 'mise-dietary-prefs'
+const DIETARY_PREFS_KEY = 'braisely-dietary-prefs'
 
 export function getDietaryPrefs(): string[] {
   try {

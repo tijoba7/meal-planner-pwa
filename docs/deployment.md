@@ -1,6 +1,6 @@
 # Deployment
 
-Mise is a static SPA that builds to a `dist/` directory. It can be deployed to Vercel, Docker, or any static host.
+Braisely is a static SPA that builds to a `dist/` directory. It can be deployed to Vercel, Docker, or any static host.
 
 For a full setup walkthrough including prerequisites, environment variables, and Supabase configuration, see [README.md](../README.md).
 
@@ -23,7 +23,7 @@ runs without it (local-only mode), but social features require a live project.
 #### Step-by-step (board action required)
 
 1. Go to [supabase.com](https://supabase.com) and create a new project.
-   - **Name**: `mise` (or any name)
+   - **Name**: `braisely` (or any name)
    - **Region**: pick the region closest to your users
    - **Password**: generate a strong database password and store it in your
      password manager
@@ -82,8 +82,8 @@ runs without it (local-only mode), but social features require a live project.
 #### Supabase auth settings
 
 In the Supabase dashboard → **Authentication → URL Configuration**, set:
-- **Site URL**: your production domain (e.g. `https://mise.yourdomain.com`)
-- **Redirect URLs**: add `https://mise.yourdomain.com/**`
+- **Site URL**: your production domain (e.g. `https://braisely.yourdomain.com`)
+- **Redirect URLs**: add `https://braisely.yourdomain.com/**`
 
 #### Deploy the scrape-url Edge Function
 
@@ -190,9 +190,9 @@ A `Dockerfile` and `docker-compose.yml` are included for self-hosted deployments
 docker build \
   --build-arg VITE_SUPABASE_URL=https://your-ref.supabase.co \
   --build-arg VITE_SUPABASE_ANON_KEY=your-anon-key \
-  -t mise .
+  -t braisely .
 
-docker run -p 80:80 mise
+docker run -p 80:80 braisely
 ```
 
 **Or with Docker Compose** (reads from `.env.local` or shell environment):
@@ -251,7 +251,7 @@ Set these in the App Platform dashboard under **Settings → App-Level Environme
 
 ### Custom Domain
 
-1. In App Platform → **Settings → Domains**, add your domain (e.g., `mise.yourdomain.com`).
+1. In App Platform → **Settings → Domains**, add your domain (e.g., `braisely.yourdomain.com`).
 2. App Platform provides a CNAME record — add it to your DNS provider.
 3. TLS certificates are provisioned automatically. No Caddy or manual cert management needed.
 4. Update Supabase auth settings: **Site URL** and **Redirect URLs** must match the new domain.
@@ -296,7 +296,7 @@ git clone <your-repo> && cd meal-planner-pwa
 docker compose up -d
 
 # HTTPS with auto Let's Encrypt
-DOMAIN=mise.yourdomain.com docker compose -f docker-compose.https.yml up -d
+DOMAIN=braisely.yourdomain.com docker compose -f docker-compose.https.yml up -d
 ```
 
 See the [Docker self-hosting section](#self-hosting-with-docker) below for full details.
@@ -421,14 +421,14 @@ Without `VITE_VAPID_PUBLIC_KEY` the push subscription flow is disabled; the app 
 ### Notification payload format
 
 ```json
-{ "title": "Mise", "body": "Your meal plan was updated.", "url": "/meal-plan" }
+{ "title": "Braisely", "body": "Your meal plan was updated.", "url": "/meal-plan" }
 ```
 
 `url` is optional and defaults to `/`.
 
 ## Self-Hosting with Docker
 
-Mise ships as a static SPA served by nginx inside a Docker container. You can run it on any Linux server, VPS, or home server.
+Braisely ships as a static SPA served by nginx inside a Docker container. You can run it on any Linux server, VPS, or home server.
 
 ### Prerequisites
 
@@ -484,9 +484,9 @@ docker compose build --no-cache && docker compose up -d
 docker build \
   --build-arg VITE_SUPABASE_URL=https://... \
   --build-arg VITE_SUPABASE_ANON_KEY=... \
-  -t mise:latest .
+  -t braisely:latest .
 
-docker run -d -p 80:80 --name mise mise:latest
+docker run -d -p 80:80 --name braisely braisely:latest
 ```
 
 ### HTTPS with Caddy (recommended for self-hosting)
@@ -497,7 +497,7 @@ A production-ready `docker-compose.https.yml` is included with [Caddy](https://c
 
 ```bash
 # Set your domain and start with HTTPS
-DOMAIN=mise.yourdomain.com docker compose -f docker-compose.https.yml up -d
+DOMAIN=braisely.yourdomain.com docker compose -f docker-compose.https.yml up -d
 ```
 
 Caddy auto-provisions and renews TLS certificates. No manual cert management needed.
@@ -517,7 +517,7 @@ If you already run nginx, Traefik, or another reverse proxy, use the standard `d
 # nginx example
 server {
     listen 443 ssl;
-    server_name mise.yourdomain.com;
+    server_name braisely.yourdomain.com;
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
     location / {

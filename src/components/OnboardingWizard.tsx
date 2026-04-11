@@ -4,7 +4,7 @@ import { BookOpen, CalendarDays, ShoppingCart, Utensils, X } from 'lucide-react'
 import { useCreateRecipe } from '../hooks/useRecipes'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
-const STORAGE_KEY = 'mise_onboarding_done'
+const STORAGE_KEY = 'braisely_onboarding_done'
 
 export function isOnboardingDone(): boolean {
   return localStorage.getItem(STORAGE_KEY) === '1'
@@ -54,7 +54,7 @@ const SAMPLE_RECIPE = {
 const STEPS = [
   {
     id: 'welcome',
-    title: 'Welcome to mise',
+    title: 'Welcome to Braisely',
     subtitle: 'Cook. Share. Enjoy.',
     body: 'Discover and share recipes with friends, plan your week, and build shopping lists — all in one place.',
     icon: null as null,
@@ -148,7 +148,7 @@ export default function OnboardingWizard({ onDone }: OnboardingWizardProps) {
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in"
       role="dialog"
       aria-modal="true"
-      aria-label="Welcome to mise"
+      aria-label="Welcome to Braisely"
     >
       <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col animate-scale-in">
         {/* Header */}

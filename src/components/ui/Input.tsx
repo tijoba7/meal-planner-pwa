@@ -8,7 +8,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 /**
  * FormField input — label + input + optional error/hint.
- * Matches the canonical Mise input style:
+ * Matches the canonical Braisely input style:
  *   border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500
  */
 export function Input({ label, error, hint, id, className = '', ...props }: InputProps) {

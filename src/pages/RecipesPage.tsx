@@ -38,7 +38,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'prep-asc', label: 'Shortest prep time' },
 ]
 
-const SORT_STORAGE_KEY = 'mise-recipe-sort'
+const SORT_STORAGE_KEY = 'braisely-recipe-sort'
 const MAX_COOK_TIME = 180 // slider max in minutes; at this value = no limit
 const PAGE_SIZE = 24
 

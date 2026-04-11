@@ -10,7 +10,7 @@ interface CardProps {
 
 /**
  * Base card surface.
- * bg-white rounded-xl border border-gray-200 — the canonical Mise card shell.
+ * bg-white rounded-xl border border-gray-200 — the canonical Braisely card shell.
  * Pass onClick to get hover-shadow pointer interaction.
  */
 export function Card({ className = '', onClick, children }: CardProps) {

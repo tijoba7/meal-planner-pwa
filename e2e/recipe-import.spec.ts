@@ -266,6 +266,7 @@ test.describe('Recipe Import — URL import', () => {
     await expect(page.getByText('Recipe extracted! Review before saving.')).toBeVisible({ timeout: 10000 })
     await page.getByRole('button', { name: 'Save Recipe' }).click()
     await expect(page).toHaveURL(/recipes\/[^/]+$/)
+    await expect(page.getByRole('heading', { name: MOCK_RECIPE.name })).toBeVisible({ timeout: 10000 })
 
     // Navigate to the recipes list and verify it appears
     await page.goto('/recipes')

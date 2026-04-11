@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const includeMobileSafari =
+  process.env.PLAYWRIGHT_INCLUDE_WEBKIT === '1' ||
+  process.env.PLAYWRIGHT_INCLUDE_WEBKIT === 'true'
+
 /**
  * Playwright E2E test configuration for Braisely.
  *
@@ -13,7 +17,9 @@ import { defineConfig, devices } from '@playwright/test'
  * (from .env.local), which causes the Supabase JS client to use a different
  * localStorage key than the one fixtures.ts injects — breaking session injection.
  *
- * Covers Chrome (desktop), Firefox (desktop), and mobile Chrome/Safari for feature tests.
+ * By default, covers Chrome (desktop), Firefox (desktop), and mobile Chrome for feature tests.
+ * Mobile Safari (WebKit) is opt-in via PLAYWRIGHT_INCLUDE_WEBKIT=1 because some Linux hosts
+ * require extra system packages to launch WebKit.
  * Auth flow tests run on Chromium only (auth logic is browser-agnostic).
  *
  * Session injection pattern (feature tests):
@@ -82,11 +88,15 @@ export default defineConfig({
       testIgnore: ['**/auth.spec.ts'],
       use: { ...devices['Pixel 5'] },
     },
-    {
-      name: 'mobile-safari',
-      testIgnore: ['**/auth.spec.ts'],
-      use: { ...devices['iPhone 12'] },
-    },
+    ...(includeMobileSafari
+      ? [
+          {
+            name: 'mobile-safari',
+            testIgnore: ['**/auth.spec.ts'],
+            use: { ...devices['iPhone 12'] },
+          },
+        ]
+      : []),
 
     // Auth flow tests — run against the real-auth server (port 5174).
     // ProtectedRoute enforces auth; Supabase API calls are intercepted via page.route().

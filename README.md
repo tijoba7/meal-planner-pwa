@@ -208,12 +208,33 @@ The `dist/` output is a standard SPA — configure your host to serve `index.htm
 | `pnpm test` | Vitest unit tests |
 | `pnpm test:watch` | Vitest in watch mode |
 | `pnpm test:coverage` | Unit tests with coverage report |
-| `pnpm test:e2e` | Playwright end-to-end tests |
+| `pnpm test:e2e` | Playwright end-to-end tests (Chromium, Firefox, mobile Chrome, auth) |
+| `pnpm test:e2e:all` | Full Playwright matrix, including mobile Safari/WebKit |
+| `pnpm test:e2e:webkit` | Mobile Safari/WebKit project only |
 | `pnpm bundle:check` | Check bundle size against budgets |
 | `pnpm supabase:start` | Start local Supabase stack (requires Docker) |
 | `pnpm supabase:reset` | Reset local DB and re-apply all migrations |
 | `pnpm supabase:migrate` | Push incremental migrations to linked project |
 | `pnpm supabase:types` | Regenerate `src/types/supabase.ts` from schema |
+
+### Playwright WebKit setup (Linux)
+
+If you want to run `mobile-safari` tests locally, install Playwright browser dependencies first:
+
+```bash
+pnpm exec playwright install
+pnpm exec playwright install-deps
+```
+
+Then run either:
+
+```bash
+pnpm test:e2e:webkit
+# or
+pnpm test:e2e:all
+```
+
+Without WebKit dependencies, use `pnpm test:e2e` (non-WebKit matrix).
 
 ### Local Supabase (optional)
 

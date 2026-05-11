@@ -82,10 +82,10 @@
     "@tanstack/react-virtual": "^3.13.24",
     "dexie": "^4.3.0",
     "lucide-react": "^0.577.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "react-hook-form": "^7.72.1",
-    "react-router-dom": "^7.14.2",
+    "react-router-dom": "^7.15.0",
     "vaul": "^1.1.2",
     "web-vitals": "^5.1.0"
   }

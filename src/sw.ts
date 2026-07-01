@@ -96,7 +96,16 @@ self.addEventListener('push', (event: PushEvent) => {
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
-  const url: string = (event.notification.data as { url?: string })?.url ?? '/'
+  const rawUrl: string = (event.notification.data as { url?: string })?.url ?? '/'
+  // Only ever open a same-origin destination. A spoofed or compromised push
+  // payload could otherwise navigate the user to an attacker-controlled URL.
+  let url = '/'
+  try {
+    const resolved = new URL(rawUrl, self.location.origin)
+    if (resolved.origin === self.location.origin) url = resolved.pathname + resolved.search
+  } catch {
+    url = '/'
+  }
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       const existing = clients.find((c) => c.url === url && 'focus' in c)

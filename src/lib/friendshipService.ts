@@ -407,22 +407,18 @@ export async function getOrCreateInviteLink(
 export async function resolveInviteToken(
   token: string
 ): Promise<Pick<Profile, 'id' | 'display_name' | 'avatar_url' | 'bio'> | null> {
-
-  type InviteRow = { user_id: string; expires_at: string; profiles: ProfilePick | null }
-  const { data } = await supabase
-    .from('friend_invites')
-    .select(
-      'user_id, expires_at, ' +
-        'profiles!friend_invites_user_id_fkey(id, display_name, avatar_url, bio)'
-    )
-    .eq('token', token)
-    .gt('expires_at', new Date().toISOString())
-    .maybeSingle()
-    // Supabase SDK cannot infer the joined profile shape — override required
-    .overrideTypes<InviteRow | null, { merge: false }>()
+  // Resolve via a SECURITY DEFINER RPC. Direct SELECT on friend_invites is
+  // owner-only (RLS), so tokens cannot be enumerated by other users; the RPC
+  // returns only the owner's public profile for a single valid, unexpired token.
+  const { data } = await supabase.rpc('resolve_invite_token', { p_token: token }).maybeSingle()
 
   if (!data) return null
-  return data.profiles
+  return {
+    id: data.id,
+    display_name: data.display_name,
+    avatar_url: data.avatar_url,
+    bio: data.bio,
+  }
 }
 
 /**

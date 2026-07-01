@@ -5,6 +5,7 @@ import {
   formatRetryAfter,
   sanitizeText,
   sanitizeRecipeData,
+  sanitizeUrlField,
   RECIPE_FIELD_LIMITS,
 } from './validation'
 
@@ -74,6 +75,63 @@ describe('validateImportUrl', () => {
 
   it('accepts URLs with query strings and fragments', () => {
     expect(validateImportUrl('https://example.com/recipe?id=123#ingredients')).toBeNull()
+  })
+
+  it('returns "private_host" for the full 127.0.0.0/8 loopback range', () => {
+    expect(validateImportUrl('http://127.1.2.3/recipe')).toBe('private_host')
+  })
+
+  it('returns "private_host" for 100.64.0.0/10 CGNAT range', () => {
+    expect(validateImportUrl('http://100.64.5.5/recipe')).toBe('private_host')
+  })
+
+  it('blocks decimal-integer encoded loopback (2130706433 = 127.0.0.1)', () => {
+    expect(validateImportUrl('http://2130706433/recipe')).toBe('private_host')
+  })
+
+  it('blocks hex-encoded loopback (0x7f000001 = 127.0.0.1)', () => {
+    expect(validateImportUrl('http://0x7f000001/recipe')).toBe('private_host')
+  })
+
+  it('blocks dotted-hex encoded hosts', () => {
+    expect(validateImportUrl('http://0x7f.0.0.1/recipe')).toBe('private_host')
+  })
+
+  it('blocks octal (leading-zero) encoded hosts', () => {
+    expect(validateImportUrl('http://0177.0.0.1/recipe')).toBe('private_host')
+  })
+
+  it('blocks short-form numeric hosts (127.1)', () => {
+    expect(validateImportUrl('http://127.1/recipe')).toBe('private_host')
+  })
+
+  it('still accepts a normal public dotted host that looks numeric-adjacent', () => {
+    expect(validateImportUrl('https://8.8.8.8.example.com/recipe')).toBeNull()
+  })
+})
+
+// ─── sanitizeUrlField ─────────────────────────────────────────────────────────
+
+describe('sanitizeUrlField', () => {
+  it('keeps a safe public https URL', () => {
+    expect(sanitizeUrlField('https://cdn.example.com/img.jpg')).toBe(
+      'https://cdn.example.com/img.jpg'
+    )
+  })
+
+  it('drops undefined / empty input to an empty string', () => {
+    expect(sanitizeUrlField(undefined)).toBe('')
+    expect(sanitizeUrlField('')).toBe('')
+  })
+
+  it('drops javascript: and data: scheme URLs', () => {
+    expect(sanitizeUrlField('javascript:alert(1)')).toBe('')
+    expect(sanitizeUrlField('data:text/html,<script>alert(1)</script>')).toBe('')
+  })
+
+  it('drops private / loopback host URLs', () => {
+    expect(sanitizeUrlField('http://127.0.0.1/x.jpg')).toBe('')
+    expect(sanitizeUrlField('http://2130706433/x.jpg')).toBe('')
   })
 })
 
@@ -245,6 +303,24 @@ describe('sanitizeRecipeData', () => {
     }))
     const result = sanitizeRecipeData({ ...baseRecipe, recipeIngredient: manyIngredients })
     expect(result.recipeIngredient).toHaveLength(200)
+  })
+
+  it('keeps a safe image/source URL but drops a hostile one', () => {
+    const safe = sanitizeRecipeData({
+      ...baseRecipe,
+      image: 'https://cdn.example.com/pic.jpg',
+      url: 'https://example.com/recipe',
+    })
+    expect(safe.image).toBe('https://cdn.example.com/pic.jpg')
+    expect(safe.url).toBe('https://example.com/recipe')
+
+    const hostile = sanitizeRecipeData({
+      ...baseRecipe,
+      image: 'javascript:alert(1)',
+      url: 'http://169.254.169.254/latest/meta-data/',
+    })
+    expect(hostile.image).toBe('')
+    expect(hostile.url).toBe('')
   })
 
   it('drops instructions beyond 100 items', () => {

@@ -741,9 +741,14 @@ export type Database = {
         Args: Record<string, never>
         Returns: Json
       }
-      get_scraping_config: {
-        Args: Record<string, never>
-        Returns: Json
+      resolve_invite_token: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          display_name: string
+          avatar_url: string | null
+          bio: string | null
+        }[]
       }
     }
     Enums: {

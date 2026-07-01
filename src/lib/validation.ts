@@ -22,9 +22,36 @@ const PRIVATE_IP_PATTERNS: RegExp[] = [
   /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/,
   /^192\.168\.\d{1,3}\.\d{1,3}$/,
   /^169\.254\.\d{1,3}\.\d{1,3}$/, // link-local
+  /^0\.\d{1,3}\.\d{1,3}\.\d{1,3}$/, // 0.0.0.0/8 ("this host")
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/, // 100.64.0.0/10 (CGNAT)
+  /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/, // full loopback /8, not just 127.0.0.1
   /^fc[0-9a-f]{2}/i, // IPv6 unique local
   /^fe80:/i, // IPv6 link-local
 ]
+
+/**
+ * Detects hosts written in a non-standard numeric form (decimal integer, hex,
+ * octal, or short dotted notation) that browsers still resolve to a raw IP —
+ * e.g. `2130706433`, `0x7f000001`, `0177.0.0.1`, `127.1` all reach 127.0.0.1.
+ * Real recipe sites never use these, so any such host is treated as private
+ * to defeat SSRF filter-evasion via IP encoding.
+ */
+function isObfuscatedNumericHost(hostname: string): boolean {
+  // Whole-host decimal integer, e.g. 2130706433
+  if (/^\d+$/.test(hostname)) return true
+  // Whole-host hexadecimal, e.g. 0x7f000001
+  if (/^0x[0-9a-f]+$/i.test(hostname)) return true
+
+  const octets = hostname.split('.')
+  const allNumericish = octets.every((o) => /^(0x[0-9a-f]+|\d+)$/i.test(o))
+  if (allNumericish) {
+    // Fewer than 4 numeric parts is short-form notation (e.g. 127.1).
+    if (octets.length < 4) return true
+    // Any hex (0x…) or octal (leading-zero) octet is an encoding trick.
+    if (octets.some((o) => /^0x/i.test(o) || /^0\d/.test(o))) return true
+  }
+  return false
+}
 
 export type UrlValidationError = 'too_long' | 'invalid_url' | 'invalid_protocol' | 'private_host'
 
@@ -49,9 +76,21 @@ export function validateImportUrl(rawUrl: string): UrlValidationError | null {
   const hostname = parsed.hostname.toLowerCase()
 
   if (BLOCKED_HOSTNAMES.has(hostname)) return 'private_host'
+  if (isObfuscatedNumericHost(hostname)) return 'private_host'
   if (PRIVATE_IP_PATTERNS.some((re) => re.test(hostname))) return 'private_host'
 
   return null
+}
+
+/**
+ * Returns the URL unchanged when it is a safe, public http(s) URL; otherwise ''.
+ * Used to scrub scraped / AI-provided image and source URLs before they are
+ * persisted, so a hostile value (private host, javascript:/data: scheme, etc.)
+ * can never be stored or later become an `href`/`src` sink.
+ */
+export function sanitizeUrlField(rawUrl: string | undefined): string {
+  if (!rawUrl) return ''
+  return validateImportUrl(rawUrl) === null ? rawUrl : ''
 }
 
 export const URL_VALIDATION_MESSAGES: Record<UrlValidationError, string> = {
@@ -159,6 +198,8 @@ interface RecipeLike {
   author?: string
   recipeCategory?: string
   recipeCuisine?: string
+  image?: string
+  url?: string
 }
 
 /**
@@ -191,5 +232,9 @@ export function sanitizeRecipeData<T extends RecipeLike>(recipe: T): T {
     ...(recipe.recipeCuisine !== undefined && {
       recipeCuisine: sanitizeText(recipe.recipeCuisine, L.cuisine),
     }),
+    // Scrub URL-bearing fields: only safe public http(s) URLs survive, so a
+    // hostile image/source URL can never be persisted or become a `src`/`href`.
+    ...(recipe.image !== undefined && { image: sanitizeUrlField(recipe.image) }),
+    ...(recipe.url !== undefined && { url: sanitizeUrlField(recipe.url) }),
   }
 }

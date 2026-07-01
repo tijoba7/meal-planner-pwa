@@ -252,8 +252,11 @@ export async function extractRecipeFromUrl(url: string): Promise<ScrapeResult> {
     // For non-social-video social media URLs, look for linked recipe pages and follow them.
     if (isSocialMediaUrl(url) && !isSocialVideo) {
       const linkedUrls = extractLinkedUrls(pageText, new URL(url).hostname.replace(/^www\./, ''))
-      if (linkedUrls.length > 0) {
-        const linkedUrl = linkedUrls[0]
+      // Re-validate the followed link: it comes from fetched page text, so it
+      // must pass the same private-host/SSRF guard as the user-supplied URL
+      // before we fetch it (the fallback path does a direct browser fetch).
+      const linkedUrl = linkedUrls.find((u) => validateImportUrl(u) === null)
+      if (linkedUrl) {
         const { text: linkedText } = await fetchPageText(linkedUrl)
         if (linkedText) {
           extra =

@@ -1778,19 +1778,8 @@ begin
 end;
 $$;
 
-create or replace function public.get_scraping_config()
-returns jsonb language plpgsql security definer set search_path = public as $$
-declare v_api_key text; v_provider text; v_model text;
-begin
-  if auth.uid() is null then
-    return jsonb_build_object('error', 'Not authenticated');
-  end if;
-  select value #>> '{}' into v_api_key  from public.app_settings where key = 'scraping.api_key';
-  select value #>> '{}' into v_provider from public.app_settings where key = 'scraping.provider';
-  select value #>> '{}' into v_model    from public.app_settings where key = 'scraping.model';
-  if v_api_key is null or v_api_key = '' then
-    return jsonb_build_object('error', 'AI scraping not configured');
-  end if;
-  return jsonb_build_object('api_key', v_api_key, 'provider', coalesce(v_provider, 'openai'), 'model', v_model);
-end;
-$$;
+-- NOTE: public.get_scraping_config() was intentionally removed for security.
+-- It was a SECURITY DEFINER function that returned the raw AI provider API key
+-- to any authenticated caller, bypassing app_settings RLS. The AI API key is
+-- now read server-side only, inside the extract-recipe edge function via the
+-- service role. Do not re-add a client-callable function that returns secrets.

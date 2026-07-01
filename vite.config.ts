@@ -33,9 +33,32 @@ export default defineConfig(({ mode }) => {
     exclude: ['e2e/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov'],
+      reporter: ['text', 'lcov', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/vite-env.d.ts'],
+      exclude: [
+        // App entry points and framework glue — exercised by E2E, not units.
+        'src/main.tsx',
+        'src/App.tsx',
+        'src/sw.ts',
+        // Type-only and generated files carry no executable logic.
+        'src/vite-env.d.ts',
+        'src/**/*.d.ts',
+        'src/types/**',
+        // Test files and setup should not count toward coverage.
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+      ],
+      // Regression guard for the core business-logic modules that are
+      // unit-tested directly. UI components and Supabase-backed services are
+      // covered by the Playwright E2E suite, so they are not gated here.
+      thresholds: {
+        'src/lib/units.ts': { statements: 90, branches: 85, functions: 90, lines: 90 },
+        'src/lib/dietary.ts': { statements: 90, branches: 80, functions: 80, lines: 90 },
+        'src/lib/formatDate.ts': { statements: 90, branches: 90, functions: 100, lines: 90 },
+        'src/lib/nutritionCalculator.ts': { statements: 85, branches: 80, functions: 85, lines: 85 },
+        'src/lib/ingredientMerger.ts': { statements: 90, branches: 85, functions: 90, lines: 90 },
+        'src/lib/validation.ts': { statements: 80, branches: 75, functions: 80, lines: 80 },
+      },
     },
   },
   plugins: [

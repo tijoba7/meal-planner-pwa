@@ -56,7 +56,6 @@ export function usePinchZoom<T extends HTMLElement>({
   useEffect(() => {
     if (!ref.current) return
     // Capture as non-null so closures below preserve the type
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const el = ref.current!
 
     function dist(a: Touch, b: Touch) {
